@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Road Ready — pass your driving test. Practice questions, mock exams, road sign flashcards, and progress tracking.">
+<title>Road Ready — Pass Your Driving Test</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%23131318'/%3E%3Cg fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 15.5 5.8 9a2 2 0 0 1 1.9-1.5h8.6a2 2 0 0 1 1.9 1.5l1.8 6.5'/%3E%3Cpath d='M3.5 15.5h17'/%3E%3Ccircle cx='7.5' cy='16.5' r='1.8'/%3E%3Ccircle cx='16.5' cy='16.5' r='1.8'/%3E%3C/g%3E%3C/svg%3E">
+<meta name="theme-color" content="#0b0b0d">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div id="app">
+
+  <header class="topbar">
+    <button class="nav-back" id="btnBack" aria-label="Go back" data-icon="arrow-left" data-size="17" hidden></button>
+    <div class="brand" id="brandHome">
+      <span class="brand-icon" data-icon="car" data-size="20"></span>
+      <span class="brand-name">Road<b>Ready</b></span>
+    </div>
+    <div class="topbar-actions">
+      <button id="btnTheme" class="icon-btn" aria-label="Toggle dark mode" title="Toggle theme"></button>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- ============ HOME / DASHBOARD ============ -->
+    <section class="view" id="view-home">
+      <div class="hero card">
+        <div class="hero-top">
+          <div>
+            <h1 id="greeting">Let's get you licensed</h1>
+            <p class="sub" id="heroSub">Study a little every day and you'll walk into the DMV with confidence.</p>
+            <p class="lvl" id="heroLvl"></p>
+          </div>
+          <div class="readiness-ring" id="readinessRing" role="img" aria-label="Readiness score">
+            <svg viewBox="0 0 120 120">
+              <circle class="ring-bg" cx="60" cy="60" r="52"></circle>
+              <circle class="ring-fg" cx="60" cy="60" r="52" id="ringFg"></circle>
+            </svg>
+            <div class="ring-label"><span id="ringPct">0%</span><small>ready</small></div>
+          </div>
+        </div>
+        <div class="quick-actions">
+          <button class="qa" id="qaPractice"><span class="qa-ico" data-icon="book" data-size="20"></span>Practice</button>
+          <button class="qa" id="qaExam"><span class="qa-ico" data-icon="clipboard" data-size="20"></span>Mock Exam</button>
+          <button class="qa" id="qaCards"><span class="qa-ico" data-icon="layers" data-size="20"></span>Flashcards</button>
+          <button class="qa" id="qaReview"><span class="qa-ico" data-icon="target" data-size="20"></span>Review Missed</button>
+        </div>
+      </div>
+
+      <div class="stat-strip" id="statStrip">
+        <div class="stat"><span id="stAnswered">0</span><small>answered</small></div>
+        <div class="stat"><span id="stAccuracy">–</span><small>accuracy</small></div>
+        <div class="stat"><span id="stStreak">0</span><small>day streak</small></div>
+        <div class="stat"><span id="stBest">–</span><small>best exam</small></div>
+      </div>
+
+      <button class="card feature-card" id="fcHazard">
+        <span class="fx-ico" data-icon="eye" data-size="22"></span>
+        <div class="fx-body">
+          <div class="fx-name">Hazard Perception</div>
+          <div class="fx-desc" id="hazardBestLabel">Train spotting developing hazards — like the real test</div>
+        </div>
+        <span class="chev" data-icon="chevron-right" data-size="16"></span>
+      </button>
+
+      <div class="card daily-goal" id="dailyGoal">
+        <div class="dg-label">Today's goal: <b>0/10</b> questions answered</div>
+        <div class="dg-bar"><div class="dg-bar-fill"></div></div>
+      </div>
+
+      <h2 class="section-title">Topics</h2>
+      <div class="topic-grid" id="topicGrid"><!-- rendered by JS --></div>
+
+      <h2 class="section-title">Weak spots <span class="badge warn" id="weakBadge">0</span></h2>
+      <div class="card weak-card" id="weakCard">
+        <ul id="weakList" class="weak-list"></ul>
+      </div>
+
+      <p class="disclaimer"><span data-icon="alert" data-size="14"></span> Study aid based on general rules of the road. Requirements vary by state &amp; country — always confirm with your official driver handbook.</p>
+    </section>
+
+    <!-- ============ TOPIC / MODE SETUP ============ -->
+    <section class="view" id="view-setup">
+      <h1 id="setupTitle" class="view-title">Practice</h1>
+      <p class="view-sub" id="setupSub">Choose a topic.</p>
+      <div class="setup-list" id="setupList"><!-- rendered --></div>
+    </section>
+
+    <!-- ============ QUIZ (shared: practice & exam) ============ -->
+    <section class="view" id="view-quiz">
+      <div class="quiz-meta">
+        <div class="qprog">
+          <div class="qprog-bar" id="qprogBar"></div>
+        </div>
+        <div class="quiz-meta-row">
+          <span id="qCounter" class="pill">Q 1/20</span>
+          <span id="qTimer" class="pill" hidden></span>
+          <span id="qCategory" class="pill cat-pill">Signs</span>
+          <span class="flex-spacer"></span>
+          <button class="pill" id="btnTTS" title="Read questions aloud"></button>
+          <button class="pill flag-btn" id="btnFlag" title="Flag this question for review">Flag</button>
+        </div>
+      </div>
+
+      <div class="card question-card" id="questionCard">
+        <div class="sign-frame" id="signFrame" hidden></div>
+        <h2 class="question-text" id="qText"></h2>
+        <div class="choices" id="choices"></div>
+        <div class="feedback" id="feedback" hidden>
+          <div class="fb-head" id="fbHead"></div>
+          <p class="fb-why" id="fbWhy"></p>
+        </div>
+      </div>
+
+      <div class="quiz-actions">
+        <button class="btn ghost" id="btnQuit">End</button>
+        <button class="btn primary" id="btnNext" disabled>Next</button>
+      </div>
+      <p class="kbd-hint">Tip: press <kbd>1</kbd>–<kbd>4</kbd> to answer, <kbd>Enter</kbd> for next</p>
+    </section>
+
+    <!-- ============ RESULTS ============ -->
+    <section class="view" id="view-results">
+      <div class="card results-card">
+        <div class="result-emoji" id="resultEmoji"></div>
+        <h1 id="resultTitle">You passed!</h1>
+        <div class="score-big" id="resultScore">100%</div>
+        <p class="sub" id="resultSub"></p>
+        <div class="result-grid" id="resultGrid"></div>
+        <div class="results-actions">
+          <button class="btn primary" id="btnAgain">Try Again</button>
+          <button class="btn ghost" id="btnReviewMissed">Review Missed</button>
+          <button class="btn ghost" id="btnHomeR">Home</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ FLASHCARDS ============ -->
+    <section class="view" id="view-flashcards">
+      <h1 class="view-title">Road Sign Flashcards</h1>
+      <div class="fc-meta">
+        <span class="pill" id="fcCounter">1 / 28</span>
+        <span class="pill" id="fcKnownPill"></span>
+        <span class="flex-spacer"></span>
+        <button class="pill" id="btnFcShuffle"><span data-icon="shuffle" data-size="13"></span>Shuffle</button>
+        <button class="pill" id="btnFcReset"><span data-icon="rotate" data-size="13"></span>Reset</button>
+      </div>
+      <div class="fc-stage">
+        <div class="flashcard" id="flashcard" tabindex="0" role="button" aria-label="Flip flashcard">
+          <div class="fc-face fc-front">
+            <div class="sign-frame big" id="fcSign"></div>
+            <p class="fc-hint">tap to flip</p>
+          </div>
+          <div class="fc-face fc-back">
+            <h2 id="fcName">Stop</h2>
+            <p id="fcMeaning" class="fc-meaning"></p>
+          </div>
+        </div>
+      </div>
+      <div class="fc-actions">
+        <button class="btn ghost fc-nav" id="btnFcPrev"><span data-icon="chevron-left" data-size="16"></span></button>
+        <button class="btn ghost" id="btnFcNo">Still Learning</button>
+        <button class="btn primary" id="btnFcYes">I Know It</button>
+        <button class="btn ghost fc-nav" id="btnFcNext"><span data-icon="chevron-right" data-size="16"></span></button>
+      </div>
+    </section>
+
+    <!-- ============ REVIEW MISSED ============ -->
+    <section class="view" id="view-review">
+      <h1 class="view-title">Review Missed Questions</h1>
+      <p class="view-sub" id="reviewSub"></p>
+      <div id="reviewList" class="review-list"></div>
+      <div class="results-actions">
+        <button class="btn primary" id="btnDrillMissed">Drill These Questions</button>
+      </div>
+    </section>
+
+    <!-- ============ GUIDE: CHEAT SHEETS + ROAD TEST ============ -->
+    <section class="view" id="view-guide">
+      <h1 class="view-title">Study Guide</h1>
+      <p class="view-sub">Quick-reference cheat sheets for the written test, and a full walkthrough for the behind-the-wheel road test.</p>
+
+      <h2 class="section-title">Written test cheat sheets</h2>
+
+      <details class="acc" open>
+        <summary>Sign shapes &amp; colors</summary>
+        <div class="acc-body">
+          <ul class="ref">
+            <li><b>Red octagon</b> — STOP (the only 8-sided sign)</li>
+            <li><b>Red inverted triangle</b> — YIELD</li>
+            <li><b>Red circle, white bar</b> — DO NOT ENTER · red rectangle — WRONG WAY</li>
+            <li><b>Yellow diamond</b> — warning ahead (curve, merge, animals…)</li>
+            <li><b>Orange diamond</b> — temporary: work zone (fines often doubled)</li>
+            <li><b>Yellow pennant</b> — start of NO PASSING ZONE</li>
+            <li><b>Yellow circle</b> — railroad crossing ahead</li>
+            <li><b>Yellow-green pentagon</b> — school zone / school crossing</li>
+            <li><b>White rectangle/square</b> — regulation: speed limit, one way, no parking</li>
+            <li><b>Green</b> — guidance: directions and exits · <b>Blue</b> — services · <b>Brown</b> — recreation</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="acc">
+        <summary>Pavement markings</summary>
+        <div class="acc-body">
+          <ul class="ref">
+            <li><b>Yellow lines</b> separate opposing traffic (left edge on one-way roads); <b>white lines</b> separate same-direction traffic</li>
+            <li><b>Broken line on your side</b> — passing/lane change allowed when safe</li>
+            <li><b>Solid line on your side</b> — don't cross to pass</li>
+            <li><b>Double solid yellow</b> — no passing either direction (cross only for left turns where permitted)</li>
+            <li><b>Broken-inside yellow center lane</b> — shared two-way left-turn lane only</li>
+            <li><b>Thick white line</b> — stop line: stop fully before it</li>
+            <li><b>Painted diamond</b> — HOV lane · <b>bike symbol + white line</b> — bike lane · <b>diagonal stripes</b> — gore, never drive there</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="acc">
+        <summary>Right of way in 8 lines</summary>
+        <div class="acc-body">
+          <ul class="ref">
+            <li>4-way stop / simultaneous arrival: first to arrive, then the car on the <b>right</b></li>
+            <li>Plain green left turn: yield to <b>oncoming</b> traffic and pedestrians (green arrow protects you)</li>
+            <li>Entering from driveway/alley/parking: yield to <b>everyone</b>, sidewalk first</li>
+            <li>T-intersection: the through road goes first</li>
+            <li>Roadway &gt; merging ramp: highway traffic keeps the right of way</li>
+            <li>Emergency vehicle with lights/siren: pull <b>right</b> and stop</li>
+            <li>School bus flashing red, undivided road: <b>everyone stops</b> — both directions</li>
+            <li>Pedestrians in any crosswalk, blind pedestrians anywhere: always yield</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="acc">
+        <summary>What to do when…</summary>
+        <div class="acc-body">
+          <ul class="ref">
+            <li><b>Skid</b> — ease off the gas, steer smoothly where you want to go, no hard braking</li>
+            <li><b>Hydroplane</b> — off the gas, wheel straight, no brakes until tires grip</li>
+            <li><b>Blowout</b> — grip the wheel, ease off the gas, brake gently once slow</li>
+            <li><b>Brake failure</b> — pump, downshift, then parking brake gradually; steer to a safe stop</li>
+            <li><b>Stuck accelerator</b> — shift to NEUTRAL, brake, pull over, then shut off</li>
+            <li><b>Blinded by high beams</b> — look at the right edge of your lane, slow down</li>
+            <li><b>Deer ahead</b> — brake in your lane, don't swerve at speed</li>
+            <li><b>Breakdown on a highway</b> — pull far off, hazards on, stay belted inside</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="acc">
+        <summary>Parking on hills</summary>
+        <div class="acc-body">
+          <ul class="ref">
+            <li><b>Downhill + curb</b> — wheels <b>toward</b> the curb (right)</li>
+            <li><b>Uphill + curb</b> — wheels <b>away</b> from the curb (left), let it roll back a touch to touch the curb</li>
+            <li><b>No curb</b> — wheels toward the edge of the road, both directions</li>
+            <li>Always: parking brake on, manual in gear (or Park)</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="acc">
+        <summary>Numbers to remember</summary>
+        <div class="acc-body">
+          <ul class="ref">
+            <li>BAC limit: <b>0.08%</b> (21+) · 0.04% commercial · ~0.01–0.02% under 21</li>
+            <li>Following distance: <b>3 seconds</b> (4+ rain, 5–6+ snow/night)</li>
+            <li>Signal before turning: <b>100 ft</b> (300+ on highways)</li>
+            <li>Dim high beams: <b>500 ft</b> oncoming, 300 ft following</li>
+            <li>Passing a bicycle: <b>3 ft</b> minimum</li>
+            <li>Fire hydrant parking: <b>15 ft</b> · parallel park within 12–18 in of the curb</li>
+            <li>Headlights: sunset to sunrise and when wipers run</li>
+            <li>One standard drink per hour is all the liver clears — time is the only cure</li>
+          </ul>
+        </div>
+      </details>
+
+      <h2 class="section-title">Road test (behind the wheel)</h2>
+
+      <details class="acc" open>
+        <summary>Before you go — checklist</summary>
+        <div class="acc-body">
+          <ul class="ref">
+            <li>Permit/license documents, test appointment confirmation</li>
+            <li>Car with current registration + proof of insurance</li>
+            <li>Car in test-ready shape: all lights work, tires healthy, horn, wipers, no warning lights, clean windshield</li>
+            <li>Licensed adult driver accompanies you (required in most states)</li>
+            <li>Arrive early; adjust seat, mirrors, and wheel BEFORE the examiner gets in</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="acc">
+        <summary>How you're scored</summary>
+        <div class="acc-body">
+          <ul class="ref">
+            <li>Minor errors (rolling a stop slightly, sloppy lane position) subtract points — you can still pass with a few</li>
+            <li><b>Automatic fails:</b> collision, running a red/stop sign, dangerous action, speeding, examiner grabbing the wheel or brake, mounting a curb, driving the wrong way, failing to yield when someone has to swerve or brake hard for you</li>
+            <li>Examiners watch: scanning (eyes moving, head checks), smooth control, space management, confidence without aggression</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="acc">
+        <summary>The maneuvers, step by step</summary>
+        <div class="acc-body">
+          <ul class="ref">
+            <li><b>Parallel parking:</b> signal · pull alongside (about 2–3 ft out) · reverse until your rear seat passes their bumper · turn the wheel hard toward the curb · when at ~45°, straighten, then turn away to bring the front in · center the car, wheels straight, within 12–18 in</li>
+            <li><b>Three-point turn:</b> signal right, pull to the right curb · check all around · turn hard left and cross to the other side, stopping before the far curb · reverse straight back while turning hard right · then drive forward into the right lane</li>
+            <li><b>Lane change (SMOG):</b> Signal · Mirrors · Over-the-shoulder glance · Go — smoothly, no drifting, cancel the signal</li>
+            <li><b>Straight-line backing:</b> hand at 12, look over your right shoulder, creep slowly, correct early and gently</li>
+            <li><b>Turns:</b> signal 100 ft out, brake before the turn, 9-and-3 push-pull steering, end in the correct lane, gentle acceleration out</li>
+            <li><b>Stops:</b> full stop behind the line, scan left-right-left, creep for sightlines when blocked, then commit</li>
+            <li><b>Hill parking:</b> see the cheat sheet above — curb direction is a classic scored item</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="acc">
+        <summary>Most common fails &amp; how to avoid them</summary>
+        <div class="acc-body">
+          <ul class="ref">
+            <li><b>Rolling stops</b> — count "one-one-thousand" at every stop sign</li>
+            <li><b>No head checks</b> — exaggerate them; if the examiner can't SEE you checking, it didn't happen</li>
+            <li><b>Speeding in the test zone or parking lot</b> — parking lots and school zones count; drive 5 under when unsure</li>
+            <li><b>Hesitating too long</b> — waiting forever to merge or turn fails too; take the safe gap decisively</li>
+            <li><b>One-handed driving / phone touch</b> — both hands, phone away, radio off</li>
+            <li><b>Curb strike on maneuvers</b> — slow is passable, touching the curb often isn't</li>
+            <li><b>Improper lane / no signal</b> — get in the turn lane early, signal everything, always</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="acc">
+        <summary>Day-of tips</summary>
+        <div class="acc-body">
+          <ul class="ref">
+            <li>Sleep, eat, and practice in the SAME car you test in</li>
+            <li>Smoothness beats speed — examiners pass calm drivers</li>
+            <li>Make one mistake? Let it go. They score the whole drive, not your worst second</li>
+            <li>Narrate light head checks and mirror scans — visibility earns credit</li>
+            <li>Don't argue with instructions; if unclear, ask them to repeat</li>
+            <li>Fail? Most people pass the second attempt — book it and drill your weak maneuver</li>
+          </ul>
+        </div>
+      </details>
+    </section>
+
+    <!-- ============ HAZARD PERCEPTION ============ -->
+    <section class="view" id="view-hazard">
+      <h1 class="view-title">Hazard Perception</h1>
+      <p class="view-sub">Tap <b>SLOW</b> (or press <b>Space</b>) the moment a hazard starts to develop — before you'd need to brake hard. Earlier = more points.</p>
+      <div class="hz-stage card" id="hzStage">
+        <svg id="hzSvg" viewBox="0 0 360 420" preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="hz-flash" id="hzFlash" hidden></div>
+        <div class="hz-overlay" id="hzOverlay"></div>
+      </div>
+      <div class="hz-actions">
+        <button class="btn ghost" id="hzQuit">Exit</button>
+        <button class="btn primary hz-slow" id="hzSlow">SLOW DOWN</button>
+      </div>
+      <p class="kbd-hint">Press <kbd>Space</kbd> to react</p>
+    </section>
+
+    <!-- ============ STATS ============ -->
+    <section class="view" id="view-stats">
+      <h1 class="view-title">Your Progress</h1>
+      <div class="stat-strip big" id="statsStrip">
+        <div class="stat"><span id="ssAnswered">0</span><small>questions answered</small></div>
+        <div class="stat"><span id="ssAccuracy">–</span><small>overall accuracy</small></div>
+        <div class="stat"><span id="ssStreak">0</span><small>day streak</small></div>
+        <div class="stat"><span id="ssExams">0</span><small>exams taken</small></div>
+        <div class="stat"><span id="ssTime">0m</span><small>time studied</small></div>
+        <div class="stat"><span id="ssHazard">–</span><small>hazard best</small></div>
+      </div>
+      <h2 class="section-title">Level</h2>
+      <div class="card" id="xpCard">
+        <div class="xp-row"><b id="xpLabel">Level 1</b><span id="xpCount">0 XP</span></div>
+        <div class="bar"><div class="bar-fill" id="xpBar" style="width:0%"></div></div>
+      </div>
+      <h2 class="section-title">Achievements</h2>
+      <div class="ach-grid" id="achGrid"></div>
+      <h2 class="section-title">Mastery by topic</h2>
+      <div class="card" id="masteryCard"><div id="masteryList"></div></div>
+      <h2 class="section-title">Exam history</h2>
+      <div class="card"><ul class="history-list" id="historyList"></ul></div>
+      <h2 class="section-title">Settings</h2>
+      <div class="card settings-card">
+        <label class="setting-row">
+          <span>Exam pass mark</span>
+          <select id="selPassMark">
+            <option value="0.8" selected>80% (standard)</option>
+            <option value="0.75">75%</option>
+            <option value="0.85">85% (tough)</option>
+          </select>
+        </label>
+        <label class="setting-row">
+          <span>Exam questions</span>
+          <select id="selExamLen">
+            <option value="10">10</option>
+            <option value="20" selected>20 (standard)</option>
+            <option value="30">30</option>
+            <option value="46">46 (full test)</option>
+          </select>
+        </label>
+        <label class="setting-row">
+          <span>Immediate feedback in practice</span>
+          <input type="checkbox" id="chkFeedback" checked>
+        </label>
+        <div class="danger-zone">
+          <button class="btn ghost" id="btnResetAll">Reset all progress</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <nav class="bottom-nav" id="bottomNav">
+    <button data-nav="home" class="active"><span data-icon="home" data-size="21"></span><small>Home</small></button>
+    <button data-nav="practice"><span data-icon="book" data-size="21"></span><small>Practice</small></button>
+    <button data-nav="exam"><span data-icon="clipboard" data-size="21"></span><small>Exam</small></button>
+    <button data-nav="flashcards"><span data-icon="layers" data-size="21"></span><small>Cards</small></button>
+    <button data-nav="guide"><span data-icon="steering" data-size="21"></span><small>Guide</small></button>
+    <button data-nav="stats"><span data-icon="chart" data-size="21"></span><small>Stats</small></button>
+  </nav>
+</div>
+
+<div id="toasts"></div>
+
+<!-- ============ ONBOARDING ============ -->
+<div id="onboarding" hidden>
+  <div class="ob-card">
+    <button class="ob-skip" id="obSkip">Skip</button>
+    <div class="ob-steps">
+      <div class="ob-step" data-step="0">
+        <span class="ob-ico" data-icon="car" data-size="40"></span>
+        <h1>Welcome to Road Ready</h1>
+        <p>Everything you need to pass your driving test — the <b>written exam</b> and the <b>road test</b>. No account, no internet, no ads.</p>
+      </div>
+      <div class="ob-step" data-step="1">
+        <h1>How you'll study</h1>
+        <div class="ob-row"><span class="ob-row-ico" data-icon="book" data-size="20"></span><div><b>Adaptive practice</b><small>186 questions across 10 topics — your misses come back until you nail them</small></div></div>
+        <div class="ob-row"><span class="ob-row-ico" data-icon="clipboard" data-size="20"></span><div><b>Mock exams</b><small>Timed, DMV-style, with a real pass mark and full answer review</small></div></div>
+        <div class="ob-row"><span class="ob-row-ico" data-icon="layers" data-size="20"></span><div><b>Flashcards &amp; study guide</b><small>31 road signs plus cheat sheets and a road-test walkthrough</small></div></div>
+        <div class="ob-row"><span class="ob-row-ico" data-icon="eye" data-size="20"></span><div><b>Hazard perception</b><small>Train your eye to spot danger before it develops — like the real test</small></div></div>
+      </div>
+      <div class="ob-step" data-step="2">
+        <h1>Make it yours</h1>
+        <p class="ob-lead">You can change these anytime.</p>
+        <div class="ob-choice">
+          <span>Appearance</span>
+          <div class="ob-seg">
+            <button id="obThemeDark">Dark</button>
+            <button id="obThemeLight">Light</button>
+          </div>
+        </div>
+        <div class="ob-choice">
+          <span>Read questions aloud</span>
+          <div class="ob-seg">
+            <button id="obTtsOn">On</button>
+            <button id="obTtsOff">Off</button>
+          </div>
+        </div>
+      </div>
+      <div class="ob-step" data-step="3">
+        <span class="ob-ico" data-icon="gauge" data-size="40"></span>
+        <h1>Little and often wins</h1>
+        <p>Answer <b>10 questions a day</b> to hit your daily goal and build a streak. At <b>80% readiness</b> the app will tell you you're ready to book the real thing.</p>
+      </div>
+    </div>
+    <div class="ob-foot">
+      <div class="ob-dots" id="obDots"><span></span><span></span><span></span><span></span></div>
+      <button class="btn primary" id="obNext">Start</button>
+    </div>
+  </div>
+</div>
+
+<script>window.addEventListener("error", function (e) { window.__lastError = (e.message || "error") + " @ " + (e.filename || "") + ":" + (e.lineno || 0); });</script>
+<script src="js/signs.js"></script>
+<script src="js/icons.js"></script>
+<script src="js/questions.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

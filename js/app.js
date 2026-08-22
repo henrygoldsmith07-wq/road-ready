@@ -1,0 +1,1043 @@
+/* Road Ready — app logic */
+"use strict";
+
+const STORE_KEY = "roadready.v1";
+const $ = (id) => document.getElementById(id);
+const on = (el, ev, fn) => el.addEventListener(ev, fn);
+
+/* ---------------- state ---------------- */
+let state = loadState();
+
+function defaultState() {
+  return {
+    qstats: {},        // qid -> {seen, correct, wrong}
+    flagged: {},       // qid -> true
+    exams: [],         // {date, pct, correct, total, pass}
+    answered: 0,
+    correctCount: 0,
+    streak: { count: 0, last: "" },
+    fcKnown: {},       // signId -> true
+    fcOrder: null,
+    achievements: {},  // id -> unlock date
+    xp: 0,
+    timeStudied: 0,    // seconds
+    hazardBest: 0,
+    settings: { passMark: 0.8, examLen: 20, feedback: true, theme: "dark", tts: false },
+  };
+}
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return defaultState();
+    const s = Object.assign(defaultState(), JSON.parse(raw));
+    s.settings = Object.assign(defaultState().settings, s.settings);
+    return s;
+  } catch (e) { return defaultState(); }
+}
+function save() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {}
+}
+const todayStr = () => new Date().toISOString().slice(0, 10);
+function touchStreak() {
+  const t = todayStr();
+  if (state.streak.last === t) return;
+  const y = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+  state.streak.count = (state.streak.last === y) ? state.streak.count + 1 : 1;
+  state.streak.last = t;
+}
+function todayAnswered() {
+  // count of answers recorded today (kept in a compact map date->count)
+  if (state.todayDate !== todayStr()) {
+    state.todayDate = todayStr();
+    state.todayCount = 0;
+  }
+  return state.todayCount || 0;
+}
+const DAILY_GOAL = 10;
+
+/* ---------------- XP, levels & achievements ---------------- */
+const ACHIEVEMENTS = [
+  { id: "first-steps", name: "First Steps",    desc: "Answer 10 questions" },
+  { id: "century",     name: "Century Club",   desc: "Answer 100 questions" },
+  { id: "perfect",     name: "Perfect Run",    desc: "Score 10/10 in a practice session" },
+  { id: "pass",        name: "Licensed to Learn", desc: "Pass a mock exam" },
+  { id: "consistent",  name: "Consistent",     desc: "Pass 3 mock exams" },
+  { id: "streak3",     name: "On Fire",        desc: "Reach a 3-day study streak" },
+  { id: "streak7",     name: "Habit Formed",   desc: "Reach a 7-day study streak" },
+  { id: "signs",       name: "Sign Master",    desc: "Know every sign flashcard" },
+  { id: "marathon",    name: "Marathoner",     desc: "Answer 100+ questions in one session" },
+  { id: "sharp",       name: "Sharpshooter",   desc: "85%+ accuracy across 100+ answers" },
+  { id: "hawk",        name: "Hawk Eye",       desc: "Score 24+ in Hazard Perception" },
+  { id: "ready",       name: "Test Ready",     desc: "Reach 80% readiness" },
+];
+function levelFor(xp) {
+  let lvl = 1, need = 100, rest = xp;
+  while (rest >= need) { rest -= need; lvl++; need = 100 + (lvl - 1) * 50; }
+  return { lvl, into: rest, need };
+}
+function toast(title, sub, ic) {
+  const host = document.getElementById("toasts");
+  if (!host) return;
+  const t = document.createElement("div");
+  t.className = "toast";
+  t.innerHTML = `${icon(ic || "award", 17)}<div><b>${title}</b>${sub ? `<small>${sub}</small>` : ""}</div>`;
+  host.appendChild(t);
+  setTimeout(() => t.classList.add("out"), 3200);
+  setTimeout(() => t.remove(), 3700);
+}
+function unlock(id) {
+  if (state.achievements[id]) return;
+  const a = ACHIEVEMENTS.find(x => x.id === id);
+  if (!a) return;
+  state.achievements[id] = Date.now();
+  save();
+  toast("Achievement: " + a.name, a.desc, "award");
+}
+function addXP(n) {
+  const before = levelFor(state.xp).lvl;
+  state.xp += n;
+  const after = levelFor(state.xp);
+  save();
+  if (after.lvl > before) toast("Level " + after.lvl + " reached", "Keep going — you're building real muscle memory.", "sparkles");
+}
+function checkProgressAchievements() {
+  if (state.answered >= 10) unlock("first-steps");
+  if (state.answered >= 100) unlock("century");
+  if (state.streak.count >= 3) unlock("streak3");
+  if (state.streak.count >= 7) unlock("streak7");
+  if (state.answered >= 100 && state.correctCount / state.answered >= 0.85) unlock("sharp");
+  if (readiness() >= 0.8) unlock("ready");
+  if (Object.keys(SIGNS).every(id => state.fcKnown[id])) unlock("signs");
+  if (session && session.answers && session.answers.length >= 100) unlock("marathon");
+}
+
+/* ---------------- read-aloud (TTS) ---------------- */
+function ttsSupported() {
+  return typeof speechSynthesis !== "undefined" && typeof SpeechSynthesisUtterance !== "undefined";
+}
+function applyTTS() {
+  const b = $("btnTTS");
+  b.hidden = !ttsSupported();
+  b.classList.toggle("on", !!state.settings.tts);
+  b.innerHTML = `${icon(state.settings.tts ? "volume" : "volume-off", 13)} Read ${state.settings.tts ? "on" : "off"}`;
+}
+function speak(text) {
+  if (!state.settings.tts || !ttsSupported() || !text) return;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.02;
+    speechSynthesis.speak(u);
+  } catch (e) { /* speech unavailable — silently ignore */ }
+}
+function stopSpeaking() {
+  if (ttsSupported()) { try { speechSynthesis.cancel(); } catch (e) {} }
+}
+
+/* ---------------- study time tracking ---------------- */
+let ttTick = 0;
+setInterval(() => {
+  const v = document.querySelector(".view.active");
+  if (!v) return;
+  if (["view-quiz", "view-flashcards", "view-review", "view-hazard"].includes(v.id)) {
+    state.timeStudied = (state.timeStudied || 0) + 1;
+    if (++ttTick % 20 === 0) save();
+  }
+}, 1000);
+function fmtTime(s) {
+  if (!s) return "0m";
+  const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60);
+  return h ? h + "h " + m + "m" : m + "m";
+}
+
+/* ---------------- helpers ---------------- */
+const byId = {};
+QUESTIONS.forEach(q => byId[q.id] = q);
+const catQ = (cat) => QUESTIONS.filter(q => q.cat === cat);
+const shuffle = (arr) => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+/* mastery: 0 (unseen) .. 1 (nailed) */
+function qMastery(q) {
+  const s = state.qstats[q.id];
+  if (!s || s.seen === 0) return 0;
+  return Math.min(1, Math.max(0, (s.correct - s.wrong * 0.5) / Math.max(2, s.seen * 0.7)));
+}
+function readiness() {
+  let sum = 0;
+  QUESTIONS.forEach(q => sum += qMastery(q));
+  return sum / QUESTIONS.length;
+}
+function missedQuestions() {
+  return QUESTIONS.filter(q => {
+    const s = state.qstats[q.id];
+    return s && s.wrong > 0;
+  }).sort((a, b) => (state.qstats[b.id].wrong - state.qstats[a.id].wrong));
+}
+function catAccuracy(cat) {
+  let seen = 0, correct = 0;
+  catQ(cat).forEach(q => { const s = state.qstats[q.id]; if (s) { seen += s.seen; correct += s.correct; } });
+  return seen ? correct / seen : null;
+}
+
+/* adaptive weight: unseen & previously-missed questions surface more often */
+function adaptivePool() {
+  return QUESTIONS.map(q => {
+    const s = state.qstats[q.id] || { seen: 0, wrong: 0 };
+    let w = 1 + s.wrong * 2.5 - (qMastery(q) * 0.9);
+    if (s.seen === 0) w += 1.2;
+    if (state.flagged[q.id]) w += 1.5;
+    return { q, w: Math.max(0.15, w) };
+  });
+}
+function pickWeighted(pool, n) {
+  const out = [];
+  while (out.length < n && pool.length) {
+    const total = pool.reduce((t, p) => t + p.w, 0);
+    let r = Math.random() * total;
+    let i = 0;
+    for (; i < pool.length; i++) { r -= pool[i].w; if (r <= 0) break; }
+    out.push(pool.splice(Math.min(i, pool.length - 1), 1)[0].q);
+  }
+  return out;
+}
+
+/* ---------------- router ---------------- */
+let quizBackTarget = "home";
+
+function showView(name) {
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+  const v = $("view-" + name);
+  if (v) v.classList.add("active");
+  if (name !== "quiz") stopSpeaking();
+  $("btnBack").hidden = !(name === "quiz" || name === "setup" || name === "results");
+  document.querySelectorAll("#bottomNav button").forEach(b =>
+    b.classList.toggle("active", b.dataset.nav === name || (b.dataset.nav === "practice" && name === "quiz" && quizBackTarget !== "home") ));
+  window.scrollTo(0, 0);
+}
+
+/* ---------------- HOME ---------------- */
+function renderHome() {
+  const pct = Math.round(readiness() * 100);
+  $("ringPct").textContent = pct + "%";
+  const C = 2 * Math.PI * 52;
+  const fg = $("ringFg");
+  fg.style.strokeDasharray = C;
+  fg.style.strokeDashoffset = C * (1 - pct / 100);
+  const acc = state.answered ? Math.round(100 * state.correctCount / state.answered) : null;
+  $("stAnswered").textContent = state.answered;
+  $("stAccuracy").textContent = acc === null ? "–" : acc + "%";
+  $("stStreak").textContent = state.streak.count;
+  const best = state.exams.length ? Math.max(...state.exams.map(e => e.pct)) : null;
+  $("stBest").textContent = best === null ? "–" : Math.round(best * 100) + "%";
+
+  const ready = pct >= 80 && state.exams.some(e => e.pass);
+  $("heroSub").textContent = ready
+    ? "You're testing above the pass mark — keep it sharp with a mock exam."
+    : state.answered === 0 ? "Study a little every day and you'll walk into the DMV with confidence."
+    : "Keep going — review your weak spots and drill the questions you missed.";
+
+  // level chip + hazard best + achievement checks
+  const lv = levelFor(state.xp);
+  $("heroLvl").textContent = state.answered ? `Level ${lv.lvl} · ${state.xp} XP` : "";
+  $("hazardBestLabel").textContent = state.hazardBest
+    ? `Best score: ${state.hazardBest}/30 — hazards include hidden children, doors, and deer`
+    : "Train spotting developing hazards — like the real test";
+  checkProgressAchievements();
+
+  // daily goal
+  const t = todayAnswered();
+  const goalEl = $("dailyGoal");
+  goalEl.querySelector(".dg-bar-fill").style.width = Math.min(100, 100 * t / DAILY_GOAL) + "%";
+  goalEl.querySelector(".dg-label").innerHTML = t >= DAILY_GOAL
+    ? `Daily goal complete — <b>${t}</b> answered today`
+    : `Today's goal: <b>${t}/${DAILY_GOAL}</b> questions answered`;
+
+  // topics
+  const grid = $("topicGrid");
+  grid.innerHTML = "";
+  Object.entries(CATEGORIES).forEach(([id, c]) => {
+    const qs = catQ(id);
+    let m = 0; qs.forEach(q => m += qMastery(q));
+    m = Math.round(100 * m / qs.length);
+    const seenCount = qs.filter(q => state.qstats[q.id]).length;
+    const b = document.createElement("button");
+    b.className = "card topic-card";
+    b.innerHTML = `<div class="topic-head"><span class="topic-ico">${icon(c.icon, 19)}</span>
+      <div><div class="topic-name">${c.name}</div><div class="topic-desc">${c.desc}</div></div>
+      <span class="topic-count">${seenCount}/${qs.length}</span></div>
+      <div class="bar"><div class="bar-fill" style="width:${m}%"></div></div>
+      <div class="topic-foot"><span>${m}% mastery</span><span class="link">Practice ${icon("chevron-right", 12)}</span></div>`;
+    on(b, "click", () => startPractice(shuffle(catQ(id)).slice(0, 10), c.name, "home"));
+    grid.appendChild(b);
+  });
+
+  // weak spots
+  const weak = Object.entries(CATEGORIES)
+    .map(([id, c]) => ({ id, c, acc: catAccuracy(id) }))
+    .filter(x => x.acc !== null && x.acc < 0.8)
+    .sort((a, b) => a.acc - b.acc)
+    .slice(0, 4);
+  $("weakBadge").textContent = missedQuestions().length;
+  $("weakList").innerHTML = weak.length
+    ? weak.map(x => `<li><span>${icon(x.c.icon, 15)} ${x.c.name}</span><b>${Math.round(x.acc * 100)}%</b></li>`).join("")
+    : `<li class="muted">Answer a few questions and your weak topics will appear here.</li>`;
+}
+
+/* ---------------- SETUP ---------------- */
+function startSetup(mode, focusCat) {
+  quizBackTarget = "home";
+  $("setupTitle").textContent = mode === "practice" ? "Practice" : "Mock Exam";
+  $("setupSub").textContent = mode === "practice" ? "Pick a topic — or drill smart with adaptive mix." : "Timed test with real exam conditions — no feedback until the end.";
+  const list = $("setupList");
+  list.innerHTML = "";
+  if (mode === "practice") {
+    const items = [
+      { id: "adaptive", icon: "sparkles", name: "Adaptive Mix", desc: `Prioritizes your weak spots across all ${QUESTIONS.length} questions`, action: () => startPractice(pickWeighted(adaptivePool(), 10), "Adaptive Mix", "home") },
+      { id: "marathon", icon: "infinity", name: "Marathon — Full Bank", desc: `All ${QUESTIONS.length} questions in one run — anything you miss comes back. Quit anytime`, action: () => startPractice(shuffle(QUESTIONS).slice(), "Marathon", "home", true) },
+      { id: "missed", icon: "target", name: "Missed Questions", desc: missedQuestions().length ? `Re-drill the ${Math.min(10, missedQuestions().length)} you've gotten wrong` : "Nothing missed yet — nice!", action: () => { const m = missedQuestions(); if (m.length) startPractice(pickWeighted(m.map(q => ({ q, w: 1 })), Math.min(10, m.length)), "Missed Questions", "home"); } },
+      { id: "flagged", icon: "flag", name: "Flagged Questions", desc: Object.keys(state.flagged).length ? `${Object.keys(state.flagged).length} flagged for review` : "Flag questions during practice to build this set", action: () => { const f = Object.keys(state.flagged).map(id => byId[id]).filter(Boolean); if (f.length) startPractice(shuffle(f).slice(0, 15), "Flagged Questions", "home"); } },
+    ];
+    Object.entries(CATEGORIES).forEach(([id, c]) => {
+      items.push({
+        id, icon: c.icon, name: c.name, desc: c.desc,
+        action: () => startPractice(shuffle(catQ(id)).slice(0, 10), c.name, "home"),
+      });
+    });
+    items.forEach(it => list.appendChild(setupRow(it)));
+  } else {
+    const items = [
+      { id: "std", icon: "clipboard", name: `Standard Exam — ${state.settings.examLen} questions`, desc: `Pass mark ${Math.round(state.settings.passMark * 100)}% · ${state.settings.examLen} min time limit`, action: () => startExam(state.settings.examLen) },
+      { id: "quick", icon: "zap", name: "Quick Check — 10 questions", desc: "5-minute diagnostic across all topics", action: () => startExam(10) },
+      { id: "full", icon: "grad", name: "Full Test — 46 questions", desc: "Simulates many states' full knowledge test · 46 min", action: () => startExam(46) },
+      { id: "weak", icon: "target", name: "Weak Topics Exam", desc: "20 questions weighted toward your lowest categories", action: () => startExam(20, true) },
+    ];
+    items.forEach(it => list.appendChild(setupRow(it)));
+  }
+  showView("setup");
+}
+function setupRow(it) {
+  const b = document.createElement("button");
+  b.className = "setup-row card";
+  b.innerHTML = `<span class="setup-ico">${icon(it.icon, 19)}</span><div><div class="setup-name">${it.name}</div><div class="setup-desc">${it.desc}</div></div><span class="chev">${icon("chevron-right", 16)}</span>`;
+  on(b, "click", it.action);
+  return b;
+}
+
+/* ---------------- QUIZ ENGINE ---------------- */
+let session = null;
+
+function startPractice(questions, label, backTo, marathon) {
+  if (!questions.length) return;
+  quizBackTarget = backTo || "home";
+  session = { mode: "practice", label, questions, i: 0, correct: 0, answers: [], endTs: 0, timerId: null, marathon: !!marathon, requeued: {} };
+  beginQuiz();
+}
+function startExam(n, weakBias) {
+  quizBackTarget = "home";
+  let qs;
+  if (weakBias) {
+    const cats = Object.entries(CATEGORIES)
+      .map(([id, c]) => ({ id, acc: catAccuracy(id) }))
+      .sort((a, b) => (a.acc ?? 1) - (b.acc ?? 1));
+    const weakCats = cats.slice(0, 3).map(c => c.id);
+    const weakQs = QUESTIONS.filter(q => weakCats.includes(q.cat));
+    qs = shuffle(weakQs).slice(0, Math.ceil(n * 0.6));
+    const rest = shuffle(QUESTIONS.filter(q => !qs.includes(q))).slice(0, n - qs.length);
+    qs = shuffle(qs.concat(rest));
+  } else {
+    qs = shuffle(QUESTIONS).slice(0, n);
+  }
+  session = { mode: "exam", label: n >= 40 ? "Full Test" : n > 12 ? "Mock Exam" : "Quick Check", questions: qs, i: 0, correct: 0, answers: [], timeLeft: n * 60, endTs: 0, timerId: null };
+  beginQuiz();
+}
+function beginQuiz() {
+  $("qTimer").hidden = session.mode !== "exam";
+  $("btnFlag").hidden = false;
+  $("btnQuit").textContent = session.mode === "exam" ? "Submit" : "End";
+  if (session.mode === "exam") {
+    clearInterval(session.timerId);
+    session.timerId = setInterval(tickTimer, 1000);
+    renderTimer();
+  }
+  renderQuiz();
+  showView("quiz");
+}
+function tickTimer() {
+  session.timeLeft--;
+  renderTimer();
+  if (session.timeLeft <= 0) finishSession(true);
+}
+function renderTimer() {
+  const m = Math.floor(session.timeLeft / 60), s = session.timeLeft % 60;
+  $("qTimer").innerHTML = `${icon("clock", 13)} ${m}:${String(s).padStart(2, "0")}`;
+  $("qTimer").classList.toggle("urgent", session.timeLeft < 60);
+}
+function renderQuiz() {
+  const q = session.questions[session.i];
+  const total = session.questions.length;
+  $("qprogBar").style.width = (100 * session.i / total) + "%";
+  $("qCounter").textContent = `Q ${session.i + 1}/${total}`;
+  $("qCategory").textContent = CATEGORIES[q.cat].name;
+  $("signFrame").hidden = !q.signId;
+  if (q.signId) $("signFrame").innerHTML = signSVG(q.signId, 150);
+  $("qText").textContent = q.q;
+
+  const box = $("choices");
+  box.innerHTML = "";
+  const order = shuffle(q.choices.map((_, idx) => idx));
+  session.order = order;
+  order.forEach((origIdx, disp) => {
+    const b = document.createElement("button");
+    b.className = "choice";
+    b.innerHTML = `<span class="choice-key">${disp + 1}</span><span class="choice-text">${escapeHTML(q.choices[origIdx])}</span><span class="choice-mark"></span>`;
+    on(b, "click", () => answer(origIdx, b));
+    box.appendChild(b);
+  });
+  $("feedback").hidden = true;
+  $("btnNext").disabled = true;
+  $("btnNext").textContent = session.i + 1 >= total ? "Finish" : "Next";
+  const hint = document.querySelector(".kbd-hint");
+  if (hint) hint.innerHTML = session.mode === "exam"
+    ? `Tip: press <kbd>1</kbd>–<kbd>4</kbd> to answer — it advances automatically`
+    : `Tip: press <kbd>1</kbd>–<kbd>4</kbd> to answer, <kbd>Enter</kbd> for next`;
+  updateFlagBtn();
+  speak(q.q + ". " + q.choices.map((c, i) => (i + 1) + ". " + c).join(" "));
+}
+function escapeHTML(s) { return s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+function answer(origIdx, btnEl) {
+  if (session.answeredCurrent) return;
+  session.answeredCurrent = true;
+  const q = session.questions[session.i];
+  const right = origIdx === q.a;
+  session.answers.push({ qid: q.id, picked: origIdx, right });
+
+  if (session.mode === "practice") {
+    markChoiceButtons(q);
+    const fb = $("feedback");
+    fb.hidden = !state.settings.feedback;
+    $("fbHead").innerHTML = right ? `<span class="ok">${icon("check", 15)} Correct</span>` : `<span class="bad">${icon("x", 15)} Not quite</span>`;
+    $("fbWhy").textContent = q.why;
+    btnEl && btnEl.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    $("btnNext").disabled = false;
+    $("btnNext").focus();
+    speak((right ? "Correct. " : "Not quite. ") + q.why);
+    // marathon: missed questions come back once
+    if (session.marathon && !right && !session.requeued[q.id]) {
+      session.requeued[q.id] = true;
+      session.questions.push(q);
+    }
+  } else {
+    // exam: brief visual acknowledge, then auto-advance
+    $("btnNext").disabled = true;
+    const btns = document.querySelectorAll("#choices .choice");
+    btns.forEach(b => b.disabled = true);
+    session.advanceId = setTimeout(() => {
+      session.answeredCurrent = false;
+      session.i++;
+      if (session.i >= session.questions.length) finishSession();
+      else renderQuiz();
+    }, 420);
+  }
+  recordAnswer(q, right);
+}
+function markChoiceButtons(q) {
+  const btns = document.querySelectorAll("#choices .choice");
+  btns.forEach((b, disp) => {
+    const orig = session.order[disp];
+    const picked = b === document.activeElement || b.classList.contains("picked");
+    b.disabled = true;
+    if (orig === q.a) {
+      b.classList.add("correct");
+      b.querySelector(".choice-mark").innerHTML = icon("check", 16);
+    } else if (picked) {
+      b.classList.add("wrong");
+      b.querySelector(".choice-mark").innerHTML = icon("x", 16);
+    }
+  });
+}
+function recordAnswer(q, right) {
+  const s = state.qstats[q.id] || (state.qstats[q.id] = { seen: 0, correct: 0, wrong: 0 });
+  s.seen++; right ? s.correct++ : s.wrong++;
+  state.answered++; if (right) state.correctCount++;
+  todayAnswered(); state.todayCount++;
+  touchStreak();
+  addXP(right ? 10 : 2);
+  checkProgressAchievements();
+  save();
+}
+function nextQuestion() {
+  if (!session.answeredCurrent) return;
+  session.answeredCurrent = false;
+  session.i++;
+  if (session.i >= session.questions.length) finishSession();
+  else renderQuiz();
+}
+function finishSession(timedOut) {
+  if (session.finished) return;
+  session.finished = true;
+  clearInterval(session.timerId);
+  clearTimeout(session.advanceId);
+  if (session.mode === "exam") {
+    // unanswered questions count as wrong
+    session.questions.forEach(q => {
+      if (!session.answers.some(a => a.qid === q.id)) session.answers.push({ qid: q.id, picked: -1, right: false });
+    });
+    const total = session.questions.length;
+    const correct = session.answers.filter(a => a.right).length;
+    const pass = correct / total >= state.settings.passMark;
+    state.exams.push({ date: Date.now(), label: session.label, pct: correct / total, correct, total, pass });
+    if (state.exams.length > 30) state.exams = state.exams.slice(-30);
+    save();
+    if (pass) {
+      unlock("pass");
+      addXP(correct === total ? 50 : 25);
+      if (state.exams.filter(e => e.pass).length >= 3) unlock("consistent");
+    }
+    showResults({
+      pass, correct, total, timedOut,
+      answers: session.answers,
+      title: pass ? "Passed" : "Not yet",
+      sub: pass
+        ? `You scored above the ${Math.round(state.settings.passMark * 100)}% pass mark. Take another exam to build consistency.`
+        : `You need ${Math.ceil(state.settings.passMark * total)} of ${total} to pass. Review your misses and try again — most people pass on a retake.`,
+    });
+  } else {
+    // practice: score only the questions actually answered
+    const total = session.answers.length;
+    if (!total) { showView(quizBackTarget || "home"); return; }
+    const correct = session.answers.filter(a => a.right).length;
+    const early = total < session.questions.length;
+    if (correct === total && total >= 10) { unlock("perfect"); addXP(20); }
+    showResults({
+      pass: correct / total >= 0.8, correct, total, timedOut,
+      answers: session.answers,
+      title: "Session complete",
+      sub: `${correct} of ${total} correct.${early ? " (Ended early.)" : ""} ${correct === total ? "Perfect run." : "Review the explanations below."}`,
+    });
+  }
+  stopSpeaking();
+}
+function updateFlagBtn() {
+  const q = session.questions[session.i];
+  const f = !!state.flagged[q.id];
+  $("btnFlag").classList.toggle("flagged", f);
+  $("btnFlag").innerHTML = `${icon("flag", 13)} ${f ? "Flagged" : "Flag"}`;
+}
+function toggleFlag() {
+  if (!session) return;
+  const q = session.questions[session.i];
+  if (state.flagged[q.id]) delete state.flagged[q.id];
+  else state.flagged[q.id] = true;
+  save();
+  updateFlagBtn();
+}
+
+/* ---------------- RESULTS ---------------- */
+function confetti() {
+  const host = document.querySelector(".results-card");
+  if (!host) return;
+  const colors = ["#f4f4f5", "#a1a1aa", "#d4d4d8", "#71717a", "#e4e4e7", "#52525b"];
+  for (let i = 0; i < 36; i++) {
+    const p = document.createElement("div");
+    p.className = "confetti";
+    p.style.left = Math.random() * 100 + "%";
+    p.style.background = colors[i % colors.length];
+    p.style.animationDelay = (Math.random() * 0.9).toFixed(2) + "s";
+    p.style.animationDuration = (2.2 + Math.random() * 1.6).toFixed(2) + "s";
+    p.style.transform = `rotate(${Math.random() * 360}deg)`;
+    host.appendChild(p);
+    setTimeout(() => p.remove(), 4200);
+  }
+}
+function showResults(r) {
+  $("resultEmoji").innerHTML = icon(r.pass ? "trophy" : "x-circle", 54);
+  $("resultTitle").textContent = r.title;
+  $("resultScore").textContent = Math.round(100 * r.correct / r.total) + "%";
+  $("resultScore").className = "score-big " + (r.pass ? "pass" : "fail");
+  $("resultSub").textContent = (r.timedOut ? "Time ran out — your unanswered questions were counted. " : "") + r.sub;
+
+  const grid = $("resultGrid");
+  grid.innerHTML = "";
+  const byCat = {};
+  r.answers.forEach(a => {
+    const q = byId[a.qid];
+    (byCat[q.cat] = byCat[q.cat] || []).push(a);
+  });
+  Object.entries(byCat).forEach(([cat, arr]) => {
+    const ok = arr.filter(a => a.right).length;
+    const div = document.createElement("div");
+    div.className = "result-cat " + (ok === arr.length ? "good" : ok / arr.length >= 0.5 ? "mid" : "bad");
+    div.innerHTML = `${icon(CATEGORIES[cat].icon, 14)} <span>${CATEGORIES[cat].name}</span><b>${ok}/${arr.length}</b>`;
+    grid.appendChild(div);
+  });
+
+  const missed = r.answers.filter(a => !a.right);
+  const list = $("reviewList");
+  list.innerHTML = missed.length
+    ? missed.map(a => {
+        const q = byId[a.qid];
+        return `<div class="review-item card">
+          ${q.signId ? `<div class="sign-frame small">${signSVG(q.signId, 70)}</div>` : ""}
+          <div>
+            <div class="ri-q">${escapeHTML(q.q)}</div>
+            <div class="ri-a ok">${icon("check", 14)} ${escapeHTML(q.choices[q.a])}</div>
+            <div class="ri-why">${escapeHTML(q.why)}</div>
+          </div></div>`;
+      }).join("")
+    : `<p class="muted">Nothing missed — flawless.</p>`;
+  $("reviewSub").textContent = `${missed.length} question${missed.length === 1 ? "" : "s"} to review`;
+  $("btnDrillMissed").style.display = missed.length ? "" : "none";
+  $("btnDrillMissed").innerHTML = `${icon("target", 15)} Drill These Questions`;
+  session.lastMissed = missed.map(a => a.qid);
+  showView("results");
+  if (r.pass && session.mode === "exam") confetti();
+}
+
+/* ---------------- FLASHCARDS ---------------- */
+let fcIndex = 0;
+function fcIds() {
+  const ids = Object.keys(SIGNS);
+  if (state.fcOrder && state.fcOrder.length === ids.length &&
+      state.fcOrder.every(id => SIGNS[id])) return state.fcOrder;
+  return ids;
+}
+function renderFlashcards() {
+  const ids = fcIds();
+  fcIndex = Math.min(fcIndex, ids.length - 1);
+  const id = ids[fcIndex];
+  const s = SIGNS[id];
+  $("fcSign").innerHTML = signSVG(id, 200);
+  $("fcName").textContent = s.name;
+  $("fcMeaning").textContent = s.meaning;
+  $("fcCounter").textContent = `${fcIndex + 1} / ${ids.length}`;
+  const known = Object.keys(state.fcKnown).filter(k => SIGNS[k]).length;
+  $("fcKnownPill").innerHTML = `${icon("check", 13)} ${known}/${ids.length} known`;
+  const card = $("flashcard");
+  card.classList.remove("flipped");
+  card.classList.toggle("known", !!state.fcKnown[id]);
+  $("btnFcYes").innerHTML = `${icon("check", 16)} ${state.fcKnown[id] ? "Known" : "I Know It"}`;
+}
+function flipCard() { $("flashcard").classList.toggle("flipped"); }
+function fcMove(d) { fcIndex = (fcIndex + d + fcIds().length) % fcIds().length; renderFlashcards(); }
+function fcMark(known) {
+  const id = fcIds()[fcIndex];
+  if (known) state.fcKnown[id] = true; else delete state.fcKnown[id];
+  save();
+  if (Object.keys(SIGNS).every(s => state.fcKnown[s])) unlock("signs");
+  fcMove(1);
+}
+
+/* ---------------- STATS ---------------- */
+function renderStats() {
+  const acc = state.answered ? Math.round(100 * state.correctCount / state.answered) : null;
+  $("ssAnswered").textContent = state.answered;
+  $("ssAccuracy").textContent = acc === null ? "–" : acc + "%";
+  $("ssStreak").textContent = state.streak.count;
+  $("ssExams").textContent = state.exams.length;
+  $("ssTime").textContent = fmtTime(state.timeStudied);
+  $("ssHazard").textContent = state.hazardBest ? state.hazardBest + "/30" : "–";
+
+  const lv = levelFor(state.xp);
+  $("xpLabel").textContent = "Level " + lv.lvl;
+  $("xpCount").textContent = `${lv.into}/${lv.need} XP`;
+  $("xpBar").style.width = Math.round(100 * lv.into / lv.need) + "%";
+
+  const ag = $("achGrid");
+  ag.innerHTML = "";
+  ACHIEVEMENTS.forEach(a => {
+    const has = !!state.achievements[a.id];
+    const d = document.createElement("div");
+    d.className = "ach" + (has ? " got" : "");
+    d.innerHTML = `${icon("award", 20)}<div><b>${a.name}</b><small>${a.desc}</small></div>`;
+    ag.appendChild(d);
+  });
+
+  const ml = $("masteryList");
+  ml.innerHTML = "";
+  Object.entries(CATEGORIES).forEach(([id, c]) => {
+    const qs = catQ(id);
+    let m = 0; qs.forEach(q => m += qMastery(q));
+    m = Math.round(100 * m / qs.length);
+    const accC = catAccuracy(id);
+    ml.innerHTML += `<div class="mastery-row">
+      <span class="m-name">${icon(c.icon, 15)} ${c.name}</span>
+      <div class="bar"><div class="bar-fill" style="width:${m}%"></div></div>
+      <span class="m-val">${m}%${accC !== null ? ` <small>(${Math.round(accC * 100)}% acc)</small>` : ""}</span></div>`;
+  });
+
+  const hl = $("historyList");
+  hl.innerHTML = state.exams.length
+    ? state.exams.slice().reverse().map(e => {
+        const d = new Date(e.date);
+        return `<li class="${e.pass ? "pass" : "fail"}">
+          <span>${icon(e.pass ? "check-circle" : "x-circle", 15)} ${e.label || "Exam"}</span>
+          <span>${Math.round(e.pct * 100)}% (${e.correct}/${e.total})</span>
+          <small>${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small></li>`;
+      }).join("")
+    : `<li class="muted">No exams yet — take your first mock exam!</li>`;
+
+  $("selPassMark").value = String(state.settings.passMark);
+  $("selExamLen").value = String(state.settings.examLen);
+  $("chkFeedback").checked = !!state.settings.feedback;
+}
+
+/* ---------------- theme ---------------- */
+function applyTheme() {
+  document.documentElement.dataset.theme = state.settings.theme;
+  $("btnTheme").innerHTML = icon(state.settings.theme === "dark" ? "sun" : "moon", 17);
+}
+
+/* ---------------- HAZARD PERCEPTION ---------------- */
+const HZ = { V: 110, W: 360, H: 420, RL: 96, RR: 264, CARX: 158, CARY: 344 };
+const Y = (t, ts) => -46 + HZ.V * (t - ts);           // scroll position of an object spawned at ts
+const HZ_SCENARIOS = [
+  {
+    name: "Ball & child", win: [2.6, 6.0], max: 7.6,
+    tip: "A rolling ball means a child is close behind — react the moment you see it.",
+    objs: t => {
+      let s = "";
+      if (t >= 1.2) s += hzBall(300 - 50 * (t - 2.6), Y(t, 2.6));
+      if (t >= 4.0) s += hzPerson(320 - 70 * (t - 4.0), Y(t, 4.0));
+      return s;
+    },
+  },
+  {
+    name: "Parked car door", win: [3.0, 5.6], max: 7.2,
+    tip: "Park beside the door zone — expect doors to open and leave a gap.",
+    objs: t => {
+      let s = hzParked(Y(t, 2.0));
+      if (t >= 3.2) s += hzDoor(Y(t, 2.0), Math.min(1, (t - 3.2) / 1.1));
+      return s;
+    },
+  },
+  {
+    name: "Brake lights ahead", win: [3.0, 5.1], max: 6.8,
+    tip: "Brake lights far ahead are your first warning — ease off the gas early.",
+    objs: t => {
+      const y = -46 + HZ.V * (t - 3.0) + (t > 3.6 ? 30 * (t - 3.6) * (t - 3.6) : 0);
+      return hzCarAhead(178, y, t > 3.4 && Math.floor(t * 4) % 2 === 0);
+    },
+  },
+  {
+    name: "Deer crossing", win: [3.2, 4.9], max: 6.5,
+    tip: "Where one animal crosses, more follow — brake in your lane, don't swerve.",
+    objs: t => hzDeer(30 + (t >= 3.2 ? 60 * (t - 3.2) : 0), Y(t, 1.6)),
+  },
+  {
+    name: "Crosswalk ahead", win: [3.0, 5.4], max: 7.0,
+    tip: "A waiting pedestrian plus a crosswalk = slow now, not when they step out.",
+    objs: t => {
+      let s = hzCrosswalk(Y(t, 1.4));
+      s += hzPerson(292 - (t >= 4.0 ? 60 * (t - 4.0) : 0), Y(t, 1.4) + 8);
+      return s;
+    },
+  },
+  {
+    name: "Cyclist swerve", win: [2.6, 4.6], max: 6.2,
+    tip: "Riders swerve for hazards you can't see — give them room to do it.",
+    objs: t => hzCyclist(246 - (t >= 2.6 ? 38 * (t - 2.6) : 0), Y(t, 1.8)),
+  },
+];
+
+function hzRR(x, y, w, h, fill, rx, extra) {
+  return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w}" height="${h}" rx="${rx || 4}" fill="${fill}" ${extra || ""}/>`;
+}
+function hzC(x, y, r, fill) { return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" fill="${fill}"/>`; }
+function hzBall(x, y) { return hzC(x, y, 7, "#c1272d") + hzC(x - 2, y - 2, 2, "rgba(255,255,255,.35)"); }
+function hzPerson(x, y) { return hzC(x, y, 7, "#e8e8ec") + hzRR(x - 6, y + 6, 12, 16, "#8b8b93", 4) + hzRR(x - 8, y + 8, 16, 4, "#c1272d", 2); }
+function hzParked(y) { return hzRR(226, y, 34, 64, "#3a3a44", 6) + hzRR(230, y + 8, 26, 18, "#26262e", 3); }
+function hzDoor(y, k) { return hzRR(226 - 24 * k, y + 14, 24 * k, 34, "#8b8b93", 3); }
+function hzCarAhead(x, y, braking) {
+  let s = hzRR(x - 20, y, 40, 58, "#4a4a55", 6) + hzRR(x - 14, y + 8, 28, 16, "#26262e", 3);
+  if (braking) s += hzC(x - 12, y + 54, 4, "#c1272d") + hzC(x + 12, y + 54, 4, "#c1272d");
+  return s;
+}
+function hzDeer(x, y) { return hzRR(x - 16, y - 6, 34, 14, "#8a6d4f", 6) + hzRR(x + 14, y - 12, 12, 8, "#8a6d4f", 3) + hzRR(x - 12, y + 8, 4, 10, "#6f573d", 1) + hzRR(x + 6, y + 8, 4, 10, "#6f573d", 1); }
+function hzCrosswalk(y) {
+  let s = "";
+  for (let i = 0; i < 5; i++) s += hzRR(102, y + i * 15, 156, 8, "rgba(255,255,255,.75)", 2);
+  return s;
+}
+function hzCyclist(x, y) { return hzRR(x - 5, y - 8, 12, 14, "#e8e8ec", 4) + hzC(x - 10, y + 12, 6, "#0b0b0d") + hzC(x + 12, y + 12, 6, "#0b0b0d") + hzRR(x - 16, y - 4, 8, 3, "#8b8b93", 1); }
+
+let hz = null;
+function hzScene(t, sc) {
+  const W = HZ.W, H = HZ.H, RL = HZ.RL, RR = HZ.RR;
+  let s = `<rect width="${W}" height="${H}" fill="#0b0b0d"/>`;
+  s += hzRR(0, 0, W, H, "#101013");
+  s += hzRR(RL - 18, 0, 18, H, "#1b1b21", 0) + hzRR(RR, 0, 18, H, "#1b1b21", 0);
+  s += hzRR(RL, 0, RR - RL, H, "#17171c", 0);
+  s += hzRR(RL - 4, 0, 4, H, "rgba(255,255,255,.25)", 0) + hzRR(RR, 0, 4, H, "rgba(255,255,255,.25)", 0);
+  const mod = (HZ.V * t) % 46;
+  for (let y = -46 + mod; y < H + 40; y += 46) s += hzRR(W / 2 - 2, y, 4, 24, "rgba(255,255,255,.28)", 1);
+  const tm = (HZ.V * t) % 150;
+  for (let k = -1; k < 4; k++) {
+    const ty = k * 150 + tm - 30;
+    s += hzC(44, ty, 13, "#1d1d24") + hzRR(41, ty + 8, 6, 12, "#141419", 2);
+    s += hzC(316, ty + 75, 13, "#1d1d24") + hzRR(313, ty + 83, 6, 12, "#141419", 2);
+  }
+  s += sc.objs(t);
+  s += hzRR(HZ.CARX, HZ.CARY, 44, 66, "#e8e8ec", 10) + hzRR(HZ.CARX + 6, HZ.CARY + 10, 32, 14, "#0b0b0d", 4) + hzRR(HZ.CARX + 6, HZ.CARY + 40, 32, 10, "#b9b9c2", 3);
+  return s;
+}
+function hzShowOverlay(html) { $("hzOverlay").innerHTML = html; $("hzOverlay").classList.add("show"); }
+function hzHideOverlay() { $("hzOverlay").classList.remove("show"); }
+function hzStartGame() {
+  hz = { i: 0, scores: [], press: null, t0: 0, timer: null, running: false, marked: false };
+  showView("hazard");
+  hzIntro();
+}
+function hzIntro() {
+  const best = state.hazardBest ? ` · best ${state.hazardBest}/30` : "";
+  hzShowOverlay(`
+    <div class="ov-inner">
+      <span class="ov-ico">${icon("eye", 34)}</span>
+      <h2>Hazard Perception</h2>
+      <p>6 scenarios. One hazard each.<br>Tap <b>SLOW</b> — or press <b>Space</b> — as soon as the hazard starts to develop.</p>
+      <p class="ov-dim">5 points for instant recognition, down to 1. Too early or too late scores 0${best}.</p>
+      <button class="btn primary" id="hzGo">Start</button>
+    </div>`);
+  $("hzGo").focus();
+  on($("hzGo"), "click", hzNextScenario);
+}
+function hzNextScenario() {
+  if (hz.i >= HZ_SCENARIOS.length) return hzResults();
+  const sc = HZ_SCENARIOS[hz.i];
+  hz.press = null; hz.marked = false; hz.running = false;
+  $("hzSlow").classList.remove("pressed");
+  $("hzFlash").hidden = true;
+  hzShowOverlay(`<div class="ov-inner"><p class="ov-count">${hz.i + 1} / ${HZ_SCENARIOS.length}</p><h2>${sc.name}</h2><p class="ov-dim">Get ready…</p></div>`);
+  $("hzSvg").innerHTML = hzScene(0, { objs: () => "" });
+  setTimeout(() => {
+    hzHideOverlay();
+    hz.running = true;
+    hz.t0 = performance.now();
+    hz.timer = setInterval(() => {
+      const t = (performance.now() - hz.t0) / 1000;
+      $("hzSvg").innerHTML = hzScene(t, sc);
+      if (t >= sc.max) hzEndScenario(sc);
+    }, 60);
+  }, 1400);
+}
+function hzPress() {
+  if (!hz || !hz.running || hz.marked) return;
+  hz.marked = true;
+  hz.press = (performance.now() - hz.t0) / 1000;
+  $("hzSlow").classList.add("pressed");
+}
+function hzEndScenario(sc) {
+  clearInterval(hz.timer);
+  hz.running = false;
+  const [s, e] = sc.win;
+  let pts = 0, verdict;
+  if (hz.press === null) { verdict = "Too late — the hazard fully developed"; $("hzFlash").hidden = false; }
+  else if (hz.press < s - 0.35) { verdict = "Too early — nothing was developing yet"; }
+  else {
+    pts = Math.max(1, Math.ceil(5 * (1 - (hz.press - (s - 0.35)) / (e - (s - 0.35)))));
+    verdict = hz.press <= s + 0.8 ? "Instant recognition" : hz.press <= (s + e) / 2 ? "Good spot" : "Cutting it close";
+  }
+  hz.scores.push(pts);
+  hzShowOverlay(`
+    <div class="ov-inner">
+      <p class="ov-count">${hz.i + 1} / ${HZ_SCENARIOS.length} · ${sc.name}</p>
+      <div class="ov-pts ${pts ? "" : "zero"}">${pts ? "+" + pts : "0"} pts</div>
+      <p><b>${verdict}</b></p>
+      <p class="ov-dim">${sc.tip}</p>
+    </div>`);
+  hz.i++;
+  setTimeout(() => { if (hz) hzNextScenario(); }, 2600);
+}
+function hzResults() {
+  const total = hz.scores.reduce((a, b) => a + b, 0);
+  const best = Math.max(state.hazardBest, total);
+  const isNew = total > state.hazardBest;
+  state.hazardBest = best;
+  addXP(total * 2);
+  if (total >= 24) unlock("hawk");
+  save();
+  hzShowOverlay(`
+    <div class="ov-inner">
+      <span class="ov-ico">${icon(total >= 18 ? "trophy" : "eye", 34)}</span>
+      <h2>${total} / 30</h2>
+      <p>${total >= 24 ? "Hawk-level awareness." : total >= 18 ? "Solid instincts — polish the early spots." : "Keep training — early recognition is the skill."}</p>
+      ${isNew ? `<p class="ov-dim">New personal best</p>` : `<p class="ov-dim">Best: ${best}/30</p>`}
+      <div class="ov-btns">
+        <button class="btn ghost" id="hzAgain">Play Again</button>
+        <button class="btn primary" id="hzDone">Done</button>
+      </div>
+    </div>`);
+  on($("hzAgain"), "click", hzStartGame);
+  on($("hzDone"), "click", () => { hz = null; renderHome(); showView("home"); });
+}
+
+/* ---------------- ONBOARDING ---------------- */
+let obStep = 0;
+function showOnboarding() {
+  const ob = $("onboarding");
+  ob.hidden = false;
+  obStep = 0;
+  hydrateIcons(ob);
+  obRender();
+  on($("obSkip"), "click", finishOnboarding);
+  on($("obNext"), "click", () => {
+    if (obStep >= 3) finishOnboarding();
+    else { obStep++; obRender(); }
+  });
+  on($("obThemeDark"), "click", () => { state.settings.theme = "dark"; save(); applyTheme(); obRender(); });
+  on($("obThemeLight"), "click", () => { state.settings.theme = "light"; save(); applyTheme(); obRender(); });
+  on($("obTtsOn"), "click", () => { state.settings.tts = true; save(); applyTTS(); obRender(); });
+  on($("obTtsOff"), "click", () => { state.settings.tts = false; save(); applyTTS(); obRender(); });
+}
+function obRender() {
+  const steps = document.querySelectorAll(".ob-step");
+  steps.forEach(s => s.classList.toggle("on", +s.dataset.step === obStep));
+  document.querySelectorAll("#obDots span").forEach((d, i) => d.classList.toggle("on", i === obStep));
+  $("obNext").textContent = obStep >= 3 ? "Start studying" : obStep === 2 ? "Almost done" : "Next";
+  document.querySelectorAll("#obThemeDark, #obThemeLight").forEach(b =>
+    b.classList.toggle("sel", (b.id === "obThemeDark") === (state.settings.theme === "dark")));
+  document.querySelectorAll("#obTtsOn, #obTtsOff").forEach(b =>
+    b.classList.toggle("sel", (b.id === "obTtsOn") === !!state.settings.tts));
+}
+function finishOnboarding() {
+  state.onboarded = true;
+  save();
+  $("onboarding").hidden = true;
+  renderHome();
+  toast("Welcome aboard", "Start with Adaptive Practice — 10 questions.", "car");
+}
+
+/* ---------------- wire up ---------------- */
+function init() {
+  applyTheme();
+  hydrateIcons(document);
+  applyTTS();
+  renderHome();
+  renderFlashcards();
+  if (!state.onboarded) showOnboarding();
+
+  // read-aloud toggle
+  on($("btnTTS"), "click", () => {
+    state.settings.tts = !state.settings.tts;
+    save(); applyTTS();
+    if (state.settings.tts && session) speak($("qText").textContent);
+    else stopSpeaking();
+  });
+
+  // hazard perception
+  on($("fcHazard"), "click", hzStartGame);
+  on($("hzSlow"), "click", hzPress);
+  on($("hzQuit"), "click", () => {
+    if (hz && hz.timer) clearInterval(hz.timer);
+    hz = null;
+    renderHome(); showView("home");
+  });
+
+  on($("btnTheme"), "click", () => {
+    state.settings.theme = state.settings.theme === "dark" ? "light" : "dark";
+    save(); applyTheme();
+  });
+  on($("btnBack"), "click", () => {
+    if (session && session.mode === "exam" && !session.finished &&
+        !confirm("Leave the exam? Your progress will not be saved.")) return;
+    if (session && session.timerId) clearInterval(session.timerId);
+    showView(quizBackTarget || "home");
+  });
+  on($("btnNext"), "click", nextQuestion);
+  on($("btnQuit"), "click", () => {
+    if (!session) return showView("home");
+    if (session.mode === "exam" &&
+        !confirm("Submit the exam and see your score now?")) return;
+    finishSession();
+  });
+  on($("btnFlag"), "click", toggleFlag);
+  on($("btnAgain"), "click", () => {
+    if (session && session.mode === "exam") startExam(session.questions.length);
+    else startPractice(pickWeighted(adaptivePool(), session ? session.questions.length : 10), "Adaptive Mix", "home");
+  });
+  on($("btnReviewMissed"), "click", () => showView("review"));
+  on($("btnHomeR"), "click", () => { renderHome(); showView("home"); });
+  on($("btnDrillMissed"), "click", () => {
+    const ids = (session && session.lastMissed) || missedQuestions().map(q => q.id);
+    const qs = ids.map(id => byId[id]).filter(Boolean);
+    if (qs.length) startPractice(shuffle(qs).slice(0, 15), "Missed Questions", "home");
+  });
+
+  // nav
+  document.querySelectorAll("#bottomNav button").forEach(b => {
+    on(b, "click", () => {
+      const t = b.dataset.nav;
+      if (t === "practice") startSetup("practice");
+      else if (t === "exam") startSetup("exam");
+      else if (t === "flashcards") { renderFlashcards(); showView("flashcards"); }
+      else if (t === "guide") showView("guide");
+      else if (t === "stats") { renderStats(); showView("stats"); }
+      else { renderHome(); showView("home"); }
+    });
+  });
+  // hero quick actions
+  on($("qaPractice"), "click", () => startSetup("practice"));
+  on($("qaExam"), "click", () => startSetup("exam"));
+  on($("qaCards"), "click", () => { renderFlashcards(); showView("flashcards"); });
+  on($("qaReview"), "click", () => {
+    const m = missedQuestions();
+    if (!m.length) { alert("Nothing missed yet — keep practicing!"); return; }
+    startPractice(pickWeighted(m.map(q => ({ q, w: 1 })), Math.min(10, m.length)), "Missed Questions", "home");
+  });
+
+  // flashcards
+  on($("flashcard"), "click", flipCard);
+  on($("flashcard"), "keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flipCard(); } });
+  on($("btnFcPrev"), "click", () => fcMove(-1));
+  on($("btnFcNext"), "click", () => fcMove(1));
+  on($("btnFcYes"), "click", () => fcMark(true));
+  on($("btnFcNo"), "click", () => fcMark(false));
+  on($("btnFcShuffle"), "click", () => {
+    state.fcOrder = shuffle(Object.keys(SIGNS));
+    fcIndex = 0; save(); renderFlashcards();
+  });
+  on($("btnFcReset"), "click", () => {
+    if (!confirm("Reset all 'known' marks?")) return;
+    state.fcKnown = {}; state.fcOrder = null; save(); renderFlashcards();
+  });
+
+  // settings
+  on($("selPassMark"), "change", e => { state.settings.passMark = parseFloat(e.target.value); save(); });
+  on($("selExamLen"), "change", e => { state.settings.examLen = parseInt(e.target.value, 10); save(); });
+  on($("chkFeedback"), "change", e => { state.settings.feedback = e.target.checked; save(); });
+  on($("btnResetAll"), "click", () => {
+    if (!confirm("Erase ALL progress, stats, and history? This cannot be undone.")) return;
+    const theme = state.settings.theme;
+    state = defaultState(); state.settings.theme = theme;
+    save(); renderStats(); renderHome(); renderFlashcards();
+    alert("Progress reset. Fresh start!");
+  });
+
+  // keyboard
+  document.addEventListener("keydown", e => {
+    const active = document.querySelector(".view.active");
+    if (!active) return;
+    if (active.id === "view-quiz") {
+      if (e.key >= "1" && e.key <= "4") {
+        const btns = document.querySelectorAll("#choices .choice");
+        const b = btns[parseInt(e.key, 10) - 1];
+        if (b && !session.answeredCurrent) { b.classList.add("picked"); b.click(); }
+      } else if (e.key === "Enter") { if (!$("btnNext").disabled) nextQuestion(); }
+      else if (e.key.toLowerCase() === "f") toggleFlag();
+    } else if (active.id === "view-flashcards") {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flipCard(); }
+      else if (e.key === "ArrowRight") fcMove(1);
+      else if (e.key === "ArrowLeft") fcMove(-1);
+      else if (e.key.toLowerCase() === "k") fcMark(true);
+      else if (e.key.toLowerCase() === "l") fcMark(false);
+    } else if (active.id === "view-hazard") {
+      if (e.key === " ") { e.preventDefault(); hzPress(); }
+    }
+  });
+
+  // exams history label
+  const origShow = showResults;
+  showView("home");
+}
+
+init();
