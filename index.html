@@ -7,9 +7,14 @@
 <title>Road Ready — Pass Your Driving Test</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%23131318'/%3E%3Cg fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 15.5 5.8 9a2 2 0 0 1 1.9-1.5h8.6a2 2 0 0 1 1.9 1.5l1.8 6.5'/%3E%3Cpath d='M3.5 15.5h17'/%3E%3Ccircle cx='7.5' cy='16.5' r='1.8'/%3E%3Ccircle cx='16.5' cy='16.5' r='1.8'/%3E%3C/g%3E%3C/svg%3E">
 <meta name="theme-color" content="#0b0b0d">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+<a class="skip-link" href="#main">Skip to content</a>
 <div id="app">
 
   <header class="topbar">
@@ -97,19 +102,19 @@
         </div>
         <div class="quiz-meta-row">
           <span id="qCounter" class="pill">Q 1/20</span>
-          <span id="qTimer" class="pill" hidden></span>
+          <span id="qTimer" class="pill" role="timer" aria-live="off" hidden></span>
           <span id="qCategory" class="pill cat-pill">Signs</span>
           <span class="flex-spacer"></span>
-          <button class="pill" id="btnTTS" title="Read questions aloud"></button>
-          <button class="pill flag-btn" id="btnFlag" title="Flag this question for review">Flag</button>
+          <button class="pill" id="btnTTS" title="Read questions aloud" aria-pressed="false"></button>
+          <button class="pill flag-btn" id="btnFlag" title="Flag this question for review" aria-pressed="false">Flag</button>
         </div>
       </div>
 
       <div class="card question-card" id="questionCard">
         <div class="sign-frame" id="signFrame" hidden></div>
         <h2 class="question-text" id="qText"></h2>
-        <div class="choices" id="choices"></div>
-        <div class="feedback" id="feedback" hidden>
+        <div class="choices" id="choices" role="group" aria-label="Answer choices"></div>
+        <div class="feedback" id="feedback" hidden aria-live="assertive">
           <div class="fb-head" id="fbHead"></div>
           <p class="fb-why" id="fbWhy"></p>
         </div>
@@ -410,6 +415,19 @@
           <span>Immediate feedback in practice</span>
           <input type="checkbox" id="chkFeedback" checked>
         </label>
+        <label class="setting-row">
+          <span>Your state's rules</span>
+          <select id="selStatePack" aria-describedby="statePackNote"></select>
+        </label>
+        <p class="setting-note" id="statePackNote">State packs adjust state-specific numbers (BAC limits, right-on-red, school buses). Generic covers common U.S. rules.</p>
+        <div class="setting-row data-row">
+          <span>Backup your progress</span>
+          <span class="data-actions">
+            <button class="btn ghost" id="btnExport">Export</button>
+            <button class="btn ghost" id="btnImport">Import</button>
+            <input type="file" id="fileImport" accept="application/json,.json" hidden aria-label="Import progress backup file">
+          </span>
+        </div>
         <div class="danger-zone">
           <button class="btn ghost" id="btnResetAll">Reset all progress</button>
         </div>
@@ -482,6 +500,8 @@
 <script src="js/signs.js"></script>
 <script src="js/icons.js"></script>
 <script src="js/questions.js"></script>
+<script src="js/core.js"></script>
+<script src="js/state-packs.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

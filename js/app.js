@@ -1,85 +1,86 @@
 /* Road Ready — app logic */
 "use strict";
 
+const Core = window.RoadReadyCore;
+const Packs = window.RoadReadyPacks;
 const STORE_KEY = "roadready.v1";
 const $ = (id) => document.getElementById(id);
 const on = (el, ev, fn) => el.addEventListener(ev, fn);
 
 /* ---------------- state ---------------- */
+let storageOk = true;
+try { localStorage.setItem("roadready.probe", "1"); localStorage.removeItem("roadready.probe"); }
+catch (e) { storageOk = false; }
+const memStore = {};
+const rawGet = (k) => storageOk ? localStorage.getItem(k) : (memStore[k] ?? null);
+const rawSet = (k, v) => { if (storageOk) localStorage.setItem(k, v); else memStore[k] = v; };
+
 let state = loadState();
 
-function defaultState() {
-  return {
-    qstats: {},        // qid -> {seen, correct, wrong}
-    flagged: {},       // qid -> true
-    exams: [],         // {date, pct, correct, total, pass}
-    answered: 0,
-    correctCount: 0,
-    streak: { count: 0, last: "" },
-    fcKnown: {},       // signId -> true
-    fcOrder: null,
-    achievements: {},  // id -> unlock date
-    xp: 0,
-    timeStudied: 0,    // seconds
-    hazardBest: 0,
-    settings: { passMark: 0.8, examLen: 20, feedback: true, theme: "dark", tts: false },
-  };
-}
 function loadState() {
+  let parsed = null;
   try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (!raw) return defaultState();
-    const s = Object.assign(defaultState(), JSON.parse(raw));
-    s.settings = Object.assign(defaultState().settings, s.settings);
-    return s;
-  } catch (e) { return defaultState(); }
+    const raw = rawGet(STORE_KEY);
+    if (!raw) return Core.defaultState();
+    parsed = JSON.parse(raw);
+  } catch (e) {
+    parsed = null;
+  }
+  const m = Core.migrateState(parsed);
+  m.warnings.forEach((w) => console.warn("[road-ready] state:", w));
+  return m.state;
 }
 function save() {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {}
+  try { rawSet(STORE_KEY, JSON.stringify(state)); } catch (e) {}
 }
 const todayStr = () => new Date().toISOString().slice(0, 10);
+
 function touchStreak() {
   const t = todayStr();
-  if (state.streak.last === t) return;
-  const y = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
-  state.streak.count = (state.streak.last === y) ? state.streak.count + 1 : 1;
-  state.streak.last = t;
+  const y = new Date(Date.now() - Core.DAY_MS).toISOString().slice(0, 10);
+  state.streak = Core.touchStreak(state.streak, t, y);
 }
 function todayAnswered() {
-  // count of answers recorded today (kept in a compact map date->count)
-  if (state.todayDate !== todayStr()) {
-    state.todayDate = todayStr();
-    state.todayCount = 0;
-  }
-  return state.todayCount || 0;
+  return Core.dailyCount(state.daily, todayStr());
 }
-const DAILY_GOAL = 10;
+const DAILY_GOAL = Core.DAILY_GOAL;
+
+/* ---------------- import / export ---------------- */
+function exportProgress() {
+  const blob = new Blob([Core.exportBundle(state)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `road-ready-progress-${todayStr()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+function importProgress(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const r = Core.parseImport(String(reader.result || ""));
+    if (!r.ok) { alert("That file doesn't look like a Road Ready backup (" + r.error + ")."); return; }
+    if (!confirm(r.warnings.length
+      ? "This backup is from another app version (" + r.warnings.join(", ") + "). Import anyway?"
+      : "Replace current progress with this backup?")) return;
+    state = r.state;
+    save();
+    renderHome(); renderStats(); renderFlashcards();
+    toast("Progress imported", "Your history is back.", "download");
+  };
+  reader.readAsText(file);
+}
 
 /* ---------------- XP, levels & achievements ---------------- */
-const ACHIEVEMENTS = [
-  { id: "first-steps", name: "First Steps",    desc: "Answer 10 questions" },
-  { id: "century",     name: "Century Club",   desc: "Answer 100 questions" },
-  { id: "perfect",     name: "Perfect Run",    desc: "Score 10/10 in a practice session" },
-  { id: "pass",        name: "Licensed to Learn", desc: "Pass a mock exam" },
-  { id: "consistent",  name: "Consistent",     desc: "Pass 3 mock exams" },
-  { id: "streak3",     name: "On Fire",        desc: "Reach a 3-day study streak" },
-  { id: "streak7",     name: "Habit Formed",   desc: "Reach a 7-day study streak" },
-  { id: "signs",       name: "Sign Master",    desc: "Know every sign flashcard" },
-  { id: "marathon",    name: "Marathoner",     desc: "Answer 100+ questions in one session" },
-  { id: "sharp",       name: "Sharpshooter",   desc: "85%+ accuracy across 100+ answers" },
-  { id: "hawk",        name: "Hawk Eye",       desc: "Score 24+ in Hazard Perception" },
-  { id: "ready",       name: "Test Ready",     desc: "Reach 80% readiness" },
-];
-function levelFor(xp) {
-  let lvl = 1, need = 100, rest = xp;
-  while (rest >= need) { rest -= need; lvl++; need = 100 + (lvl - 1) * 50; }
-  return { lvl, into: rest, need };
-}
+const ACHIEVEMENTS = Core.ACHIEVEMENTS;
+function levelFor(xp) { return Core.levelFor(xp); }
 function toast(title, sub, ic) {
   const host = document.getElementById("toasts");
   if (!host) return;
   const t = document.createElement("div");
   t.className = "toast";
+  t.setAttribute("role", "status");
   t.innerHTML = `${icon(ic || "award", 17)}<div><b>${title}</b>${sub ? `<small>${sub}</small>` : ""}</div>`;
   host.appendChild(t);
   setTimeout(() => t.classList.add("out"), 3200);
@@ -100,15 +101,24 @@ function addXP(n) {
   save();
   if (after.lvl > before) toast("Level " + after.lvl + " reached", "Keep going — you're building real muscle memory.", "sparkles");
 }
+/* Build the pure progress snapshot the achievement evaluator consumes. */
+function achievementSnapshot(sessionAnswers) {
+  return {
+    answered: state.answered,
+    accuracy: state.answered ? state.correctCount / state.answered : 0,
+    streak: state.streak.count,
+    examsPassed: state.exams.filter(e => e.pass).length,
+    hazardBest: state.hazardBest,
+    readinessPct: Math.round(readiness() * 100),
+    allSignsKnown: Object.keys(SIGNS).every(id => state.fcKnown[id]),
+    perfectRun: !!(session && session.perfectRun),
+    sessionAnswers: sessionAnswers != null ? sessionAnswers : (session && session.answers ? session.answers.length : 0),
+  };
+}
 function checkProgressAchievements() {
-  if (state.answered >= 10) unlock("first-steps");
-  if (state.answered >= 100) unlock("century");
-  if (state.streak.count >= 3) unlock("streak3");
-  if (state.streak.count >= 7) unlock("streak7");
-  if (state.answered >= 100 && state.correctCount / state.answered >= 0.85) unlock("sharp");
-  if (readiness() >= 0.8) unlock("ready");
-  if (Object.keys(SIGNS).every(id => state.fcKnown[id])) unlock("signs");
-  if (session && session.answers && session.answers.length >= 100) unlock("marathon");
+  const have = state.achievements;
+  Core.evaluateAchievements(achievementSnapshot()).forEach(id => unlock(id));
+  void have;
 }
 
 /* ---------------- read-aloud (TTS) ---------------- */
@@ -151,55 +161,23 @@ function fmtTime(s) {
 }
 
 /* ---------------- helpers ---------------- */
+const ALL_QUESTIONS = QUESTIONS;
+let bank = Packs.filterBankForPack(ALL_QUESTIONS, state.settings.statePack);
 const byId = {};
-QUESTIONS.forEach(q => byId[q.id] = q);
-const catQ = (cat) => QUESTIONS.filter(q => q.cat === cat);
-const shuffle = (arr) => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+ALL_QUESTIONS.forEach(q => byId[q.id] = q);
+const catQ = (cat) => bank.filter(q => q.cat === cat);
+const shuffle = (arr) => Core.shuffle(arr);
 
 /* mastery: 0 (unseen) .. 1 (nailed) */
-function qMastery(q) {
-  const s = state.qstats[q.id];
-  if (!s || s.seen === 0) return 0;
-  return Math.min(1, Math.max(0, (s.correct - s.wrong * 0.5) / Math.max(2, s.seen * 0.7)));
-}
-function readiness() {
-  let sum = 0;
-  QUESTIONS.forEach(q => sum += qMastery(q));
-  return sum / QUESTIONS.length;
-}
-function missedQuestions() {
-  return QUESTIONS.filter(q => {
-    const s = state.qstats[q.id];
-    return s && s.wrong > 0;
-  }).sort((a, b) => (state.qstats[b.id].wrong - state.qstats[a.id].wrong));
-}
-function catAccuracy(cat) {
-  let seen = 0, correct = 0;
-  catQ(cat).forEach(q => { const s = state.qstats[q.id]; if (s) { seen += s.seen; correct += s.correct; } });
-  return seen ? correct / seen : null;
-}
+const qMastery = (q) => Core.qMastery(state.qstats[q.id]);
+const readiness = () => Core.readiness(bank, state.qstats, state.exams);
+const missedQuestions = () => Core.missedQuestions(bank, state.qstats);
+const catAccuracy = (cat) => Core.catAccuracy(catQ(cat), state.qstats);
 
-/* adaptive weight: unseen & previously-missed questions surface more often */
-function adaptivePool() {
-  return QUESTIONS.map(q => {
-    const s = state.qstats[q.id] || { seen: 0, wrong: 0 };
-    let w = 1 + s.wrong * 2.5 - (qMastery(q) * 0.9);
-    if (s.seen === 0) w += 1.2;
-    if (state.flagged[q.id]) w += 1.5;
-    return { q, w: Math.max(0.15, w) };
-  });
-}
-function pickWeighted(pool, n) {
-  const out = [];
-  while (out.length < n && pool.length) {
-    const total = pool.reduce((t, p) => t + p.w, 0);
-    let r = Math.random() * total;
-    let i = 0;
-    for (; i < pool.length; i++) { r -= pool[i].w; if (r <= 0) break; }
-    out.push(pool.splice(Math.min(i, pool.length - 1), 1)[0].q);
-  }
-  return out;
-}
+/* adaptive pool: unseen & previously-missed questions surface more often;
+   scheduled-due ones most of all (weak-topic scheduling) */
+const adaptivePool = () => Core.buildAdaptivePool(bank, state.qstats, state.flagged);
+const pickWeighted = (pool, n) => Core.pickWeighted(pool, n);
 
 /* ---------------- router ---------------- */
 let quizBackTarget = "home";
@@ -292,8 +270,8 @@ function startSetup(mode, focusCat) {
   list.innerHTML = "";
   if (mode === "practice") {
     const items = [
-      { id: "adaptive", icon: "sparkles", name: "Adaptive Mix", desc: `Prioritizes your weak spots across all ${QUESTIONS.length} questions`, action: () => startPractice(pickWeighted(adaptivePool(), 10), "Adaptive Mix", "home") },
-      { id: "marathon", icon: "infinity", name: "Marathon — Full Bank", desc: `All ${QUESTIONS.length} questions in one run — anything you miss comes back. Quit anytime`, action: () => startPractice(shuffle(QUESTIONS).slice(), "Marathon", "home", true) },
+      { id: "adaptive", icon: "sparkles", name: "Adaptive Mix", desc: `Prioritizes your weak spots across all ${bank.length} questions`, action: () => startPractice(pickWeighted(adaptivePool(), 10), "Adaptive Mix", "home") },
+      { id: "marathon", icon: "infinity", name: "Marathon — Full Bank", desc: `All ${bank.length} questions in one run — anything you miss comes back. Quit anytime`, action: () => startPractice(shuffle(bank).slice(), "Marathon", "home", true) },
       { id: "missed", icon: "target", name: "Missed Questions", desc: missedQuestions().length ? `Re-drill the ${Math.min(10, missedQuestions().length)} you've gotten wrong` : "Nothing missed yet — nice!", action: () => { const m = missedQuestions(); if (m.length) startPractice(pickWeighted(m.map(q => ({ q, w: 1 })), Math.min(10, m.length)), "Missed Questions", "home"); } },
       { id: "flagged", icon: "flag", name: "Flagged Questions", desc: Object.keys(state.flagged).length ? `${Object.keys(state.flagged).length} flagged for review` : "Flag questions during practice to build this set", action: () => { const f = Object.keys(state.flagged).map(id => byId[id]).filter(Boolean); if (f.length) startPractice(shuffle(f).slice(0, 15), "Flagged Questions", "home"); } },
     ];
@@ -334,20 +312,10 @@ function startPractice(questions, label, backTo, marathon) {
 }
 function startExam(n, weakBias) {
   quizBackTarget = "home";
-  let qs;
-  if (weakBias) {
-    const cats = Object.entries(CATEGORIES)
-      .map(([id, c]) => ({ id, acc: catAccuracy(id) }))
-      .sort((a, b) => (a.acc ?? 1) - (b.acc ?? 1));
-    const weakCats = cats.slice(0, 3).map(c => c.id);
-    const weakQs = QUESTIONS.filter(q => weakCats.includes(q.cat));
-    qs = shuffle(weakQs).slice(0, Math.ceil(n * 0.6));
-    const rest = shuffle(QUESTIONS.filter(q => !qs.includes(q))).slice(0, n - qs.length);
-    qs = shuffle(qs.concat(rest));
-  } else {
-    qs = shuffle(QUESTIONS).slice(0, n);
-  }
-  session = { mode: "exam", label: n >= 40 ? "Full Test" : n > 12 ? "Mock Exam" : "Quick Check", questions: qs, i: 0, correct: 0, answers: [], timeLeft: n * 60, endTs: 0, timerId: null };
+  // Blueprint-stratified assembly: every mock mirrors the real test's topic
+  // mix; weakBias reserves ~60% of seats for your three weakest topics.
+  const qs = Core.assembleExam({ bank, n, qstats: state.qstats, flags: state.flagged, weakBias });
+  session = { mode: "exam", label: n >= 40 ? "Full Test" : n > 12 ? "Mock Exam" : "Quick Check", questions: qs, i: 0, correct: 0, answers: [], timeLeft: Core.timeLimitSecs(qs.length), endTs: 0, timerId: null };
   beginQuiz();
 }
 function beginQuiz() {
@@ -457,12 +425,16 @@ function markChoiceButtons(q) {
   });
 }
 function recordAnswer(q, right) {
+  const now = Date.now();
   const s = state.qstats[q.id] || (state.qstats[q.id] = { seen: 0, correct: 0, wrong: 0 });
   s.seen++; right ? s.correct++ : s.wrong++;
+  s.lastSeen = now;
+  if (!right) s.lastWrong = now;
+  s.sched = Core.reviewSched(s.sched, right, now);   // weak-topic resurfacing
   state.answered++; if (right) state.correctCount++;
-  todayAnswered(); state.todayCount++;
+  state.daily = Core.bumpDaily(state.daily, todayStr());
   touchStreak();
-  addXP(right ? 10 : 2);
+  addXP(Core.xpForAnswer(right));
   checkProgressAchievements();
   save();
 }
@@ -485,14 +457,15 @@ function finishSession(timedOut) {
     });
     const total = session.questions.length;
     const correct = session.answers.filter(a => a.right).length;
-    const pass = correct / total >= state.settings.passMark;
-    state.exams.push({ date: Date.now(), label: session.label, pct: correct / total, correct, total, pass });
-    if (state.exams.length > 30) state.exams = state.exams.slice(-30);
+    const g = Core.gradeExam(correct, total, state.settings.passMark);
+    const pass = g.pass;
+    state.exams.push({ date: Date.now(), label: session.label, pct: g.pct, correct, total, pass, durationSec: Core.timeLimitSecs(total) - Math.max(0, session.timeLeft || 0) });
+    if (state.exams.length > Core.MAX_EXAM_HISTORY) state.exams = state.exams.slice(-Core.MAX_EXAM_HISTORY);
     save();
+    checkProgressAchievements();
     if (pass) {
       unlock("pass");
-      addXP(correct === total ? 50 : 25);
-      if (state.exams.filter(e => e.pass).length >= 3) unlock("consistent");
+      addXP(Core.xpForExam(true, correct === total));
     }
     showResults({
       pass, correct, total, timedOut,
@@ -500,7 +473,7 @@ function finishSession(timedOut) {
       title: pass ? "Passed" : "Not yet",
       sub: pass
         ? `You scored above the ${Math.round(state.settings.passMark * 100)}% pass mark. Take another exam to build consistency.`
-        : `You need ${Math.ceil(state.settings.passMark * total)} of ${total} to pass. Review your misses and try again — most people pass on a retake.`,
+        : `You need ${g.needed} of ${total} to pass. Review your misses and try again — most people pass on a retake.`,
     });
   } else {
     // practice: score only the questions actually answered
@@ -508,7 +481,8 @@ function finishSession(timedOut) {
     if (!total) { showView(quizBackTarget || "home"); return; }
     const correct = session.answers.filter(a => a.right).length;
     const early = total < session.questions.length;
-    if (correct === total && total >= 10) { unlock("perfect"); addXP(20); }
+    session.perfectRun = correct === total && total >= 10;
+    if (session.perfectRun) { unlock("perfect"); addXP(20); }
     showResults({
       pass: correct / total >= 0.8, correct, total, timedOut,
       answers: session.answers,
@@ -680,6 +654,7 @@ function renderStats() {
   $("selPassMark").value = String(state.settings.passMark);
   $("selExamLen").value = String(state.settings.examLen);
   $("chkFeedback").checked = !!state.settings.feedback;
+  if ($("selStatePack")) $("selStatePack").value = Packs.PACK_IDS.includes(state.settings.statePack) ? state.settings.statePack : "generic";
 }
 
 /* ---------------- theme ---------------- */
@@ -830,13 +805,14 @@ function hzEndScenario(sc) {
   clearInterval(hz.timer);
   hz.running = false;
   const [s, e] = sc.win;
-  let pts = 0, verdict;
-  if (hz.press === null) { verdict = "Too late — the hazard fully developed"; $("hzFlash").hidden = false; }
-  else if (hz.press < s - 0.35) { verdict = "Too early — nothing was developing yet"; }
-  else {
-    pts = Math.max(1, Math.ceil(5 * (1 - (hz.press - (s - 0.35)) / (e - (s - 0.35)))));
-    verdict = hz.press <= s + 0.8 ? "Instant recognition" : hz.press <= (s + e) / 2 ? "Good spot" : "Cutting it close";
-  }
+  const press = hz.press;
+  const r = Core.hazardScore(press, s, e);
+  let pts = r.pts, verdict;
+  if (r.band === "late") { verdict = "Too late — the hazard fully developed"; $("hzFlash").hidden = false; }
+  else if (r.band === "early") { verdict = "Too early — nothing was developing yet"; }
+  else if (r.band === "instant") verdict = "Instant recognition";
+  else if (r.band === "good") verdict = "Good spot";
+  else verdict = "Cutting it close";
   hz.scores.push(pts);
   hzShowOverlay(`
     <div class="ov-inner">
@@ -853,9 +829,10 @@ function hzResults() {
   const best = Math.max(state.hazardBest, total);
   const isNew = total > state.hazardBest;
   state.hazardBest = best;
-  addXP(total * 2);
+  addXP(total * Core.XP_PER_HAZARD_POINT);
   if (total >= 24) unlock("hawk");
   save();
+  checkProgressAchievements();
   hzShowOverlay(`
     <div class="ov-inner">
       <span class="ov-ico">${icon(total >= 18 ? "trophy" : "eye", 34)}</span>
@@ -912,9 +889,11 @@ function init() {
   applyTheme();
   hydrateIcons(document);
   applyTTS();
+  initStatePackSelect();
   renderHome();
   renderFlashcards();
   if (!state.onboarded) showOnboarding();
+  registerServiceWorker();
 
   // read-aloud toggle
   on($("btnTTS"), "click", () => {
@@ -1005,10 +984,26 @@ function init() {
   on($("selPassMark"), "change", e => { state.settings.passMark = parseFloat(e.target.value); save(); });
   on($("selExamLen"), "change", e => { state.settings.examLen = parseInt(e.target.value, 10); save(); });
   on($("chkFeedback"), "change", e => { state.settings.feedback = e.target.checked; save(); });
+  on($("selStatePack"), "change", e => {
+    state.settings.statePack = e.target.value;
+    save();
+    bank = Packs.filterBankForPack(ALL_QUESTIONS, state.settings.statePack);
+    renderHome();
+    toast("State pack: " + (Packs.STATE_PACKS[e.target.value] || Packs.STATE_PACKS.generic).name,
+      "Questions now match your state's rules.", "car");
+  });
+  on($("btnExport"), "click", exportProgress);
+  on($("btnImport"), "click", () => $("fileImport").click());
+  on($("fileImport"), "change", e => {
+    const f = e.target.files && e.target.files[0];
+    if (f) importProgress(f);
+    e.target.value = "";
+  });
   on($("btnResetAll"), "click", () => {
     if (!confirm("Erase ALL progress, stats, and history? This cannot be undone.")) return;
     const theme = state.settings.theme;
-    state = defaultState(); state.settings.theme = theme;
+    state = Core.defaultState(); state.settings.theme = theme;
+    bank = Packs.filterBankForPack(ALL_QUESTIONS, state.settings.statePack);
     save(); renderStats(); renderHome(); renderFlashcards();
     alert("Progress reset. Fresh start!");
   });
@@ -1035,9 +1030,29 @@ function init() {
     }
   });
 
-  // exams history label
-  const origShow = showResults;
   showView("home");
+}
+
+/* state pack selector (settings) */
+function initStatePackSelect() {
+  const sel = $("selStatePack");
+  if (!sel) return;
+  sel.innerHTML = "";
+  Packs.PACK_IDS.forEach(id => {
+    const o = document.createElement("option");
+    o.value = id;
+    o.textContent = Packs.STATE_PACKS[id].name;
+    sel.appendChild(o);
+  });
+  sel.value = Packs.PACK_IDS.includes(state.settings.statePack) ? state.settings.statePack : "generic";
+}
+
+/* PWA: offline-first service worker */
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  // file:// has no SW; only register when served over http(s)
+  if (!/^https?:$/.test(location.protocol)) return;
+  navigator.serviceWorker.register("sw.js").catch(err => console.warn("[road-ready] SW:", err));
 }
 
 init();

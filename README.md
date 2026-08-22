@@ -46,5 +46,55 @@ Questions follow general U.S. rules of the road common across state DMV handbook
 - `js/icons.js` — stroke icon set (~34 icons, currentColor)
 - `js/questions.js` — the question bank (186 Qs with explanations)
 - `js/signs.js` — SVG road-sign library (31 signs)
-- `js/app.js` — quiz/exam/flashcard/stats engine
+- `js/core.js` — pure engine: scoring, readiness, adaptive selection, spaced scheduling, exam assembly/grading, hazard scoring, XP/levels, achievements, state migration, import/export
+- `js/state-packs.js` — state-specific content packs (CA, TX, NY, FL, WA, PA)
+- `js/app.js` — views and DOM wiring
 - `serve.js` — tiny static server for local testing
+
+## Development
+
+No build step — the app is plain HTML/CSS/JS. Tooling is dev-only:
+
+```bash
+npm install          # dev dependencies only
+npm test             # unit tests + strict content QA
+npm run test:watch   # vitest in watch mode
+npm run validate     # content QA system (schema, dupes, balance, explanations, signs, provenance)
+npm run provenance:update   # regenerate content-manifest.json after content changes
+npm run test:e2e     # Playwright E2E (desktop + mobile projects)
+```
+
+## Automated QA & testing
+
+**Unit tests (`tests/`, Vitest)** cover question scoring/mastery, pass/fail grading,
+exam timing, adaptive selection, missed-question resurfacing, weak-topic
+scheduling (SM-2-lite), progress statistics/readiness, XP & levels,
+achievements, hazard scoring, localStorage migration/versioning, import/export
+and state packs.
+
+**Content QA system (`scripts/`)** validates every commit's content:
+question-bank schema, duplicate questions (prompt+sign identity), duplicate
+answers within a question, topic-balance floor, broken-explanation heuristics
+(placeholders, answer echoes), sign-data completeness + balanced SVG markup.
+It also maintains **automated provenance**: `content-manifest.json` records a
+content hash per question with source attribution — uncommitted bank drift
+fails the build until you regenerate the manifest.
+
+**E2E (`e2e/`, Playwright)** runs real journeys — onboarding, practice,
+timed mock exam, flashcards, import/export round-trip, PWA offline reload,
+accessibility checks — on desktop Chrome plus iPhone and Pixel profiles.
+
+## PWA / offline
+
+Installable (`manifest.webmanifest`) with a service worker (`sw.js`) that
+pre-caches the full shell and serves stale-while-revalidate — the whole app
+works offline after one visit. Progress lives in versioned localStorage
+(`v2` schema) with a migration pipeline; Settings can export/import it as a
+JSON backup.
+
+## State packs
+
+Settings → "Your state's rules" swaps in state-specific numbers (BAC limits,
+right-on-red, school bus, hands-free laws…) via `js/state-packs.js`. Add a
+pack by appending an entry; questions tagged `states:["XX"]` appear only when
+that pack is selected.

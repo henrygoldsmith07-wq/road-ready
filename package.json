@@ -1,0 +1,21 @@
+{
+  "name": "road-ready",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pass Your Driving Test — offline-first DMV study PWA (vanilla JS, no build step)",
+  "type": "commonjs",
+  "scripts": {
+    "serve": "node serve.js",
+    "test": "npm run test:unit && npm run validate",
+    "test:unit": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "validate": "node scripts/validate-content.mjs --strict",
+    "provenance:update": "node scripts/validate-content.mjs --update-manifest"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "jsdom": "^24.1.0",
+    "vitest": "^2.1.1"
+  }
+}
