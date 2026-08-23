@@ -61,13 +61,18 @@
       delete s.todayDate;
       delete s.todayCount;
       s.daily = plainObject(s.daily);
+      // keep any stored statePack as-is; sanitizeState validates it against
+      // the caller-supplied pack ids (a v1 payload may already name a pack)
       s.settings = Object.assign(defaultSettings(), plainObject(s.settings));
-      s.settings.statePack = strEnum(s.settings.statePack, ["generic"], "generic");
       return s;
     },
   };
 
-  function sanitizeState(s) {
+  function sanitizeState(s, opts) {
+    // Valid pack ids are injected by the caller (app/test supply the real
+    // list from state-packs.js); core stays dependency-free with a safe default.
+    const packIds = (opts && Array.isArray(opts.packIds) && opts.packIds.length)
+      ? opts.packIds : ["generic"];
     s.v = SCHEMA_VERSION;
     s.qstats = plainObject(s.qstats);
     Object.keys(s.qstats).forEach((qid) => {
@@ -116,16 +121,18 @@
     s.settings.feedback = bool(s.settings.feedback);
     s.settings.theme = strEnum(s.settings.theme, ["dark", "light"], "dark");
     s.settings.tts = bool(s.settings.tts);
-    s.settings.statePack = strEnum(s.settings.statePack, ["generic"], "generic");
+    s.settings.statePack = strEnum(s.settings.statePack, packIds, "generic");
     return s;
   }
 
   /**
    * Migrate any stored payload (object or JSON string) to the current schema.
    * Never throws; never destroys data it does not understand.
+   * @param {object|string} raw
+   * @param {{packIds?: string[]}} [opts] valid state-pack ids (from state-packs.js)
    * @returns {{state: object, fromVersion: number|null, warnings: string[]}}
    */
-  function migrateState(raw) {
+  function migrateState(raw, opts) {
     let parsed = raw;
     const warnings = [];
     if (typeof raw === "string") {
@@ -148,7 +155,7 @@
       // Future payload: keep what we can, flag it — do not silently drop user data.
       warnings.push("future-version-" + from);
     }
-    return { state: sanitizeState(s), fromVersion: parsed.v || null, warnings };
+    return { state: sanitizeState(s, opts), fromVersion: parsed.v || null, warnings };
   }
 
   /* ---------------- dates / streak / daily goal ---------------- */
@@ -481,7 +488,7 @@
    * exports from any older app version import cleanly.
    * @returns {{ok:true, state:object, warnings:string[]} | {ok:false, error:string}}
    */
-  function parseImport(text) {
+  function parseImport(text, opts) {
     if (typeof text !== "string" || !text.trim()) return { ok: false, error: "empty" };
     let bundle;
     try { bundle = JSON.parse(text); } catch (e) { return { ok: false, error: "not-json" }; }
@@ -489,7 +496,7 @@
     if (bundle.app !== EXPORT_APP_ID) return { ok: false, error: "wrong-app" };
     if (typeof bundle.schema !== "number") return { ok: false, error: "missing-schema" };
     if (!bundle.state || typeof bundle.state !== "object" || Array.isArray(bundle.state)) return { ok: false, error: "missing-state" };
-    const m = migrateState(bundle.state);
+    const m = migrateState(bundle.state, opts);
     return { ok: true, state: m.state, warnings: m.warnings.concat(bundle.schema > SCHEMA_VERSION ? ["future-export"] : []) };
   }
 

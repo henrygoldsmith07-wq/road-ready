@@ -26,7 +26,7 @@ function loadState() {
   } catch (e) {
     parsed = null;
   }
-  const m = Core.migrateState(parsed);
+  const m = Core.migrateState(parsed, { packIds: Packs.PACK_IDS });
   m.warnings.forEach((w) => console.warn("[road-ready] state:", w));
   return m.state;
 }
@@ -59,13 +59,15 @@ function exportProgress() {
 function importProgress(file) {
   const reader = new FileReader();
   reader.onload = () => {
-    const r = Core.parseImport(String(reader.result || ""));
+    const r = Core.parseImport(String(reader.result || ""), { packIds: Packs.PACK_IDS });
     if (!r.ok) { alert("That file doesn't look like a Road Ready backup (" + r.error + ")."); return; }
     if (!confirm(r.warnings.length
       ? "This backup is from another app version (" + r.warnings.join(", ") + "). Import anyway?"
       : "Replace current progress with this backup?")) return;
     state = r.state;
+    bank = Packs.filterBankForPack(ALL_QUESTIONS, state.settings.statePack);
     save();
+    renderStateFacts();
     renderHome(); renderStats(); renderFlashcards();
     toast("Progress imported", "Your history is back.", "download");
   };
@@ -161,7 +163,7 @@ function fmtTime(s) {
 }
 
 /* ---------------- helpers ---------------- */
-const ALL_QUESTIONS = QUESTIONS;
+const ALL_QUESTIONS = QUESTIONS.concat(Packs.allPackQuestions());
 let bank = Packs.filterBankForPack(ALL_QUESTIONS, state.settings.statePack);
 const byId = {};
 ALL_QUESTIONS.forEach(q => byId[q.id] = q);
@@ -890,6 +892,7 @@ function init() {
   hydrateIcons(document);
   applyTTS();
   initStatePackSelect();
+  renderStateFacts();
   renderHome();
   renderFlashcards();
   if (!state.onboarded) showOnboarding();
@@ -988,9 +991,13 @@ function init() {
     state.settings.statePack = e.target.value;
     save();
     bank = Packs.filterBankForPack(ALL_QUESTIONS, state.settings.statePack);
+    renderStateFacts();
     renderHome();
-    toast("State pack: " + (Packs.STATE_PACKS[e.target.value] || Packs.STATE_PACKS.generic).name,
-      "Questions now match your state's rules.", "car");
+    const pack = Packs.STATE_PACKS[e.target.value] || Packs.STATE_PACKS.generic;
+    const n = (pack.questions || []).length;
+    toast("State pack: " + pack.name,
+      n ? `${n} state-specific questions added · key rules updated` : "Universal questions — confirm specifics with your handbook.",
+      "car");
   });
   on($("btnExport"), "click", exportProgress);
   on($("btnImport"), "click", () => $("fileImport").click());
@@ -1004,7 +1011,7 @@ function init() {
     const theme = state.settings.theme;
     state = Core.defaultState(); state.settings.theme = theme;
     bank = Packs.filterBankForPack(ALL_QUESTIONS, state.settings.statePack);
-    save(); renderStats(); renderHome(); renderFlashcards();
+    save(); renderStateFacts(); renderStats(); renderHome(); renderFlashcards();
     alert("Progress reset. Fresh start!");
   });
 
@@ -1045,6 +1052,34 @@ function initStatePackSelect() {
     sel.appendChild(o);
   });
   sel.value = Packs.PACK_IDS.includes(state.settings.statePack) ? state.settings.statePack : "generic";
+}
+
+/* study-guide facts card for the selected jurisdiction */
+const FACT_LABELS = {
+  bacAdult: "Adult BAC limit",
+  bacUnder21: "Under-21 limit",
+  followDistance: "Following distance",
+  rightOnRed: "Right on red",
+  schoolBus: "School bus",
+};
+function renderStateFacts() {
+  const host = $("stateFacts");
+  if (!host) return;
+  const packId = Packs.PACK_IDS.includes(state.settings.statePack) ? state.settings.statePack : "generic";
+  const pack = Packs.STATE_PACKS[packId];
+  const n = (pack.questions || []).length;
+  const rows = Object.entries(pack.facts).map(([k, v]) => {
+    const label = FACT_LABELS[k] || k.replace(/([A-Z])/g, " $1").replace(/^./, c => c.toUpperCase());
+    return `<div class="fact-row"><span>${label}</span><b>${v}</b></div>`;
+  }).join("");
+  host.hidden = false;
+  host.innerHTML = `
+    <h2 class="section-title">${pack.name}</h2>
+    <div class="card state-facts-card">
+      <p class="state-note">${pack.note}</p>
+      <div class="facts-grid">${rows}</div>
+      ${n ? `<p class="state-qcount">${n} ${packId}-specific questions are included in your practice and exams.</p>` : ""}
+    </div>`;
 }
 
 /* PWA: offline-first service worker */

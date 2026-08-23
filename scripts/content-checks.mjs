@@ -2,8 +2,9 @@
  * Exports runChecks(data) → {errors:[{rule,msg}], warnings:[...], stats:{...}}
  * Consumed by scripts/validate-content.mjs (CLI) and tests/content-qa.test.mjs.
  */
-const ID_RE = /^[a-z]{1,4}\d{1,3}$/;
+const ID_RE = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*\d{1,3}$/;
 const PLACEHOLDER_RE = /\b(todo|tbd|fixme|placeholder|lorem ipsum|xxx)\b/i;
+const CONCEPT_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
 export const norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
 export const tokens = (s) => new Set(norm(s).split(" ").filter((w) => w.length > 2));
@@ -41,15 +42,33 @@ export function runChecks(data, opts = {}) {
     }
     if (typeof q.why !== "string" || q.why.trim() === "") err("schema", `[${id}] missing explanation`);
     if (q.signId != null && !(q.signId in SIGNS)) err("signs-ref", `[${id}] references unknown sign "${q.signId}"`);
-    if (Array.isArray(q.states)) {
-      if (!q.states.length) err("schema", `[${id}] empty states array (omit instead)`);
-      for (const s of q.states) {
-        if (!(s in STATE_PACKS)) err("schema", `[${id}] states tag "${s}" has no matching pack`);
+
+    /* ---------- jurisdiction / provenance schema ---------- */
+    const isJurisdictional = Array.isArray(q.jurisdiction) && q.jurisdiction.length > 0;
+    if (q.jurisdiction != null) {
+      if (!Array.isArray(q.jurisdiction)) err("schema", `[${id}] jurisdiction must be an array of pack ids`);
+      else if (!q.jurisdiction.length) err("schema", `[${id}] empty jurisdiction array (omit for universal questions)`);
+      else for (const j of q.jurisdiction) {
+        if (!(j in STATE_PACKS)) err("schema", `[${id}] jurisdiction "${j}" has no matching pack`);
+        else if (j === "generic") err("schema", `[${id}] jurisdiction "generic" is implied — omit the tag for universal questions`);
       }
     }
-    if (typeof q.diff === "string" && !["easy", "medium", "hard"].includes(q.diff)) {
-      err("schema", `[${id}] diff must be easy|medium|hard`);
+    if (isJurisdictional) {
+      // jurisdiction-tagged questions carry full provenance — no exceptions
+      if (typeof q.sourceId !== "string" || !q.sourceId.trim())
+        err("provenance", `[${id}] jurisdiction-tagged question missing sourceId`);
+      if (typeof q.sourceSection !== "string" || !q.sourceSection.trim())
+        err("provenance", `[${id}] jurisdiction-tagged question missing sourceSection`);
+      if (typeof q.concept !== "string" || !CONCEPT_RE.test(q.concept || ""))
+        err("schema", `[${id}] jurisdiction-tagged question needs a kebab-case concept (e.g. "school-bus")`);
+    } else {
+      // universal questions: provenance recommended, not yet enforced
+      if (typeof q.sourceId !== "string" || !q.sourceId.trim()) {
+        warn("provenance", `${q.id} has no sourceId (universal question — review-level until enforced)`, { review: true });
+      }
     }
+    if (q.concept != null && typeof q.concept === "string" && !CONCEPT_RE.test(q.concept))
+      err("schema", `[${id}] concept must be kebab-case`);
   }
   {
     const seenIds = new Set();

@@ -73,16 +73,16 @@ describe("import", () => {
 });
 
 describe("state packs", () => {
-  it("generic bank excludes state-tagged questions; packs include theirs", () => {
+  it("generic bank excludes jurisdiction-tagged questions; packs include theirs", () => {
     const bank = [
-      { id: "u1", cat: "signs", states: undefined },
-      { id: "ca1", cat: "laws", states: ["CA"] },
-      { id: "ny1", cat: "laws", states: ["NY", "PA"] },
+      { id: "u1", cat: "signs", jurisdiction: undefined },
+      { id: "ca-001", cat: "laws", jurisdiction: ["CA"] },
+      { id: "ny-001", cat: "laws", jurisdiction: ["NY", "PA"] },
     ];
     expect(Packs.filterBankForPack(bank, "generic").map((q) => q.id)).toEqual(["u1"]);
-    expect(Packs.filterBankForPack(bank, "CA").map((q) => q.id)).toEqual(["u1", "ca1"]);
-    expect(Packs.filterBankForPack(bank, "NY").map((q) => q.id)).toEqual(["u1", "ny1"]);
-    expect(Packs.filterBankForPack(bank, "PA").map((q) => q.id)).toEqual(["u1", "ny1"]);
+    expect(Packs.filterBankForPack(bank, "CA").map((q) => q.id)).toEqual(["u1", "ca-001"]);
+    expect(Packs.filterBankForPack(bank, "NY").map((q) => q.id)).toEqual(["u1", "ny-001"]);
+    expect(Packs.filterBankForPack(bank, "PA").map((q) => q.id)).toEqual(["u1", "ny-001"]);
   });
 
   it("every pack declares its key facts", () => {
@@ -92,5 +92,45 @@ describe("state packs", () => {
       expect(p.facts.rightOnRed).toBeTruthy();
       expect(p.name).toBeTruthy();
     }
+  });
+
+  it("jurisdiction packs ship real tagged questions with provenance", () => {
+    const tagged = Packs.allPackQuestions().filter((q) => q.jurisdiction && q.jurisdiction.length);
+    expect(tagged.length).toBeGreaterThanOrEqual(30); // ~6 per non-generic pack
+    for (const q of tagged) {
+      expect(typeof q.concept).toBe("string");
+      expect(q.concept).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+      expect(typeof q.sourceId).toBe("string");
+      expect(q.sourceId.length).toBeGreaterThan(0);
+      expect(typeof q.sourceSection).toBe("string");
+      // every tag must name a real pack
+      q.jurisdiction.forEach((j) => expect(Packs.STATE_PACKS[j]).toBeTruthy());
+      // sanity: well-formed MCQ
+      expect(Array.isArray(q.choices)).toBe(true);
+      expect(q.a).toBeLessThan(q.choices.length);
+    }
+  });
+
+  it("selecting a pack actually grows the bank (state questions merge in)", () => {
+    const fullBank = Packs.allPackQuestions().concat([{ id: "u1", cat: "signs" }]);
+    const generic = Packs.filterBankForPack(fullBank, "generic");
+    const ca = Packs.filterBankForPack(fullBank, "CA");
+    expect(ca.length).toBeGreaterThan(generic.length);
+  });
+});
+
+describe("migration honors real pack ids", () => {
+  it("a saved CA selection survives reload when pack ids are supplied", () => {
+    const saved = Core.defaultState();
+    saved.settings.statePack = "CA";
+    const m = Core.migrateState(JSON.parse(JSON.stringify(saved)), { packIds: Packs.PACK_IDS });
+    expect(m.state.settings.statePack).toBe("CA");
+  });
+
+  it("unknown pack ids still clamp to generic", () => {
+    const saved = Core.defaultState();
+    saved.settings.statePack = "XX";
+    expect(Core.migrateState(JSON.parse(JSON.stringify(saved)), { packIds: Packs.PACK_IDS }).state.settings.statePack).toBe("generic");
+    expect(Core.migrateState(JSON.parse(JSON.stringify(saved))).state.settings.statePack).toBe("generic");
   });
 });

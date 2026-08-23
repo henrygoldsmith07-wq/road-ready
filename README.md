@@ -94,7 +94,11 @@ JSON backup.
 
 ## State packs
 
-Settings → "Your state's rules" swaps in state-specific numbers (BAC limits,
-right-on-red, school bus, hands-free laws…) via `js/state-packs.js`. Add a
-pack by appending an entry; questions tagged `states:["XX"]` appear only when
-that pack is selected.
+Settings → "Your state's rules" selects a jurisdiction (CA, TX, NY, FL, WA, PA).
+Each non-generic pack ships its own jurisdiction-tagged questions
+(`jurisdiction:["XX"]`, `concept`, `sourceId`, `sourceSection`) that merge into
+practice and exams when the pack is selected, plus a key-facts card (BAC limits,
+school-bus rules, phone laws…) at the top of the Study Guide. Universal
+questions apply to every pack. Add a pack by appending an entry to
+`js/state-packs.js` — the content QA system validates its questions, facts and
+provenance fields.
