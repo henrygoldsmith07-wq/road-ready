@@ -265,6 +265,49 @@
     return ACHIEVEMENTS.filter((a) => a.test(s)).map((a) => a.id);
   }
 
+  /* ---------------- concept-based mastery hierarchy ---------------- */
+  /**
+   * Questions are grouped into CONCEPTS — the underlying knowledge unit
+   * ("roundabout-priority", "zero-tolerance", …). A question without an
+   * explicit concept inherits its topic as a coarse concept, so every
+   * question participates in the hierarchy:
+   *   concept mastery → topic mastery → overall score.
+   */
+  const conceptKeyOf = (q) => (q && typeof q.concept === "string" && q.concept.trim())
+    ? q.concept.trim()
+    : `topic:${q.cat}`;
+
+  /**
+   * Mastery of a CONCEPT, not of individual questions.
+   *   coverage = fraction of the concept's questions ever attempted
+   *   depth    = mean per-question mastery among those attempted
+   *   mastery  = coverage × depth
+   * Memorising one question of an eight-question concept caps out around
+   * 0.125 — real breadth is required to saturate the concept.
+   */
+  function conceptMastery(conceptQuestions, qstats) {
+    const total = conceptQuestions.length;
+    if (!total) return 0;
+    let seenCount = 0, sum = 0;
+    for (const q of conceptQuestions) {
+      const st = qstats ? qstats[q.id] : null;
+      if (st && st.seen > 0) { seenCount++; sum += qMastery(st); }
+    }
+    if (!seenCount) return 0;
+    return Math.min(1, Math.max(0, (seenCount / total) * (sum / seenCount)));
+  }
+
+  /** Group questions by concept key. */
+  function groupByConcept(questions) {
+    const groups = new Map();
+    for (const q of questions) {
+      const k = conceptKeyOf(q);
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(q);
+    }
+    return groups;
+  }
+
   /* ---------------- per-question stats: mastery & difficulty ---------------- */
   /** Mastery in [0..1] — 0 unseen .. 1 nailed. */
   function qMastery(stat) {
@@ -283,23 +326,27 @@
     return (observed * stat.seen + prior * k) / (stat.seen + k);
   }
 
-  /* ---------------- readiness (v2 algorithm) ---------------- */
+  /* ---------------- readiness (v3 algorithm) ---------------- */
   /**
-   * Weighted blend of three signals:
-   *  - mastery: per-question mastery weighted toward harder questions
+   * Concept-driven hierarchy: concept masteries aggregate into the overall
+   * score, weighted by each concept's size and difficulty mix.
+   *  - mastery: Σ(conceptMastery × conceptWeight) / Σ(conceptWeight)
    *  - breadth: share of the bank actually encountered
    *  - exams:   average of up to 3 most recent mock-exam scores (when any)
    */
   function readiness(questions, qstats, exams) {
     if (!questions.length) return 0;
     let num = 0, den = 0, seen = 0;
-    questions.forEach((q) => {
-      const st = qstats[q.id];
-      const w = 0.75 + 0.5 * qDifficulty(st);   // hard questions count more
-      num += qMastery(st) * w;
+    for (const [, qs] of groupByConcept(questions)) {
+      let w = 0;
+      for (const q of qs) {
+        w += 0.75 + 0.5 * qDifficulty(qstats ? qstats[q.id] : null); // hard questions count more
+        const st = qstats && qstats[q.id];
+        if (st && st.seen > 0) seen++;
+      }
+      num += conceptMastery(qs, qstats) * w;
       den += w;
-      if (st && st.seen > 0) seen++;
-    });
+    }
     const masteryC = den ? num / den : 0;
     const breadthC = seen / questions.length;
     let r = 0.65 * masteryC + 0.35 * breadthC;
@@ -308,9 +355,15 @@
     return Math.min(1, Math.max(0, r));
   }
 
+  /** Topic mastery aggregates its concepts' masteries, weighted by size. */
   function topicMastery(catQuestions, qstats) {
-    if (!catQuestions.length) return 0;
-    return catQuestions.reduce((t, q) => t + qMastery(qstats[q.id]), 0) / catQuestions.length;
+    if (!catQuestions || !catQuestions.length) return 0;
+    let num = 0, den = 0;
+    for (const [, qs] of groupByConcept(catQuestions)) {
+      num += conceptMastery(qs, qstats) * qs.length;
+      den += qs.length;
+    }
+    return den ? num / den : 0;
   }
 
   /** Accuracy across a set of questions, or null when nothing attempted. */
@@ -605,7 +658,8 @@
     touchStreak, dailyCount, bumpDaily, studyPlan,
     ACHIEVEMENTS, levelFor, xpForAnswer, xpForExam, evaluateAchievements,
     XP_PER_CORRECT, XP_PER_WRONG, XP_EXAM_PASS, XP_EXAM_PERFECT, XP_PER_HAZARD_POINT,
-    qMastery, qDifficulty, readiness, topicMastery, catAccuracy,
+    qMastery, qDifficulty, conceptKeyOf, conceptMastery, groupByConcept,
+    readiness, topicMastery, catAccuracy,
     adaptiveWeights, buildAdaptivePool, pickWeighted, missedQuestions,
     defaultSched, reviewSched, schedDue,
     shuffle, timeLimitSecs, gradeExam, examBlueprint, assembleExam,
