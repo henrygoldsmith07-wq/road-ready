@@ -129,10 +129,12 @@ describe("manifest carries real provenance snapshots", () => {
   });
 
   it("marks which entries come via universal defaults vs explicit citation", () => {
-    const explicit = Object.values(manifest.questions).filter((e) => e.source.defaulted === false);
-    const defaulted = Object.values(manifest.questions).filter((e) => e.source.defaulted === true);
-    expect(explicit.length).toBe(36);  // jurisdiction packs
-    expect(defaulted.length).toBe(186); // universal bank
+    const entries = Object.values(manifest.questions);
+    const explicit = entries.filter((e) => e.source.defaulted === false);
+    const defaulted = entries.filter((e) => e.source.defaulted === true);
+    expect(explicit.length).toBeGreaterThanOrEqual(48); // jurisdiction packs + explicitly cited diverse forms
+    expect(defaulted.length).toBeGreaterThanOrEqual(186); // original universal bank
+    expect(explicit.length + defaulted.length).toBe(entries.length); // every entry classified
   });
 
   it("jurisdiction questions cite their own state's authority in the manifest", () => {

@@ -24,7 +24,7 @@ Two honest scoping calls that follow from this:
 | Feature | What it does |
 |---|---|
 | Onboarding | A 4-step first-run intro: what's inside, theme + read-aloud setup, and how the daily habit works — skippable, shown once |
-| Adaptive Practice | 186 questions across 10 topics, organized into **concepts** — mastery aggregates per concept (coverage × depth), then topic, then overall score, so memorizing a single question can't max out a concept; misses and unseen questions resurface more often, with instant explanations |
+| Adaptive Practice | 234 questions across 10 topics, organized into **concepts**, spanning multiple **question forms** — junction-priority road-layout scenes, lane-selection diagrams, sign combinations, what-happens-next chains, prioritisation drills and deliberately similar alternatives, alongside classic recall; mastery aggregates per concept (coverage × depth), then topic, then overall score, so memorizing a single question can't max out a concept |
 | Marathon Mode | The full 186-question bank in one run — anything you miss comes back until you've seen it through |
 | Mock Exams | Quick Check (10), Standard (20), Full (46), or a Weak-Topics exam — timed at 1 min/question, DMV-style pass mark, no feedback until you submit |
 | Official Simulations | Pick your state and the exam locks to its real spec — CA 46/38, TX 30/21, NY 20/14, FL 50/40 in 60 min, WA 40/32, PA 18/15. Jurisdiction pool only, official pass bar, feedback at the end (`js/exam-blueprints.js`, source-cited) |

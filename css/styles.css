@@ -609,3 +609,15 @@ kbd {
 .outcome-row .res-pass { color:#1a9134; font-weight:700; }
 .outcome-row .res-fail { color:#c1272d; font-weight:700; }
 .outcome-meta { display:block; font-size:11px; color:var(--muted); margin-top:2px; }
+
+/* question diversity: ascii road-layout scenes + sign combinations */
+#qScene .scene {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace;
+  font-size: 12.5px; line-height: 1.4;
+  white-space: pre; overflow-x: auto;
+  background: var(--bg, transparent);
+  border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px 12px; margin: 0 0 10px;
+}
+.sign-row { display: flex; gap: 10px; justify-content: center; align-items: center; }
+.question-text { white-space: pre-line; }

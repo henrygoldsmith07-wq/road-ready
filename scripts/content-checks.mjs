@@ -5,6 +5,7 @@
 const ID_RE = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*\d{1,3}$/;
 const PLACEHOLDER_RE = /\b(todo|tbd|fixme|placeholder|lorem ipsum|xxx)\b/i;
 const CONCEPT_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+export const QUESTION_FORMS = ["recall", "scenario", "diagram", "sign-combo", "lane-choice", "what-next", "prioritisation"];
 const VERIFIED_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const OFFICIAL_SOURCE_HOSTS = new Set([
   "www.dmv.ca.gov", "www.dps.texas.gov", "dmv.ny.gov", "www.flhsmv.gov", "dol.wa.gov", "www.pa.gov",
@@ -90,6 +91,24 @@ export function runChecks(data, opts = {}) {
     }
     if (typeof q.why !== "string" || q.why.trim() === "") err("schema", `[${id}] missing explanation`);
     if (q.signId != null && !(q.signId in SIGNS)) err("signs-ref", `[${id}] references unknown sign "${q.signId}"`);
+
+    /* ---------- question-form diversity fields ---------- */
+    const form = q.form ?? "recall";
+    if (!QUESTION_FORMS.includes(form)) err("schema", `[${id}] unknown form "${form}" (use one of: ${QUESTION_FORMS.join(", ")})`);
+    if (Array.isArray(q.signIds)) {
+      if (q.signIds.length < 1 || q.signIds.length > 3) err("schema", `[${id}] signIds must hold 1–3 signs`);
+      else {
+        for (const sid of q.signIds) {
+          if (!(sid in SIGNS)) err("signs-ref", `[${id}] signIds references unknown sign "${sid}"`);
+        }
+        if (new Set(q.signIds).size !== q.signIds.length) err("schema", `[${id}] duplicate entries in signIds`);
+      }
+    }
+    if (q.scene != null) {
+      if (typeof q.scene !== "string" || q.scene.trim().length < 8) err("schema", `[${id}] scene must be a non-trivial string`);
+      else if (q.scene.length > 900) err("schema", `[${id}] scene too long for the question card (${q.scene.length} chars, max 900)`);
+      else if (/\\n\\\\|undefined|\$\{/.test(q.scene)) err("schema", `[${id}] scene contains template leakage`);
+    }
 
     /* ---------- jurisdiction / provenance schema ---------- */
     const isJurisdictional = Array.isArray(q.jurisdiction) && q.jurisdiction.length > 0;
@@ -276,6 +295,17 @@ export function runChecks(data, opts = {}) {
         warn("explanation", `[${q.id}] explanation shares no wording with the correct answer — check it explains the right option`, { review: true });
       }
     }
+  }
+
+  /* ---------- 5b. question-form diversity report ---------- */
+  const forms = {};
+  for (const q of QUESTIONS) {
+    const f = QUESTION_FORMS.includes(q.form) ? q.form : "recall";
+    forms[f] = (forms[f] || 0) + 1;
+  }
+  const textualShare = ((forms.recall || 0) + (forms.scenario || 0) * 0.25) / Math.max(1, total);
+  if (textualShare > 0.75) {
+    warn("diversity", `bank is ${(textualShare * 100).toFixed(0)}% plain-text — grow diagram/scene/sign-combo/lane-choice forms before raw quantity`, { review: true });
   }
 
   /* ---------- 6. sign-data validation ---------- */

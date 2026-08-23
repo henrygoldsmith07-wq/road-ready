@@ -432,8 +432,22 @@ function renderQuiz() {
   $("qprogBar").style.width = (100 * session.i / total) + "%";
   $("qCounter").textContent = `Q ${session.i + 1}/${total}`;
   $("qCategory").textContent = CATEGORIES[q.cat].name;
-  $("signFrame").hidden = !q.signId;
-  if (q.signId) $("signFrame").innerHTML = signSVG(q.signId, 150);
+  // question forms: single sign, sign combination, and/or ASCII road-layout scene
+  const signIds = Array.isArray(q.signIds) && q.signIds.length ? q.signIds : (q.signId ? [q.signId] : []);
+  $("signFrame").hidden = !signIds.length;
+  if (signIds.length) {
+    $("signFrame").innerHTML = signIds.length > 1
+      ? `<div class="sign-row">${signIds.map(id => signSVG(id, 104)).join("")}</div>`
+      : signSVG(signIds[0], 150);
+  }
+  const sceneHost = $("qScene");
+  if (q.scene) {
+    sceneHost.hidden = false;
+    sceneHost.innerHTML = `<pre class="scene" aria-label="road layout diagram">${escapeHTML(q.scene)}</pre>`;
+  } else {
+    sceneHost.hidden = true;
+    sceneHost.innerHTML = "";
+  }
   $("qText").textContent = q.q;
 
   const box = $("choices");
@@ -464,8 +478,10 @@ function escapeHTML(s) { return s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": 
 function sourceCitationHTML(q) {
   const source = Packs.sourceForQuestion(q);
   if (!source) return "";
-  const detail = q.sourceSection ? `${source.agency} Â· ${q.sourceSection}` : source.title;
-  return `<a class="source-link" href="${escapeHTML(source.url)}" target="_blank" rel="noopener noreferrer">Official source: ${escapeHTML(detail)} â†—</a>`;
+  const detail = q.sourceSection ? `${source.agency} · ${q.sourceSection}` : source.title;
+  // composite sources cite many documents and may have no single URL
+  if (!source.url) return `<span class="source-link">Official source: ${escapeHTML(detail)}</span>`;
+  return `<a class="source-link" href="${escapeHTML(source.url)}" target="_blank" rel="noopener noreferrer">Official source: ${escapeHTML(detail)} ↗</a>`;
 }
 
 function answer(origIdx, btnEl) {
