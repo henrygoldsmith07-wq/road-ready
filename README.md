@@ -17,6 +17,7 @@ A self-contained driving-test study app. No build step, no dependencies, no inte
 | Adaptive Practice | 186 questions across 10 topics; misses and unseen questions resurface more often, with instant explanations |
 | Marathon Mode | The full 186-question bank in one run — anything you miss comes back until you've seen it through |
 | Mock Exams | Quick Check (10), Standard (20), Full (46), or a Weak-Topics exam — timed at 1 min/question, DMV-style pass mark, no feedback until you submit |
+| Official Simulations | Pick your state and the exam locks to its real spec — CA 46/38, TX 30/21, NY 20/14, FL 50/40 in 60 min, WA 40/32, PA 18/15. Jurisdiction pool only, official pass bar, feedback at the end (`js/exam-blueprints.js`, source-cited) |
 | Hazard Perception | An interactive trainer with 6 animated scenarios (children, doors, deer, cyclists…) — react early, score more, chase your best out of 30 |
 | Sign Flashcards | 31 hand-drawn SVG road signs with flip animation and known/still-learning tracking |
 | Study Guide | Cheat sheets (sign system, markings, right-of-way, emergencies, hill parking, key numbers) plus a full behind-the-wheel road test guide |

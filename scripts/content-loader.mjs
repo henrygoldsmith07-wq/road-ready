@@ -17,6 +17,8 @@ export function loadContent(rootDir) {
   const s = loadClassicScriptFrom(root, "js/signs.js", ["SIGNS"]);
   let p = {};
   try { p = loadClassicScriptFrom(root, "js/state-packs.js", ["STATE_PACKS", "SOURCE_REGISTRY", "UNIVERSAL_DEFAULTS", "CONCEPT_FACT_KEYS", "VERIFICATION_MAX_AGE_DAYS"]); } catch { /* packs optional */ }
+  let bp = {};
+  try { bp = loadClassicScriptFrom(root, "js/exam-blueprints.js", ["EXAM_BLUEPRINTS"]); } catch { /* blueprints optional */ }
   const packs = p.STATE_PACKS || {};
   const sources = p.SOURCE_REGISTRY || {};
   const baseQuestions = q.QUESTIONS || [];
@@ -34,6 +36,7 @@ export function loadContent(rootDir) {
     UNIVERSAL_DEFAULTS: p.UNIVERSAL_DEFAULTS || {},
     CONCEPT_FACT_KEYS: p.CONCEPT_FACT_KEYS || {},
     VERIFICATION_MAX_AGE_DAYS: p.VERIFICATION_MAX_AGE_DAYS ?? null,
+    EXAM_BLUEPRINTS: bp.EXAM_BLUEPRINTS || {},
   };
 }
 

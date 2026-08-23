@@ -297,10 +297,53 @@ export function runChecks(data, opts = {}) {
   const unusedSigns = Object.keys(SIGNS).filter((id) => !referenced.has(id));
   if (unusedSigns.length) warn("sign-data", `unused signs: ${unusedSigns.join(", ")}`, { review: true });
 
+  /* ---------- 8. exam blueprints (official simulations) ---------- */
+  const EXAM_BLUEPRINTS = data.EXAM_BLUEPRINTS || {};
+  const jurisdictionalPacks = Object.keys(STATE_PACKS).filter((k) => k !== "generic");
+  for (const [packId, bp] of Object.entries(EXAM_BLUEPRINTS)) {
+    if (!(packId in STATE_PACKS) || packId === "generic") {
+      warn("blueprint", `blueprint "${packId}" has no matching jurisdiction pack`, { review: true });
+      continue;
+    }
+    if (!bp || typeof bp !== "object") { err("blueprint", `[${packId}] is not an object`); continue; }
+    if (!Number.isInteger(bp.questionCount) || bp.questionCount < 5 || bp.questionCount > 100)
+      err("blueprint", `[${packId}] questionCount must be an integer in [5, 100]`);
+    if (!Number.isInteger(bp.minCorrect) || bp.minCorrect < 1 || (bp.questionCount && bp.minCorrect > bp.questionCount))
+      err("blueprint", `[${packId}] minCorrect must be an integer in [1, questionCount]`);
+    if (bp.timeLimitMin != null && (!Number.isFinite(bp.timeLimitMin) || bp.timeLimitMin < 5 || bp.timeLimitMin > 180))
+      err("blueprint", `[${packId}] timeLimitMin must be null or a number in [5, 180]`);
+    if (bp.topicWeights != null) {
+      if (typeof bp.topicWeights !== "object" || Array.isArray(bp.topicWeights)) {
+        err("blueprint", `[${packId}] topicWeights must be null or an object of category multipliers`);
+      } else {
+        for (const [cat, w] of Object.entries(bp.topicWeights)) {
+          if (!(cat in CATEGORIES)) err("blueprint", `[${packId}] topicWeights references unknown category "${cat}"`);
+          else if (typeof w !== "number" || !isFinite(w) || w <= 0 || w > 10)
+            err("blueprint", `[${packId}] topicWeights["${cat}"] must be a finite multiplier in (0, 10]`);
+        }
+      }
+    }
+    // official specs are factual claims — they cite the registry like questions do
+    if (typeof bp.sourceId !== "string" || !(bp.sourceId in SOURCE_REGISTRY)) {
+      err("source-registry", `[${packId}] blueprint sourceId is not registered`);
+    } else if (SOURCE_REGISTRY[bp.sourceId].jurisdiction !== packId) {
+      err("source-registry", `[${packId}] blueprint cites a ${SOURCE_REGISTRY[bp.sourceId].jurisdiction} source`);
+    } else {
+      const src = SOURCE_REGISTRY[bp.sourceId];
+      const ageDays = Math.floor((nowMs - Date.parse(src.verified + "T00:00:00Z")) / 86400000);
+      if (isFinite(ageDays) && ageDays > MAX_AGE_DAYS)
+        err("provenance-stale", `[${packId}] blueprint source verification is stale (${src.verified}) — re-verify the exam spec`);
+    }
+    if (typeof bp.label !== "string" || !bp.label.trim()) err("blueprint", `[${packId}] missing label`);
+  }
+  for (const packId of jurisdictionalPacks) {
+    if (!(packId in EXAM_BLUEPRINTS)) err("blueprint", `jurisdiction "${packId}" has no exam blueprint — the Official Simulation cannot be offered`);
+  }
+
   return {
     errors,
     warnings,
-    stats: { questions: total, signs: Object.keys(SIGNS).length, packs: Object.keys(STATE_PACKS).length, balance, factChecks },
+    stats: { questions: total, signs: Object.keys(SIGNS).length, packs: Object.keys(STATE_PACKS).length, balance, factChecks, blueprints: Object.keys(data.EXAM_BLUEPRINTS || {}).length },
     provenance,
   };
 }

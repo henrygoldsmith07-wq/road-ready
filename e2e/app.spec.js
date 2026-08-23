@@ -207,6 +207,45 @@ test.describe("PWA / offline", () => {
   });
 });
 
+test.describe("official simulation", () => {
+  test("generic users see the unlock hint instead of an official row", async ({ page }) => {
+    await freshApp(page);
+    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    await page.locator('#bottomNav button[data-nav="exam"]').click();
+    await expect(page.locator("#setupList .setup-row", { hasText: "Official Simulation" })).toHaveCount(0);
+    await expect(page.locator("#setupList .setting-note")).toContainText("Pick your state");
+  });
+
+  test("CA selection locks the sim to the real blueprint and grades at the end", async ({ page }) => {
+    await freshApp(page);
+    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    await page.locator('#bottomNav button[data-nav="stats"]').click();
+    await page.locator("#selStatePack").selectOption("CA");
+    await page.locator('#bottomNav button[data-nav="exam"]').click();
+
+    const official = page.locator("#setupList .setup-row", { hasText: "California Official Simulation" });
+    await expect(official).toContainText("46 questions");
+    await expect(official).toContainText("38/46");
+    await expect(official).toContainText("feedback at end");
+
+    await official.click();
+    await expect(page.locator("#view-quiz")).toHaveClass(/active/);
+    await expect(page.locator("#qTimer")).toBeVisible();
+    await expect(page.locator("#qTimer")).toContainText("46:00");
+
+    // submit immediately: unanswered questions count wrong → fails the official bar
+    page.once("dialog", (d) => d.accept());
+    await page.locator("#btnQuit").click();
+    await expect(page.locator("#view-results")).toHaveClass(/active/);
+    await expect(page.locator("#resultTitle")).toHaveText("Not yet");
+    await expect(page.locator("#resultSub")).toContainText("requires 38 of 46");
+
+    // recorded in history as the official attempt
+    await page.locator('#bottomNav button[data-nav="stats"]').click();
+    await expect(page.locator("#historyList")).toContainText("California Official Simulation");
+  });
+});
+
 test.describe("accessibility basics", () => {
   test("skip link exists and quiz feedback is announced", async ({ page }) => {
     await freshApp(page);

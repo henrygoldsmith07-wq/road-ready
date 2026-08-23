@@ -14,6 +14,7 @@ const SHELL = [
   "css/styles.css",
   "js/core.js",
   "js/state-packs.js",
+  "js/exam-blueprints.js",
   "js/icons.js",
   "js/questions.js",
   "js/signs.js",

@@ -3,6 +3,7 @@
 
 const Core = window.RoadReadyCore;
 const Packs = window.RoadReadyPacks;
+const BLUEPRINTS = (window.RoadReadyBlueprints || {}).EXAM_BLUEPRINTS || {};
 const STORE_KEY = "roadready.v1";
 const $ = (id) => document.getElementById(id);
 const on = (el, ev, fn) => el.addEventListener(ev, fn);
@@ -320,13 +321,35 @@ function startSetup(mode, focusCat) {
     });
     items.forEach(it => list.appendChild(setupRow(it)));
   } else {
-    const items = [
+    const items = [];
+    // Official Simulation: locked to the selected jurisdiction's real exam
+    const packId = Packs.PACK_IDS.includes(state.settings.statePack) ? state.settings.statePack : "generic";
+    const bp = BLUEPRINTS[packId];
+    if (bp) {
+      items.push({
+        id: "official", icon: "grad", name: bp.label,
+        desc: `${bp.questionCount} questions · pass ${bp.minCorrect}/${bp.questionCount} (official threshold) · ${bp.timeLimitMin ? bp.timeLimitMin + "-min limit" : "standard pacing"} · feedback at end`,
+        action: () => startOfficialExam(packId),
+      });
+    }
+    items.push(
       { id: "std", icon: "clipboard", name: `Standard Exam — ${state.settings.examLen} questions`, desc: `Pass mark ${Math.round(state.settings.passMark * 100)}% · ${state.settings.examLen} min time limit`, action: () => startExam(state.settings.examLen) },
       { id: "quick", icon: "zap", name: "Quick Check — 10 questions", desc: "5-minute diagnostic across all topics", action: () => startExam(10) },
       { id: "full", icon: "grad", name: "Full Test — 46 questions", desc: "Simulates many states' full knowledge test · 46 min", action: () => startExam(46) },
       { id: "weak", icon: "target", name: "Weak Topics Exam", desc: "20 questions weighted toward your lowest categories", action: () => startExam(20, true) },
-    ];
+    );
     items.forEach(it => list.appendChild(setupRow(it)));
+    if (!bp) {
+      const note = document.createElement("p");
+      note.className = "setting-note";
+      note.textContent = "Pick your state in Settings → \"Your state's rules\" to unlock the Official Simulation of that state's real knowledge exam.";
+      list.appendChild(note);
+    } else {
+      const notes = document.createElement("p");
+      notes.className = "setting-note";
+      notes.textContent = bp.notes;
+      list.appendChild(notes);
+    }
   }
   showView("setup");
 }
@@ -353,6 +376,24 @@ function startExam(n, weakBias) {
   // mix; weakBias reserves ~60% of seats for your three weakest topics.
   const qs = Core.assembleExam({ bank, n, qstats: state.qstats, flags: state.flagged, weakBias });
   session = { mode: "exam", label: n >= 40 ? "Full Test" : n > 12 ? "Mock Exam" : "Quick Check", questions: qs, i: 0, correct: 0, answers: [], timeLeft: Core.timeLimitSecs(qs.length), endTs: 0, timerId: null };
+  beginQuiz();
+}
+
+/* Official Simulation — locked to the jurisdiction's real exam parameters.
+   Pool: universal + this state's questions only. Feedback stays hidden until
+   the end; pass bar and pacing come from EXAM_BLUEPRINTS, not settings. */
+function startOfficialExam(packId) {
+  const bp = BLUEPRINTS[packId];
+  if (!bp) return;
+  quizBackTarget = "home";
+  const qs = Core.assembleExam({ bank, n: bp.questionCount, qstats: state.qstats, flags: state.flagged, weights: bp.topicWeights });
+  session = {
+    mode: "exam", official: true, blueprint: bp,
+    label: bp.label,
+    questions: qs, i: 0, correct: 0, answers: [],
+    timeLeft: bp.timeLimitMin ? bp.timeLimitMin * 60 : Core.timeLimitSecs(qs.length),
+    endTs: 0, timerId: null,
+  };
   beginQuiz();
 }
 function beginQuiz() {
@@ -514,9 +555,12 @@ function finishSession(timedOut) {
     });
     const total = session.questions.length;
     const correct = session.answers.filter(a => a.right).length;
-    const g = Core.gradeExam(correct, total, state.settings.passMark);
-    const pass = g.pass;
-    state.exams.push({ date: Date.now(), label: session.label, pct: g.pct, correct, total, pass, durationSec: Core.timeLimitSecs(total) - Math.max(0, session.timeLeft || 0) });
+    // official simulations grade on the jurisdiction's real pass bar
+    const bp = session.official ? session.blueprint : null;
+    const passMark = bp ? bp.minCorrect / Math.max(1, bp.questionCount) : state.settings.passMark;
+    const g = Core.gradeExam(correct, total, passMark);
+    const pass = g.pass && (!bp || total === Math.min(bp.questionCount, bank.length));
+    state.exams.push({ date: Date.now(), label: session.label, pct: g.pct, correct, total, pass, durationSec: Core.timeLimitSecs(total) - Math.max(0, session.timeLeft || 0), official: !!bp });
     if (state.exams.length > Core.MAX_EXAM_HISTORY) state.exams = state.exams.slice(-Core.MAX_EXAM_HISTORY);
     save();
     checkProgressAchievements();
@@ -527,10 +571,14 @@ function finishSession(timedOut) {
     showResults({
       pass, correct, total, timedOut,
       answers: session.answers,
-      title: pass ? "Passed" : "Not yet",
+      title: pass ? (bp ? "Passed — Official Standard" : "Passed") : "Not yet",
       sub: pass
-        ? `You scored above the ${Math.round(state.settings.passMark * 100)}% pass mark. Take another exam to build consistency.`
-        : `You need ${g.needed} of ${total} to pass. Review your misses and try again — most people pass on a retake.`,
+        ? bp
+          ? `You met ${bp.label.replace(" Simulation", "")}'s real bar: ${bp.minCorrect} of ${bp.questionCount}. ${bp.notes}`
+          : `You scored above the ${Math.round(state.settings.passMark * 100)}% pass mark. Take another exam to build consistency.`
+        : bp
+          ? `The real ${bp.label.replace(" Simulation", "")} requires ${bp.minCorrect} of ${total}. Review your misses and try again.`
+          : `You need ${g.needed} of ${total} to pass. Review your misses and try again — most people pass on a retake.`,
     });
   } else {
     // practice: score only the questions actually answered

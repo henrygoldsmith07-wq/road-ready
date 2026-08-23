@@ -423,21 +423,31 @@
   }
 
   /**
-   * Blueprint: distribute n seats across topics proportionally to topic size
-   * (largest-remainder so totals match exactly and every non-empty topic gets
-   * fair representation instead of pure random drift). Never allocates more
-   * seats than a topic has questions; total always equals min(n, bank size).
+   * Blueprint: distribute n seats across topics proportionally to topic size,
+   * optionally skewed by editorial `weights` ({cat: multiplier}) — e.g. an
+   * official blueprint that emphasizes signs over vehicle maintenance.
+   * Largest-remainder so totals match exactly; never allocates more seats
+   * than a topic has questions.
    */
-  function examBlueprint(bank, n) {
+  function examBlueprint(bank, n, weights) {
+    const w = weights && typeof weights === "object" ? weights : null;
     const counts = {};
     bank.forEach((q) => { counts[q.cat] = (counts[q.cat] || 0) + 1; });
     const cats = Object.keys(counts);
     const total = bank.length;
+    // effective weight per topic: base share × multiplier (missing key ⇒ ×1)
+    const eff = {};
+    let effSum = 0;
+    cats.forEach((c) => {
+      const m = w && typeof w[c] === "number" && isFinite(w[c]) && w[c] > 0 ? w[c] : 1;
+      eff[c] = (counts[c] / total) * m;
+      effSum += eff[c];
+    });
     const seats = Math.min(n, total);
     const alloc = cats.map((c) => ({
       cat: c,
       avail: counts[c],
-      exact: (counts[c] / total) * seats,
+      exact: effSum > 0 ? (eff[c] / effSum) * seats : 0,
       take: 0,
     }));
     // pass 1: proportional floor, capped at availability
@@ -466,7 +476,7 @@
     const byCat = {};
     cats.forEach((c) => { byCat[c] = bank.filter((q) => q.cat === c); });
 
-    let alloc = examBlueprint(bank, n);
+    let alloc = examBlueprint(bank, n, opts.weights);
 
     if (opts.weakBias && cats.length > 1) {
       const accs = cats.map((c) => ({ c, acc: catAccuracy(byCat[c], qstats) }))
