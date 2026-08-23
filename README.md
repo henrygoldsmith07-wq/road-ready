@@ -24,6 +24,8 @@ A self-contained driving-test study app. No build step, no dependencies, no inte
 | XP & Achievements | Earn XP for every answer, climb levels, and unlock 12 achievements from First Steps to Hawk Eye |
 | Review Missed | Every question you've ever missed, with the correct answer and why — plus one-tap drills |
 | Progress | Readiness score, per-topic mastery, accuracy, day streak, daily goal, study time, exam history |
+| Test Day Plan | Save your knowledge-test date and get an adaptive daily question target plus the best next action; private and fully offline |
+| Official Sources | State-rule explanations and Study Guide facts link directly to the issuing DMV/DPS/DOL handbook; dedicated State Rules drills keep the cited material together |
 | Settings | Pass mark (75/80/85%), exam length, instant-feedback toggle, full progress reset |
 
 Everything is stored locally in your browser (localStorage) — nothing leaves your machine.
@@ -76,9 +78,18 @@ and state packs.
 question-bank schema, duplicate questions (prompt+sign identity), duplicate
 answers within a question, topic-balance floor, broken-explanation heuristics
 (placeholders, answer echoes), sign-data completeness + balanced SVG markup.
-It also maintains **automated provenance**: `content-manifest.json` records a
-content hash per question with source attribution — uncommitted bank drift
-fails the build until you regenerate the manifest.
+
+**Provenance is factual QA, not change tracking.** Every question must resolve
+to a registered official source (`SOURCE_REGISTRY` in `js/state-packs.js` —
+issuing agency, document title, URL on an approved `.gov`-class host,
+verification date); universal questions resolve through explicit per-category
+defaults. CI fails when: a question has no resolvable source; a source's
+jurisdiction doesn't cover the question; verification goes stale (>365 days);
+or a state-specific answer/explanation contradicts the pack's fact table
+(numbers compared numerically — "four" == "4", BAC decimals exact).
+`content-manifest.json` stores the resolved provenance snapshot (authority,
+document, section, verifiedAt) alongside each question's content hash;
+uncommitted bank drift fails the build until you regenerate it.
 
 **E2E (`e2e/`, Playwright)** runs real journeys — onboarding, practice,
 timed mock exam, flashcards, import/export round-trip, PWA offline reload,
@@ -101,4 +112,6 @@ practice and exams when the pack is selected, plus a key-facts card (BAC limits,
 school-bus rules, phone laws…) at the top of the Study Guide. Universal
 questions apply to every pack. Add a pack by appending an entry to
 `js/state-packs.js` — the content QA system validates its questions, facts and
-provenance fields.
+provenance fields. `SOURCE_REGISTRY` maps every jurisdiction pack to a verified
+HTTPS resource on its issuing agency's official domain; broken, missing, or
+third-party source records fail validation.

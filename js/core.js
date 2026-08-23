@@ -21,6 +21,7 @@
       theme: "dark",
       tts: false,
       statePack: "generic",
+      testDate: "",
     };
   }
 
@@ -122,6 +123,7 @@
     s.settings.theme = strEnum(s.settings.theme, ["dark", "light"], "dark");
     s.settings.tts = bool(s.settings.tts);
     s.settings.statePack = strEnum(s.settings.statePack, packIds, "generic");
+    s.settings.testDate = validIsoDate(s.settings.testDate) ? s.settings.testDate : "";
     return s;
   }
 
@@ -161,6 +163,11 @@
   /* ---------------- dates / streak / daily goal ---------------- */
   const DAY_MS = 86400000;
   const isoDay = (ms) => new Date(ms).toISOString().slice(0, 10);
+  const validIsoDate = (value) => {
+    if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const parsed = Date.parse(value + "T00:00:00Z");
+    return isFinite(parsed) && isoDay(parsed) === value;
+  };
 
   /** Pure streak update. Returns {count, last}. */
   function touchStreak(streak, todayIso, yesterdayIso) {
@@ -175,6 +182,38 @@
     out[dayIso] = (out[dayIso] || 0) + (n || 1);
     return out;
   };
+
+  /** Build a practical daily study plan around a learner's test date. */
+  function studyPlan(questions, qstats, exams, daily, testDateIso, todayIso) {
+    const today = validIsoDate(todayIso) ? todayIso : isoDay(Date.now());
+    const todayCount = dailyCount(daily, today);
+    if (!validIsoDate(testDateIso)) {
+      return { status: "no-date", daysLeft: null, dailyTarget: DAILY_GOAL, todayCount, remainingToday: Math.max(0, DAILY_GOAL - todayCount) };
+    }
+
+    const daysLeft = Math.round((Date.parse(testDateIso + "T00:00:00Z") - Date.parse(today + "T00:00:00Z")) / DAY_MS);
+    const bank = Array.isArray(questions) ? questions : [];
+    const stats = plainObject(qstats);
+    const unseen = bank.filter((q) => !stats[q.id] || !stats[q.id].seen).length;
+    const weak = bank.filter((q) => {
+      const st = stats[q.id];
+      return st && st.seen && qMastery(st) < 0.65;
+    }).length;
+    const passedExam = Array.isArray(exams) && exams.some((e) => e && e.pass);
+    const workRemaining = unseen + weak * 2;
+    const dailyTarget = daysLeft > 0
+      ? Math.min(50, Math.max(DAILY_GOAL, Math.ceil(workRemaining / daysLeft)))
+      : Math.max(20, DAILY_GOAL);
+    const action = daysLeft <= 0 || (daysLeft <= 7 && !passedExam)
+      ? "exam" : weak > 0 ? "review" : "practice";
+
+    return {
+      status: daysLeft < 0 ? "past" : daysLeft === 0 ? "today" : "active",
+      daysLeft, dailyTarget, todayCount,
+      remainingToday: Math.max(0, dailyTarget - todayCount),
+      unseen, weak, workRemaining, passedExam, action,
+    };
+  }
 
   /* ---------------- XP, levels, achievements ---------------- */
   const ACHIEVEMENTS = [
@@ -503,8 +542,8 @@
   /* ---------------- export surface ---------------- */
   const RoadReadyCore = {
     SCHEMA_VERSION, DAILY_GOAL, EXAM_SECONDS_PER_QUESTION, MAX_EXAM_HISTORY,
-    DAY_MS, isoDay, defaultState, defaultSettings, migrateState, sanitizeState,
-    touchStreak, dailyCount, bumpDaily,
+    DAY_MS, isoDay, validIsoDate, defaultState, defaultSettings, migrateState, sanitizeState,
+    touchStreak, dailyCount, bumpDaily, studyPlan,
     ACHIEVEMENTS, levelFor, xpForAnswer, xpForExam, evaluateAchievements,
     XP_PER_CORRECT, XP_PER_WRONG, XP_EXAM_PASS, XP_EXAM_PERFECT, XP_PER_HAZARD_POINT,
     qMastery, qDifficulty, readiness, topicMastery, catAccuracy,

@@ -101,4 +101,12 @@ describe("state migration", () => {
     s.exams = Array.from({ length: 50 }, (_, i) => ({ date: i, label: "E", pct: 0.5, correct: 10, total: 20, pass: false }));
     expect(Core.migrateState(s).state.exams.length).toBe(Core.MAX_EXAM_HISTORY);
   });
+
+  it("preserves valid test dates and drops impossible ones", () => {
+    const s = Core.defaultState();
+    s.settings.testDate = "2026-10-14";
+    expect(Core.migrateState(s).state.settings.testDate).toBe("2026-10-14");
+    s.settings.testDate = "2026-02-31";
+    expect(Core.migrateState(s).state.settings.testDate).toBe("");
+  });
 });

@@ -131,6 +131,22 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
   transition: width 0.5s cubic-bezier(.22, 1, .36, 1);
 }
 
+/* ---------- test day plan ---------- */
+.study-plan {
+  margin: 8px 0 6px; padding: 16px; display: grid;
+  grid-template-columns: 1fr auto; align-items: center; gap: 14px;
+}
+.plan-kicker { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.plan-title { margin-top: 4px; font-size: 15px; font-weight: 700; letter-spacing: -.01em; }
+.study-plan p { color: var(--muted); font-size: 12.5px; line-height: 1.5; margin-top: 3px; }
+.plan-meta { color: var(--text); font-size: 11.5px; font-weight: 600; margin-top: 7px; }
+.plan-meta:empty { display: none; }
+.plan-action { white-space: nowrap; padding: 9px 12px; }
+@media (max-width: 480px) {
+  .study-plan { grid-template-columns: 1fr; }
+  .plan-action { width: 100%; }
+}
+
 /* ---------- topics ---------- */
 .topic-grid { display: grid; gap: 8px; }
 .topic-card { width: 100%; text-align: left; transition: border-color 0.15s; padding: 14px 16px; }
@@ -230,6 +246,13 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
 .fb-head .ok { display: inline-flex; align-items: center; gap: 5px; }
 .fb-head .bad { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); }
 .fb-why { font-size: 13.5px; color: var(--muted); line-height: 1.55; }
+.source-link {
+  display: inline-flex; align-items: center; margin-top: 9px;
+  color: var(--text); font-size: 11.5px; font-weight: 600;
+  text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px;
+}
+.source-link:hover { text-decoration-color: var(--text); }
+.source-link[hidden] { display: none; }
 
 .quiz-actions { display: flex; gap: 8px; margin-top: 14px; }
 .quiz-actions .primary { flex: 1; }
@@ -341,10 +364,13 @@ kbd {
   padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 14px;
 }
 .setting-row:last-of-type { border-bottom: 0; }
-.setting-row select {
+.setting-row select,
+.setting-row input[type="date"] {
   background: var(--card2); color: var(--text); border: 1px solid var(--line);
   border-radius: 8px; padding: 7px 10px; font-size: 13px;
 }
+.setting-row input[type="date"] { color-scheme: dark; font-family: inherit; }
+[data-theme="light"] .setting-row input[type="date"] { color-scheme: light; }
 .setting-row input[type="checkbox"] { width: 19px; height: 19px; accent-color: var(--text); }
 .danger-zone { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 12px; display: flex; justify-content: center; }
 .danger-zone .btn { color: var(--muted); font-size: 13px; padding: 9px 14px; }
@@ -570,3 +596,4 @@ kbd {
 .fact-row span { color: var(--muted); }
 .fact-row b { text-align: right; font-weight: 600; }
 .state-qcount { font-size: 11.5px; color: var(--muted); margin: 10px 0 0; }
+.state-source { border-top: 1px solid var(--line); padding-top: 10px; width: 100%; }

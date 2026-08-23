@@ -8,1333 +8,3553 @@
    "hash": "acc69659cac8906f",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg02": {
    "hash": "ecd6976042b3edd7",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg03": {
    "hash": "f920c01c2e3a1ba3",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg04": {
    "hash": "eeb3ec63d17eaea1",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg05": {
    "hash": "0b2054b5ed13b86d",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg06": {
    "hash": "5a1aa720334ef74a",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg07": {
    "hash": "ac444d0e77af70f0",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg08": {
    "hash": "ab3dd91a62a1e747",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg09": {
    "hash": "3d28e111c85a8072",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg10": {
    "hash": "6d513f347073f9f1",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg11": {
    "hash": "140a3d7f22342f16",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg12": {
    "hash": "1ec99688ece03d30",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg13": {
    "hash": "5efdbd2b0321e300",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg14": {
    "hash": "eaa6630318c1bb5a",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg15": {
    "hash": "650da1d17a9b3f0e",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg16": {
    "hash": "95a16f075cc3a120",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg17": {
    "hash": "cd90222602592882",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg18": {
    "hash": "55f77d5a43d9e0a4",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg19": {
    "hash": "0f05df5ddb8ee04d",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg20": {
    "hash": "abeee091b78a51ce",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg21": {
    "hash": "e2b221cbd24ddfdc",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg22": {
    "hash": "f6bd135db72d8332",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg23": {
    "hash": "99d8dde0137ffc63",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg24": {
    "hash": "4373d6aada421fc6",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg25": {
    "hash": "72a8e4ffeaa3b2cc",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg26": {
    "hash": "b0b5a9f18462a617",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg27": {
    "hash": "74b08ae4eb3e9bad",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg28": {
    "hash": "c360ec94738bdb64",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg29": {
    "hash": "a458d18882e41b2b",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg30": {
    "hash": "fe385d418a0c50b7",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg31": {
    "hash": "c4cc3406f3cd2320",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg32": {
    "hash": "bbc9d42cdea7d321",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg33": {
    "hash": "9e91926b2dd7ca0c",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg34": {
    "hash": "ae037b4e199eb210",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg35": {
    "hash": "ae49e60af8cac967",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "rw01": {
    "hash": "a4894ee7861bc4f6",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Right of Way",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "rw02": {
    "hash": "280affdbf8ead24b",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Right of Way",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "rw03": {
    "hash": "6013dae5caebe093",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Right of Way",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "rw04": {
    "hash": "105f7cbdf5d79d5a",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Right of Way",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "rw05": {
    "hash": "d54516f8cb8f3c57",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Right of Way",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "rw06": {
    "hash": "b4c87dbde9ee7443",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Right of Way",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "rw07": {
    "hash": "2b173334576e4609",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Right of Way",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "rw08": {
    "hash": "5e3a172103737ae7",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Right of Way",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "rw09": {
    "hash": "12d074f8923d78ab",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Right of Way",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "rw10": {
    "hash": "84151ee396bb609a",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Right of Way",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "rw11": {
    "hash": "95552e67bc519b93",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Right of Way",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "rw12": {
    "hash": "8b36da1715bb94f2",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Right of Way",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "rw13": {
    "hash": "2ac39da4af948537",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Right of Way",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "rw14": {
    "hash": "4297c5bc3dc061e9",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Right of Way",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "rw15": {
    "hash": "572f841be7528b31",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Right of Way",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "rw16": {
    "hash": "5e611a9e7c089ae7",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Right of Way",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "rw17": {
    "hash": "2103ee174dd92dc0",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Right of Way",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "rw18": {
    "hash": "3f1f97c63e01303f",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Right of Way",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "rw19": {
    "hash": "10a6b08d114cee18",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Right of Way",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sp01": {
    "hash": "0aebeb540b9bd61c",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Speed Limits and Safe Speed",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sp02": {
    "hash": "e9a0a05e592aa014",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Speed Limits and Safe Speed",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sp03": {
    "hash": "eaeb88ab11d91650",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Speed Limits and Safe Speed",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sp04": {
    "hash": "0d1370f04b7af466",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Speed Limits and Safe Speed",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sp05": {
    "hash": "21a0564f992cdacd",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Speed Limits and Safe Speed",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sp06": {
    "hash": "ff34a639d1fe790a",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Speed Limits and Safe Speed",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sp07": {
    "hash": "123f6cf26f26e320",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Speed Limits and Safe Speed",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sp08": {
    "hash": "8f25b63fffea8774",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Speed Limits and Safe Speed",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sp09": {
    "hash": "e052e845bd89562b",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Speed Limits and Safe Speed",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sp10": {
    "hash": "147a28a5738c6523",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Speed Limits and Safe Speed",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sp11": {
    "hash": "344a477f0c6e98a5",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Speed Limits and Safe Speed",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sp12": {
    "hash": "363861b9877b3896",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Speed Limits and Safe Speed",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sp13": {
    "hash": "f592de6b0d585e7f",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Speed Limits and Safe Speed",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sp14": {
    "hash": "fc38e5d3d2dbcc4c",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Speed Limits and Safe Speed",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "pk01": {
    "hash": "8961d4737d80e731",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Parking and Stopping",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "pk02": {
    "hash": "ce8b3b5ca36cb0b1",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Parking and Stopping",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "pk03": {
    "hash": "9b8e12c061a3c7d0",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Parking and Stopping",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "pk04": {
    "hash": "9a0b7381e1e605f8",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Parking and Stopping",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "pk05": {
    "hash": "53e6d970de21f898",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Parking and Stopping",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "pk06": {
    "hash": "2e6cc1f164c670ee",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Parking and Stopping",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "pk07": {
    "hash": "16bf79c84b490f38",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Parking and Stopping",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "pk08": {
    "hash": "5c4986de6216b2b6",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Parking and Stopping",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "pk09": {
    "hash": "2f0ccb6f7e7e0bdc",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Parking and Stopping",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "pk10": {
    "hash": "544d5b20e04aa22a",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Parking and Stopping",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "pk11": {
    "hash": "6d48f67a9ceb63e9",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Parking and Stopping",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "pk12": {
    "hash": "d4bd71d1a8027c28",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Parking and Stopping",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "pk13": {
    "hash": "889aeb22663a0b80",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Parking and Stopping",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "al01": {
    "hash": "a2e063e7d053fba8",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Alcohol and Drugs",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "al02": {
    "hash": "66d7022a904f690c",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Alcohol and Drugs",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "al03": {
    "hash": "7c4516ce7c403fc3",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Alcohol and Drugs",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "al04": {
    "hash": "bc1af6c2842ef253",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Alcohol and Drugs",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "al05": {
    "hash": "8a46a85155b6a255",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Alcohol and Drugs",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "al06": {
    "hash": "36e6ba082b7bb72a",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Alcohol and Drugs",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "al07": {
    "hash": "d1606db670724d69",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Alcohol and Drugs",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "al08": {
    "hash": "b80e8b07477fd9a8",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Alcohol and Drugs",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "al09": {
    "hash": "652937aef9f27e04",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Alcohol and Drugs",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "al10": {
    "hash": "6afd89b7ddbeb535",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Alcohol and Drugs",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "al11": {
    "hash": "55e23f6e5a266866",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Alcohol and Drugs",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sf01": {
    "hash": "00e5f14909bf191a",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Safe Driving and Emergencies",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sf02": {
    "hash": "a8e245777e69fbaf",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Safe Driving and Emergencies",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sf03": {
    "hash": "fcce362e84b03cf5",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Safe Driving and Emergencies",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sf04": {
    "hash": "fecf98e4036691d9",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Safe Driving and Emergencies",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sf05": {
    "hash": "1fc1493e59e4a382",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Safe Driving and Emergencies",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sf06": {
    "hash": "1851f77382b3d1e3",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Safe Driving and Emergencies",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sf07": {
    "hash": "bbbd464b2ce7c4bb",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Safe Driving and Emergencies",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sf08": {
    "hash": "ab93ddc5e2700423",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Safe Driving and Emergencies",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sf09": {
    "hash": "05f155c1c782d2d5",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Safe Driving and Emergencies",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sf10": {
    "hash": "76ddde01165e7243",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Safe Driving and Emergencies",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sf11": {
    "hash": "3909313f5f0bc6de",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Safe Driving and Emergencies",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sf12": {
    "hash": "ac140443182a1345",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Safe Driving and Emergencies",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sf13": {
    "hash": "5fd37b354c080123",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Safe Driving and Emergencies",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sf14": {
    "hash": "aec4aab58dac786f",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Safe Driving and Emergencies",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sf15": {
    "hash": "7c9feb1d3c37ab7e",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Safe Driving and Emergencies",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sf16": {
    "hash": "798a6bcbd7c859f6",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Safe Driving and Emergencies",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sf17": {
    "hash": "7428f7d8cba837ea",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Safe Driving and Emergencies",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sf18": {
    "hash": "f5dbf1fbb906c1d3",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Safe Driving and Emergencies",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sf19": {
    "hash": "c85be6081297ed2a",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Safe Driving and Emergencies",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sf20": {
    "hash": "7b5ddcf008245894",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Safe Driving and Emergencies",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sf21": {
    "hash": "8b377407a11f9f41",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Safe Driving and Emergencies",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sf22": {
    "hash": "7b0a6c925baede78",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Safe Driving and Emergencies",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "lw01": {
    "hash": "46d98dec582a133c",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Licensing, Documents and Penalties",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "lw02": {
    "hash": "b7b0ec41b9988c17",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Licensing, Documents and Penalties",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "lw03": {
    "hash": "31919e51275ad988",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Licensing, Documents and Penalties",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "lw04": {
    "hash": "a769f4b599a37a13",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Licensing, Documents and Penalties",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "lw05": {
    "hash": "31bad4a851afc014",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Licensing, Documents and Penalties",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "lw06": {
    "hash": "47171001ddc64283",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Licensing, Documents and Penalties",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "lw07": {
    "hash": "02c74cf44c63f722",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Licensing, Documents and Penalties",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "lw08": {
    "hash": "f9b9dbf59b34dc6d",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Licensing, Documents and Penalties",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "lw09": {
    "hash": "1614c7ecb2e9b365",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Licensing, Documents and Penalties",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "lw10": {
    "hash": "cb5b2d8c2969d029",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Licensing, Documents and Penalties",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "lw11": {
    "hash": "5fcbbe69ea9b8324",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Licensing, Documents and Penalties",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "lw12": {
    "hash": "094f72867ad3e568",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Licensing, Documents and Penalties",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "lw13": {
    "hash": "c5f058dc19ed8e81",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Licensing, Documents and Penalties",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "lw14": {
    "hash": "2b0be7afc916d210",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Licensing, Documents and Penalties",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "lw15": {
    "hash": "46a4fe016fafd62d",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Licensing, Documents and Penalties",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg36": {
    "hash": "ceb382bf42d26c71",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg37": {
    "hash": "5b2d83a200432eac",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg38": {
    "hash": "a26fb427e3e5ad8a",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg39": {
    "hash": "e20df4c62b86cfac",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sg40": {
    "hash": "006ea542c13bdf9e",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Traffic Signs and Signals",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "rw20": {
    "hash": "e795ca43adec62cd",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Right of Way",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "rw21": {
    "hash": "916e27fbb9752c6e",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Right of Way",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sp15": {
    "hash": "438751f6098be46b",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Speed Limits and Safe Speed",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sp16": {
    "hash": "47060ff961136bfb",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Speed Limits and Safe Speed",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "al12": {
    "hash": "4dec5b8adfb2117b",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Alcohol and Drugs",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "al13": {
    "hash": "84758916147708b3",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Alcohol and Drugs",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sf23": {
    "hash": "b714b2c8943c9091",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Safe Driving and Emergencies",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "sf24": {
    "hash": "093052fe9bc66a42",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Safe Driving and Emergencies",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "mk01": {
    "hash": "6192809604ac080e",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Pavement Markings",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "mk02": {
    "hash": "068f1828eb02f059",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Pavement Markings",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "mk03": {
    "hash": "2c8c157eaf20fc81",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Pavement Markings",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "mk04": {
    "hash": "1dc2e573140cafe3",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Pavement Markings",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "mk05": {
    "hash": "9f412e5e2539db56",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Pavement Markings",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "mk06": {
    "hash": "58c279edebf8aa37",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Pavement Markings",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "mk07": {
    "hash": "05488b44acbecc60",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Pavement Markings",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "mk08": {
    "hash": "f726dfa85c610f9a",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Pavement Markings",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "mk09": {
    "hash": "d194652f5cd137a2",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Pavement Markings",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "mk10": {
    "hash": "99de3397d05207e6",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Pavement Markings",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "mk11": {
    "hash": "20ee29b5648311e1",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Pavement Markings",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "mk12": {
    "hash": "7109bbfad0e2fb7d",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Pavement Markings",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "mk13": {
    "hash": "14280c848aa27139",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Pavement Markings",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "mk14": {
    "hash": "ae12f5c1d44f6103",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Pavement Markings",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "mk15": {
    "hash": "fbe0bbd72abdb1f7",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Pavement Markings",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "vr01": {
    "hash": "4381d28bc3b02626",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Sharing the Road",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "vr02": {
    "hash": "8fb67989889259f4",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Sharing the Road",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "vr03": {
    "hash": "14c507077cca99bd",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Sharing the Road",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "vr04": {
    "hash": "9896c5c13494f1ca",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Sharing the Road",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "vr05": {
    "hash": "c605f4a0f05a5b83",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Sharing the Road",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "vr06": {
    "hash": "abd6053af71b3a43",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Sharing the Road",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "vr07": {
    "hash": "392fa4d8b393db9a",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Sharing the Road",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "vr08": {
    "hash": "f9766eb36db3f00d",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Sharing the Road",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "vr09": {
    "hash": "ea84427088bfcb67",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Sharing the Road",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "vr10": {
    "hash": "22fe80b0432db4cc",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Sharing the Road",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "vr11": {
    "hash": "f75b0ecbc0992be8",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Sharing the Road",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "vr12": {
    "hash": "8e4a9ddc4bd24f3c",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Sharing the Road",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "vr13": {
    "hash": "3ac8aa645f960302",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Sharing the Road",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "vr14": {
    "hash": "03890c98bfbf2785",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Sharing the Road",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "vh01": {
    "hash": "3f7d2295d39dabef",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Vehicle Equipment and Maintenance",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "vh02": {
    "hash": "6190fb385eac464d",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Vehicle Equipment and Maintenance",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "vh03": {
    "hash": "1b4afe4168116b08",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Vehicle Equipment and Maintenance",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "vh04": {
    "hash": "e55847f2c421f76a",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Vehicle Equipment and Maintenance",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "vh05": {
    "hash": "d2f06ed83d7afc0f",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Vehicle Equipment and Maintenance",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "vh06": {
    "hash": "b550ca490a4fd6cc",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Vehicle Equipment and Maintenance",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "vh07": {
    "hash": "169770fbab3f58b7",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Vehicle Equipment and Maintenance",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "vh08": {
    "hash": "a9f4c6ea96153ae6",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Vehicle Equipment and Maintenance",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "vh09": {
    "hash": "16de0204c37a58e4",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Vehicle Equipment and Maintenance",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "vh10": {
    "hash": "7dcbc872d2344ae4",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Vehicle Equipment and Maintenance",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "vh11": {
    "hash": "9ee0b028ba18bc8e",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Vehicle Equipment and Maintenance",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "vh12": {
    "hash": "e5f0f49919a4254f",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Vehicle Equipment and Maintenance",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "vh13": {
    "hash": "cd84b18dc9eead94",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Vehicle Equipment and Maintenance",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "vh14": {
    "hash": "ab38677765e11b68",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Vehicle Equipment and Maintenance",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "vh15": {
    "hash": "8ebb8570fed9a0f1",
    "firstSeen": "2026-08-22",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": true,
+    "sourceId": "us-dmv-handbooks-composite",
+    "authority": "Multiple state DMVs (composite)",
+    "document": "U.S. state driver handbooks — commonly taught rules",
+    "edition": "2025–2026 editions",
+    "jurisdiction": "*",
+    "section": "Vehicle Equipment and Maintenance",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "ca-001": {
    "hash": "4a575ee003071380",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "ca-dmv-driver-handbook",
+    "authority": "California DMV",
+    "document": "California Driver's Handbook",
+    "edition": null,
+    "jurisdiction": "CA",
+    "section": "Alcohol and Drugs",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "ca-002": {
    "hash": "55352c8643571c46",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "ca-dmv-driver-handbook",
+    "authority": "California DMV",
+    "document": "California Driver's Handbook",
+    "edition": null,
+    "jurisdiction": "CA",
+    "section": "Commercial Licenses",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "ca-003": {
    "hash": "d5036b06d239bfe2",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "ca-dmv-driver-handbook",
+    "authority": "California DMV",
+    "document": "California Driver's Handbook",
+    "edition": null,
+    "jurisdiction": "CA",
+    "section": "Traffic Controls",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "ca-004": {
    "hash": "e728ae2b34de54bd",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "ca-dmv-driver-handbook",
+    "authority": "California DMV",
+    "document": "California Driver's Handbook",
+    "edition": null,
+    "jurisdiction": "CA",
+    "section": "Distractions",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "ca-005": {
    "hash": "2efc5fd51b524332",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "ca-dmv-driver-handbook",
+    "authority": "California DMV",
+    "document": "California Driver's Handbook",
+    "edition": null,
+    "jurisdiction": "CA",
+    "section": "School Buses",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "ca-006": {
    "hash": "387e2e2d87dc84be",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "ca-dmv-driver-handbook",
+    "authority": "California DMV",
+    "document": "California Driver's Handbook",
+    "edition": null,
+    "jurisdiction": "CA",
+    "section": "Right of Way",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "tx-001": {
    "hash": "8b51051360d3b4e3",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "tx-dps-driver-handbook",
+    "authority": "Texas DPS",
+    "document": "Texas Driver Handbook",
+    "edition": null,
+    "jurisdiction": "TX",
+    "section": "Alcohol and Drug Impact",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "tx-002": {
    "hash": "8a3b8e3c9b73f172",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "tx-dps-driver-handbook",
+    "authority": "Texas DPS",
+    "document": "Texas Driver Handbook",
+    "edition": null,
+    "jurisdiction": "TX",
+    "section": "Signs, Signals and Markings",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "tx-003": {
    "hash": "412eaf1b193e33b9",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "tx-dps-driver-handbook",
+    "authority": "Texas DPS",
+    "document": "Texas Driver Handbook",
+    "edition": null,
+    "jurisdiction": "TX",
+    "section": "Right of Way",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "tx-004": {
    "hash": "36fe84b1b15c1386",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "tx-dps-driver-handbook",
+    "authority": "Texas DPS",
+    "document": "Texas Driver Handbook",
+    "edition": null,
+    "jurisdiction": "TX",
+    "section": "Defensive Driving",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "tx-005": {
    "hash": "7d8abddbc29b0deb",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "tx-dps-driver-handbook",
+    "authority": "Texas DPS",
+    "document": "Texas Driver Handbook",
+    "edition": null,
+    "jurisdiction": "TX",
+    "section": "Traffic Laws",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "tx-006": {
    "hash": "fc834638582cc81e",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "tx-dps-driver-handbook",
+    "authority": "Texas DPS",
+    "document": "Texas Driver Handbook",
+    "edition": null,
+    "jurisdiction": "TX",
+    "section": "Distractions",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "ny-001": {
    "hash": "767e2036c8f2f56d",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "ny-dmv-driver-manual",
+    "authority": "New York DMV",
+    "document": "New York State Driver's Manual",
+    "edition": null,
+    "jurisdiction": "NY",
+    "section": "Traffic Control",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "ny-002": {
    "hash": "4666789aaa47d990",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "ny-dmv-driver-manual",
+    "authority": "New York DMV",
+    "document": "New York State Driver's Manual",
+    "edition": null,
+    "jurisdiction": "NY",
+    "section": "Alcohol and Drugs",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "ny-003": {
    "hash": "a6a764ab031cd27b",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "ny-dmv-driver-manual",
+    "authority": "New York DMV",
+    "document": "New York State Driver's Manual",
+    "edition": null,
+    "jurisdiction": "NY",
+    "section": "Alcohol and Drugs",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "ny-004": {
    "hash": "77c228a3e831f75f",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "ny-dmv-driver-manual",
+    "authority": "New York DMV",
+    "document": "New York State Driver's Manual",
+    "edition": null,
+    "jurisdiction": "NY",
+    "section": "Distractions",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "ny-005": {
    "hash": "aa6d386c7caa4f3b",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "ny-dmv-driver-manual",
+    "authority": "New York DMV",
+    "document": "New York State Driver's Manual",
+    "edition": null,
+    "jurisdiction": "NY",
+    "section": "School Buses",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "ny-006": {
    "hash": "35480e576138bfeb",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "ny-dmv-driver-manual",
+    "authority": "New York DMV",
+    "document": "New York State Driver's Manual",
+    "edition": null,
+    "jurisdiction": "NY",
+    "section": "Defensive Driving",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "fl-001": {
    "hash": "6647083f5e0c3119",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "fl-flhsmv-handbook",
+    "authority": "FLHSMV",
+    "document": "Official Florida Driver License Handbook",
+    "edition": null,
+    "jurisdiction": "FL",
+    "section": "Sharing the Road",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "fl-002": {
    "hash": "a9f70004babffd06",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "fl-flhsmv-handbook",
+    "authority": "FLHSMV",
+    "document": "Official Florida Driver License Handbook",
+    "edition": null,
+    "jurisdiction": "FL",
+    "section": "Driving Under the Influence",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "fl-003": {
    "hash": "b45b1724ec30b5f1",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "fl-flhsmv-handbook",
+    "authority": "FLHSMV",
+    "document": "Official Florida Driver License Handbook",
+    "edition": null,
+    "jurisdiction": "FL",
+    "section": "School Bus Safety",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "fl-004": {
    "hash": "2e8c24a55aa50937",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "fl-flhsmv-handbook",
+    "authority": "FLHSMV",
+    "document": "Official Florida Driver License Handbook",
+    "edition": null,
+    "jurisdiction": "FL",
+    "section": "Defensive Driving",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "fl-005": {
    "hash": "11ee567a819604a0",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "fl-flhsmv-handbook",
+    "authority": "FLHSMV",
+    "document": "Official Florida Driver License Handbook",
+    "edition": null,
+    "jurisdiction": "FL",
+    "section": "Signals and Signs",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "fl-006": {
    "hash": "2c22307941785ad5",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "fl-flhsmv-handbook",
+    "authority": "FLHSMV",
+    "document": "Official Florida Driver License Handbook",
+    "edition": null,
+    "jurisdiction": "FL",
+    "section": "Driving Under the Influence",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "wa-001": {
    "hash": "c3ef58e0b583daa0",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "wa-dol-driver-guide",
+    "authority": "Washington DOL",
+    "document": "Washington State Driver Guide",
+    "edition": null,
+    "jurisdiction": "WA",
+    "section": "Rules of the Road",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "wa-002": {
    "hash": "f4e8aba104bfec3f",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "wa-dol-driver-guide",
+    "authority": "Washington DOL",
+    "document": "Washington State Driver Guide",
+    "edition": null,
+    "jurisdiction": "WA",
+    "section": "Alcohol and Drugs",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "wa-003": {
    "hash": "a42a60def1e4bb25",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "wa-dol-driver-guide",
+    "authority": "Washington DOL",
+    "document": "Washington State Driver Guide",
+    "edition": null,
+    "jurisdiction": "WA",
+    "section": "School Bus Rules",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "wa-004": {
    "hash": "83d4d387bd612167",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "wa-dol-driver-guide",
+    "authority": "Washington DOL",
+    "document": "Washington State Driver Guide",
+    "edition": null,
+    "jurisdiction": "WA",
+    "section": "Defensive Driving",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "wa-005": {
    "hash": "7a6cb967bff518fd",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "wa-dol-driver-guide",
+    "authority": "Washington DOL",
+    "document": "Washington State Driver Guide",
+    "edition": null,
+    "jurisdiction": "WA",
+    "section": "Intersections",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "wa-006": {
    "hash": "7fb96248243a8303",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "wa-dol-driver-guide",
+    "authority": "Washington DOL",
+    "document": "Washington State Driver Guide",
+    "edition": null,
+    "jurisdiction": "WA",
+    "section": "Alcohol and Drugs",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "pa-001": {
    "hash": "c3f1b3156e1145cd",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "pa-penndot-driver-manual",
+    "authority": "PennDOT",
+    "document": "Pennsylvania Driver's Manual",
+    "edition": null,
+    "jurisdiction": "PA",
+    "section": "Work Zones",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "pa-002": {
    "hash": "524b9d2f7e621e47",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "pa-penndot-driver-manual",
+    "authority": "PennDOT",
+    "document": "Pennsylvania Driver's Manual",
+    "edition": null,
+    "jurisdiction": "PA",
+    "section": "School Bus Stopping",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "pa-003": {
    "hash": "605027814c6b2f09",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "pa-penndot-driver-manual",
+    "authority": "PennDOT",
+    "document": "Pennsylvania Driver's Manual",
+    "edition": null,
+    "jurisdiction": "PA",
+    "section": "Driving Under the Influence",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "pa-004": {
    "hash": "5d13127a613cc768",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "pa-penndot-driver-manual",
+    "authority": "PennDOT",
+    "document": "Pennsylvania Driver's Manual",
+    "edition": null,
+    "jurisdiction": "PA",
+    "section": "Young Drivers",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "pa-005": {
    "hash": "c583d486c64aab7f",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "pa-penndot-driver-manual",
+    "authority": "PennDOT",
+    "document": "Pennsylvania Driver's Manual",
+    "edition": null,
+    "jurisdiction": "PA",
+    "section": "Defensive Driving",
+    "verifiedAt": "2026-08-23"
+   }
   },
   "pa-006": {
    "hash": "5514d1d577aeaaf3",
    "firstSeen": "2026-08-23",
    "lastChecked": "2026-08-23",
-   "source": "general-us-dmv-handbook"
+   "source": {
+    "resolved": true,
+    "defaulted": false,
+    "sourceId": "pa-penndot-driver-manual",
+    "authority": "PennDOT",
+    "document": "Pennsylvania Driver's Manual",
+    "edition": null,
+    "jurisdiction": "PA",
+    "section": "Traffic Signals",
+    "verifiedAt": "2026-08-23"
+   }
   }
  }
 }

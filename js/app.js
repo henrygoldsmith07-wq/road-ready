@@ -43,7 +43,6 @@ function touchStreak() {
 function todayAnswered() {
   return Core.dailyCount(state.daily, todayStr());
 }
-const DAILY_GOAL = Core.DAILY_GOAL;
 
 /* ---------------- import / export ---------------- */
 function exportProgress() {
@@ -224,13 +223,40 @@ function renderHome() {
     : "Train spotting developing hazards — like the real test";
   checkProgressAchievements();
 
-  // daily goal
-  const t = todayAnswered();
+  // daily goal + test-date study plan
+  const plan = Core.studyPlan(bank, state.qstats, state.exams, state.daily, state.settings.testDate, todayStr());
+  const t = plan.todayCount;
+  const target = plan.dailyTarget;
   const goalEl = $("dailyGoal");
-  goalEl.querySelector(".dg-bar-fill").style.width = Math.min(100, 100 * t / DAILY_GOAL) + "%";
-  goalEl.querySelector(".dg-label").innerHTML = t >= DAILY_GOAL
+  goalEl.querySelector(".dg-bar-fill").style.width = Math.min(100, 100 * t / target) + "%";
+  goalEl.querySelector(".dg-label").innerHTML = t >= target
     ? `Daily goal complete — <b>${t}</b> answered today`
-    : `Today's goal: <b>${t}/${DAILY_GOAL}</b> questions answered`;
+    : `Today's goal: <b>${t}/${target}</b> questions answered`;
+
+  const planBtn = $("btnPlanAction");
+  if (plan.status === "no-date") {
+    $("planTitle").textContent = "Turn practice into a plan";
+    $("planDetail").textContent = "Add your test date and Road Ready will calculate what to study each day.";
+    $("planMeta").textContent = "Private · offline · adjustable anytime";
+    planBtn.textContent = "Set test date";
+    planBtn.dataset.action = "set-date";
+  } else if (plan.status === "past") {
+    $("planTitle").textContent = "Update your test date";
+    $("planDetail").textContent = "Your saved test date has passed. Choose a new date to rebuild the plan.";
+    $("planMeta").textContent = "Your progress is still here";
+    planBtn.textContent = "Choose a date";
+    planBtn.dataset.action = "set-date";
+  } else {
+    const dayLabel = plan.daysLeft === 0 ? "Test day is today" : `${plan.daysLeft} day${plan.daysLeft === 1 ? "" : "s"} to test day`;
+    $("planTitle").textContent = dayLabel;
+    $("planDetail").textContent = plan.remainingToday
+      ? `${plan.remainingToday} more question${plan.remainingToday === 1 ? "" : "s"} today keeps you on pace.`
+      : "Today's target is complete. Keep the momentum or take a mock exam.";
+    $("planMeta").textContent = `${plan.unseen} unseen · ${plan.weak} weak · ${plan.dailyTarget}/day`;
+    planBtn.dataset.action = plan.action;
+    planBtn.textContent = plan.action === "exam" ? "Take mock exam"
+      : plan.action === "review" ? "Review weak spots" : "Start today's practice";
+  }
 
   // topics
   const grid = $("topicGrid");
@@ -277,6 +303,15 @@ function startSetup(mode, focusCat) {
       { id: "missed", icon: "target", name: "Missed Questions", desc: missedQuestions().length ? `Re-drill the ${Math.min(10, missedQuestions().length)} you've gotten wrong` : "Nothing missed yet — nice!", action: () => { const m = missedQuestions(); if (m.length) startPractice(pickWeighted(m.map(q => ({ q, w: 1 })), Math.min(10, m.length)), "Missed Questions", "home"); } },
       { id: "flagged", icon: "flag", name: "Flagged Questions", desc: Object.keys(state.flagged).length ? `${Object.keys(state.flagged).length} flagged for review` : "Flag questions during practice to build this set", action: () => { const f = Object.keys(state.flagged).map(id => byId[id]).filter(Boolean); if (f.length) startPractice(shuffle(f).slice(0, 15), "Flagged Questions", "home"); } },
     ];
+    const stateQuestions = bank.filter(q => Array.isArray(q.jurisdiction) && q.jurisdiction.includes(state.settings.statePack));
+    if (stateQuestions.length) {
+      const pack = Packs.STATE_PACKS[state.settings.statePack];
+      items.splice(1, 0, {
+        id: "state-rules", icon: "scale", name: `${pack.name} State Rules`,
+        desc: `${stateQuestions.length} jurisdiction-specific questions · every answer cites the official handbook`,
+        action: () => startPractice(shuffle(stateQuestions), `${pack.name} State Rules`, "home"),
+      });
+    }
     Object.entries(CATEGORIES).forEach(([id, c]) => {
       items.push({
         id, icon: c.icon, name: c.name, desc: c.desc,
@@ -364,6 +399,8 @@ function renderQuiz() {
     box.appendChild(b);
   });
   $("feedback").hidden = true;
+  $("fbSource").hidden = true;
+  $("fbSource").removeAttribute("href");
   $("btnNext").disabled = true;
   $("btnNext").textContent = session.i + 1 >= total ? "Finish" : "Next";
   const hint = document.querySelector(".kbd-hint");
@@ -374,6 +411,13 @@ function renderQuiz() {
   speak(q.q + ". " + q.choices.map((c, i) => (i + 1) + ". " + c).join(" "));
 }
 function escapeHTML(s) { return s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+function sourceCitationHTML(q) {
+  const source = Packs.sourceForQuestion(q);
+  if (!source) return "";
+  const detail = q.sourceSection ? `${source.agency} · ${q.sourceSection}` : source.title;
+  return `<a class="source-link" href="${escapeHTML(source.url)}" target="_blank" rel="noopener noreferrer">Official source: ${escapeHTML(detail)} ↗</a>`;
+}
 
 function answer(origIdx, btnEl) {
   if (session.answeredCurrent) return;
@@ -388,6 +432,17 @@ function answer(origIdx, btnEl) {
     fb.hidden = !state.settings.feedback;
     $("fbHead").innerHTML = right ? `<span class="ok">${icon("check", 15)} Correct</span>` : `<span class="bad">${icon("x", 15)} Not quite</span>`;
     $("fbWhy").textContent = q.why;
+    const source = Packs.sourceForQuestion(q);
+    const sourceLink = $("fbSource");
+    sourceLink.hidden = !source;
+    if (source) {
+      sourceLink.href = source.url;
+      sourceLink.textContent = `Official source: ${source.agency} · ${q.sourceSection} ↗`;
+      sourceLink.setAttribute("aria-label", `Open ${source.title}, section ${q.sourceSection}, in a new tab`);
+    } else {
+      sourceLink.removeAttribute("href");
+      sourceLink.removeAttribute("aria-label");
+    }
     btnEl && btnEl.scrollIntoView({ block: "nearest", behavior: "smooth" });
     $("btnNext").disabled = false;
     $("btnNext").focus();
@@ -557,9 +612,10 @@ function showResults(r) {
           ${q.signId ? `<div class="sign-frame small">${signSVG(q.signId, 70)}</div>` : ""}
           <div>
             <div class="ri-q">${escapeHTML(q.q)}</div>
-            <div class="ri-a ok">${icon("check", 14)} ${escapeHTML(q.choices[q.a])}</div>
-            <div class="ri-why">${escapeHTML(q.why)}</div>
-          </div></div>`;
+             <div class="ri-a ok">${icon("check", 14)} ${escapeHTML(q.choices[q.a])}</div>
+             <div class="ri-why">${escapeHTML(q.why)}</div>
+             ${sourceCitationHTML(q)}
+           </div></div>`;
       }).join("")
     : `<p class="muted">Nothing missed — flawless.</p>`;
   $("reviewSub").textContent = `${missed.length} question${missed.length === 1 ? "" : "s"} to review`;
@@ -657,6 +713,10 @@ function renderStats() {
   $("selExamLen").value = String(state.settings.examLen);
   $("chkFeedback").checked = !!state.settings.feedback;
   if ($("selStatePack")) $("selStatePack").value = Packs.PACK_IDS.includes(state.settings.statePack) ? state.settings.statePack : "generic";
+  if ($("inpTestDate")) {
+    $("inpTestDate").value = state.settings.testDate || "";
+    $("inpTestDate").min = todayStr();
+  }
 }
 
 /* ---------------- theme ---------------- */
@@ -966,6 +1026,25 @@ function init() {
     if (!m.length) { alert("Nothing missed yet — keep practicing!"); return; }
     startPractice(pickWeighted(m.map(q => ({ q, w: 1 })), Math.min(10, m.length)), "Missed Questions", "home");
   });
+  on($("btnPlanAction"), "click", e => {
+    const action = e.currentTarget.dataset.action;
+    if (action === "set-date") {
+      renderStats(); showView("stats");
+      setTimeout(() => { $("inpTestDate").scrollIntoView({ block: "center" }); $("inpTestDate").focus(); }, 0);
+      return;
+    }
+    if (action === "exam") { startSetup("exam"); return; }
+    if (action === "review") {
+      const missed = missedQuestions();
+      if (missed.length) {
+        startPractice(pickWeighted(missed.map(q => ({ q, w: 1 })), Math.min(20, missed.length)), "Test Day Review", "home");
+        return;
+      }
+    }
+    const plan = Core.studyPlan(bank, state.qstats, state.exams, state.daily, state.settings.testDate, todayStr());
+    const size = Math.min(20, Math.max(10, plan.remainingToday || 10));
+    startPractice(pickWeighted(adaptivePool(), size), "Today's Plan", "home");
+  });
 
   // flashcards
   on($("flashcard"), "click", flipCard);
@@ -987,6 +1066,13 @@ function init() {
   on($("selPassMark"), "change", e => { state.settings.passMark = parseFloat(e.target.value); save(); });
   on($("selExamLen"), "change", e => { state.settings.examLen = parseInt(e.target.value, 10); save(); });
   on($("chkFeedback"), "change", e => { state.settings.feedback = e.target.checked; save(); });
+  on($("inpTestDate"), "change", e => {
+    state.settings.testDate = Core.validIsoDate(e.target.value) ? e.target.value : "";
+    save(); renderHome();
+    toast(state.settings.testDate ? "Test day plan ready" : "Test date cleared",
+      state.settings.testDate ? "Your daily target now adapts to the time remaining." : "Your daily goal is back to 10 questions.",
+      "clock");
+  });
   on($("selStatePack"), "change", e => {
     state.settings.statePack = e.target.value;
     save();
@@ -1067,18 +1153,21 @@ function renderStateFacts() {
   if (!host) return;
   const packId = Packs.PACK_IDS.includes(state.settings.statePack) ? state.settings.statePack : "generic";
   const pack = Packs.STATE_PACKS[packId];
+  const source = Packs.packSource(packId);
   const n = (pack.questions || []).length;
   const rows = Object.entries(pack.facts).map(([k, v]) => {
     const label = FACT_LABELS[k] || k.replace(/([A-Z])/g, " $1").replace(/^./, c => c.toUpperCase());
     return `<div class="fact-row"><span>${label}</span><b>${v}</b></div>`;
   }).join("");
   host.hidden = false;
+  const note = pack.note || (source ? `Rules and figures are mapped to the ${source.title}. Laws can change, so confirm before test day.` : "");
   host.innerHTML = `
     <h2 class="section-title">${pack.name}</h2>
     <div class="card state-facts-card">
-      <p class="state-note">${pack.note}</p>
+      <p class="state-note">${escapeHTML(note)}</p>
       <div class="facts-grid">${rows}</div>
       ${n ? `<p class="state-qcount">${n} ${packId}-specific questions are included in your practice and exams.</p>` : ""}
+      ${source ? `<a class="source-link state-source" href="${escapeHTML(source.url)}" target="_blank" rel="noopener noreferrer">Open official ${escapeHTML(source.agency)} handbook ↗</a>` : ""}
     </div>`;
 }
 

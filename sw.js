@@ -3,7 +3,7 @@
    network refresh (stale-while-revalidate) for same-origin GETs. */
 "use strict";
 
-const VERSION = "v2";
+const VERSION = "v3";
 const CACHE = `roadready-${VERSION}`;
 const SHELL = [
   "./",

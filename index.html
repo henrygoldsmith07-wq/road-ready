@@ -76,6 +76,16 @@
         <div class="dg-bar"><div class="dg-bar-fill"></div></div>
       </div>
 
+      <div class="card study-plan" id="studyPlanCard">
+        <div class="plan-copy">
+          <div class="plan-kicker">Test Day Plan</div>
+          <div class="plan-title" id="planTitle">Turn practice into a plan</div>
+          <p id="planDetail">Add your test date and Road Ready will calculate what to study each day.</p>
+          <div class="plan-meta" id="planMeta"></div>
+        </div>
+        <button class="btn ghost plan-action" id="btnPlanAction">Set test date</button>
+      </div>
+
       <h2 class="section-title">Topics</h2>
       <div class="topic-grid" id="topicGrid"><!-- rendered by JS --></div>
 
@@ -117,6 +127,7 @@
         <div class="feedback" id="feedback" hidden aria-live="assertive">
           <div class="fb-head" id="fbHead"></div>
           <p class="fb-why" id="fbWhy"></p>
+          <a class="source-link" id="fbSource" target="_blank" rel="noopener noreferrer" hidden></a>
         </div>
       </div>
 
@@ -422,6 +433,11 @@
           <select id="selStatePack" aria-describedby="statePackNote"></select>
         </label>
         <p class="setting-note" id="statePackNote">State packs adjust state-specific numbers (BAC limits, right-on-red, school buses). Generic covers common U.S. rules.</p>
+        <label class="setting-row">
+          <span>Knowledge test date</span>
+          <input type="date" id="inpTestDate" aria-describedby="testDateNote">
+        </label>
+        <p class="setting-note" id="testDateNote">Used only on this device to build your daily study plan.</p>
         <div class="setting-row data-row">
           <span>Backup your progress</span>
           <span class="data-actions">

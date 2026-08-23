@@ -117,6 +117,19 @@ describe("state packs", () => {
     const ca = Packs.filterBankForPack(fullBank, "CA");
     expect(ca.length).toBeGreaterThan(generic.length);
   });
+
+  it("resolves every state question and pack to its official handbook", () => {
+    for (const pack of Object.values(Packs.STATE_PACKS).filter((p) => p.id !== "generic")) {
+      const packSource = Packs.packSource(pack.id);
+      expect(packSource.jurisdiction).toBe(pack.id);
+      expect(packSource.url).toMatch(/^https:\/\//);
+      for (const q of pack.questions) {
+        expect(Packs.sourceForQuestion(q)).toBe(packSource);
+      }
+    }
+    expect(Packs.packSource("generic")).toBe(null);
+    expect(Packs.sourceForQuestion({ id: "u1" })).toBe(null);
+  });
 });
 
 describe("migration honors real pack ids", () => {

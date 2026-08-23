@@ -12,6 +12,75 @@
  */
 "use strict";
 
+/* Primary-source registry. Every jurisdictional question must resolve to one
+   of these issuing-agency resources; content QA enforces the relationship. */
+const SOURCE_REGISTRY = {
+  "ca-dmv-driver-handbook": {
+    jurisdiction: "CA", agency: "California DMV", title: "California Driver's Handbook",
+    url: "https://www.dmv.ca.gov/portal/handbook/california-driver-handbook/", verified: "2026-08-23",
+  },
+  "tx-dps-driver-handbook": {
+    jurisdiction: "TX", agency: "Texas DPS", title: "Texas Driver Handbook",
+    url: "https://www.dps.texas.gov/InternetForms/home/Details/304", verified: "2026-08-23",
+  },
+  "ny-dmv-driver-manual": {
+    jurisdiction: "NY", agency: "New York DMV", title: "New York State Driver's Manual",
+    url: "https://dmv.ny.gov/book/export/html/1551", verified: "2026-08-23",
+  },
+  "fl-flhsmv-handbook": {
+    jurisdiction: "FL", agency: "FLHSMV", title: "Official Florida Driver License Handbook",
+    url: "https://www.flhsmv.gov/pdf/handbooks/englishdriverhandbook.pdf", verified: "2026-08-23",
+  },
+  "wa-dol-driver-guide": {
+    jurisdiction: "WA", agency: "Washington DOL", title: "Washington State Driver Guide",
+    url: "https://dol.wa.gov/driver-licenses-and-permits/driver-training-and-testing/driver-guides/washington-state-driver-guide-text-only", verified: "2026-08-23",
+  },
+  "pa-penndot-driver-manual": {
+    jurisdiction: "PA", agency: "PennDOT", title: "Pennsylvania Driver's Manual",
+    url: "https://www.pa.gov/agencies/dmv/driver-services/pennsylvania-drivers-manual", verified: "2026-08-23",
+  },
+  "us-dmv-handbooks-composite": {
+    jurisdiction: "*", agency: "Multiple state DMVs (composite)",
+    title: "U.S. state driver handbooks — commonly taught rules",
+    edition: "2025–2026 editions", verified: "2026-08-23",
+    note: "Cites the universal bank: rules taught consistently across state handbooks. State exceptions live in jurisdiction packs.",
+  },
+};
+
+/* Explicit, reviewed per-category citations for the universal bank. This table
+   IS the provenance for universal questions — configuration, never a silent
+   tooling fallback. A question whose cat has no entry here FAILS content QA. */
+const UNIVERSAL_DEFAULTS = {
+  signs:      { sourceId: "us-dmv-handbooks-composite", section: "Traffic Signs and Signals" },
+  markings:   { sourceId: "us-dmv-handbooks-composite", section: "Pavement Markings" },
+  row:        { sourceId: "us-dmv-handbooks-composite", section: "Right of Way" },
+  speed:      { sourceId: "us-dmv-handbooks-composite", section: "Speed Limits and Safe Speed" },
+  parking:    { sourceId: "us-dmv-handbooks-composite", section: "Parking and Stopping" },
+  alcohol:    { sourceId: "us-dmv-handbooks-composite", section: "Alcohol and Drugs" },
+  safety:     { sourceId: "us-dmv-handbooks-composite", section: "Safe Driving and Emergencies" },
+  vulnerable: { sourceId: "us-dmv-handbooks-composite", section: "Sharing the Road" },
+  vehicle:    { sourceId: "us-dmv-handbooks-composite", section: "Vehicle Equipment and Maintenance" },
+  laws:       { sourceId: "us-dmv-handbooks-composite", section: "Licensing, Documents and Penalties" },
+};
+
+/* How fresh a source verification must be (days). Older = CI failure. */
+const VERIFICATION_MAX_AGE_DAYS = 365;
+
+/* Which fact-table column guards which concept — used by the fact-consistency
+   checker to cross-examine state-specific answers against pack facts. */
+const CONCEPT_FACT_KEYS = {
+  "bac-limits":         ["bacAdult"],
+  "zero-tolerance":     ["bacUnder21"],
+  "following-distance": ["followDistance"],
+  "school-bus":         ["schoolBus"],
+  "right-on-red":       ["rightOnRed"],
+  "speed-limits":       ["speedResidential", "speedUrban"],
+  "phone-use":          ["handsFree", "handheldPhone", "distractedDriving", "textingBan"],
+  "distracted-driving": ["distractedDriving", "handsFree", "handheldPhone"],
+  "move-over":          ["moveOver"],
+  "work-zones":         ["workZone"],
+};
+
 const STATE_PACKS = {
   generic: {
     id: "generic",
@@ -29,6 +98,7 @@ const STATE_PACKS = {
   CA: {
     id: "CA",
     name: "California (DMV)",
+    sourceId: "ca-dmv-driver-handbook",
     facts: {
       bacAdult: "0.08% (0.04% for commercial drivers)",
       bacUnder21: "0.01% or more â€” zero tolerance",
@@ -80,13 +150,15 @@ const STATE_PACKS = {
   TX: {
     id: "TX",
     name: "Texas (DPS)",
+    sourceId: "tx-dps-driver-handbook",
     facts: {
       bacAdult: "0.08%",
       bacUnder21: "any detectable amount",
       followDistance: "2-second minimum, more at speed or in rain",
       rightOnRed: "Allowed after a complete stop unless posted otherwise",
       schoolBus: "Stop in both directions on any road unless a physical barrier divides them",
-      speedUrban: "30 mph default in cities unless posted",
+        speedUrban: "30 mph default in cities unless posted",
+        textingBan: "Texting while driving is illegal for ALL drivers statewide",
     },
     questions: [
       { id: "tx-001", cat: "alcohol", jurisdiction: ["TX"], concept: "zero-tolerance",
@@ -130,6 +202,7 @@ const STATE_PACKS = {
   NY: {
     id: "NY",
     name: "New York (DMV)",
+    sourceId: "ny-dmv-driver-manual",
     facts: {
       bacAdult: "0.08% (0.18% is aggravated DWI)",
       bacUnder21: "0.02% â€” zero tolerance",
@@ -180,6 +253,7 @@ const STATE_PACKS = {
   FL: {
     id: "FL",
     name: "Florida (FLHSMV)",
+    sourceId: "fl-flhsmv-handbook",
     facts: {
       bacAdult: "0.08%",
       bacUnder21: "0.02% or more",
@@ -230,6 +304,7 @@ const STATE_PACKS = {
   WA: {
     id: "WA",
     name: "Washington (DOL)",
+    sourceId: "wa-dol-driver-guide",
     facts: {
       bacAdult: "0.08%",
       bacUnder21: "0.02% or more",
@@ -280,6 +355,7 @@ const STATE_PACKS = {
   PA: {
     id: "PA",
     name: "Pennsylvania (PennDOT)",
+    sourceId: "pa-penndot-driver-manual",
     facts: {
       bacAdult: "0.08% (higher DUI tiers at 0.10% and 0.16%)",
       bacUnder21: "0.02% or more",
@@ -347,8 +423,19 @@ function packFacts(packId) {
   return (STATE_PACKS[packId] || STATE_PACKS.generic).facts;
 }
 
+function sourceForQuestion(question) {
+  return question && question.sourceId ? SOURCE_REGISTRY[question.sourceId] || null : null;
+}
+
+function packSource(packId) {
+  const pack = STATE_PACKS[packId] || STATE_PACKS.generic;
+  return pack.sourceId ? SOURCE_REGISTRY[pack.sourceId] || null : null;
+}
+
 const RoadReadyPacks = {
-  STATE_PACKS, PACK_IDS, filterBankForPack, packFacts, allPackQuestions,
+  SOURCE_REGISTRY, UNIVERSAL_DEFAULTS, CONCEPT_FACT_KEYS, VERIFICATION_MAX_AGE_DAYS,
+  STATE_PACKS, PACK_IDS, filterBankForPack, packFacts,
+  allPackQuestions, sourceForQuestion, packSource,
 };
 if (typeof module !== "undefined" && module.exports) module.exports = RoadReadyPacks;
 else if (typeof globalThis !== "undefined") globalThis.RoadReadyPacks = RoadReadyPacks;

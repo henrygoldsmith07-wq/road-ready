@@ -22,11 +22,30 @@ const MANIFEST_PATH = path.join(ROOT, "content-manifest.json");
 
 const data = loadContent();
 const { QUESTIONS } = data;
-const { errors, warnings, stats } = runChecks(data);
+const { errors, warnings, stats, provenance } = runChecks(data);
 
 /* ---------- provenance ---------- */
 const hashQuestion = (q) => createHash("sha256").update(canonicalQuestion(q)).digest("hex").slice(0, 16);
 const bankHash = () => createHash("sha256").update(QUESTIONS.map(canonicalQuestion).sort().join("\n")).digest("hex").slice(0, 32);
+
+/** Resolved provenance snapshot for the manifest — straight from the source
+ *  registry. Never fabricated: unresolved questions are stored as such. */
+function provenanceSnapshot(q) {
+  const p = provenance.get(q.id);
+  if (!p) return { resolved: false };
+  const src = data.SOURCE_REGISTRY[p.sourceId] || {};
+  return {
+    resolved: true,
+    defaulted: p.defaulted === true,
+    sourceId: p.sourceId,
+    authority: src.agency || null,
+    document: src.title || null,
+    edition: src.edition || null,
+    jurisdiction: src.jurisdiction || null,
+    section: p.section,
+    verifiedAt: src.verified || null,
+  };
+}
 
 if (UPDATE) {
   const prev = existsSync(MANIFEST_PATH) ? JSON.parse(readFileSync(MANIFEST_PATH, "utf8")) : {};
@@ -39,7 +58,7 @@ if (UPDATE) {
       hash: hashQuestion(q),
       firstSeen: (prior && prior.firstSeen) || today,
       lastChecked: today,
-      source: typeof q.source === "string" ? q.source : (prior && prior.source) || "general-us-dmv-handbook",
+      source: provenanceSnapshot(q),
     };
   }
   const manifest = {
@@ -67,13 +86,14 @@ if (UPDATE) {
   warnings.push({ rule: "provenance", msg: `no content-manifest.json yet — run "npm run provenance:update"` });
 }
 
-const missingSource = QUESTIONS.filter((q) => typeof q.source !== "string" || !q.source.trim());
-if (missingSource.length) {
-  warnings.push({ rule: "provenance", review: true, msg: `${missingSource.length}/${QUESTIONS.length} questions have no explicit "source" field (manifest still tracks their content hash)` });
-}
-
 /* ---------- report ---------- */
+const unresolved = QUESTIONS.filter((q) => !(provenance.get(q.id)));
+if (unresolved.length && !errors.some((e) => e.rule === "provenance" || e.rule === "source-registry")) {
+  // resolution failures normally already carry precise errors; this is a safety net
+  errors.push({ rule: "provenance", msg: `${unresolved.length} questions have no resolvable source (e.g. ${unresolved.slice(0, 3).map((q) => q.id).join(", ")})` });
+}
 console.log(`\nRoad Ready content QA — ${stats.questions} questions, ${stats.signs} signs, ${stats.packs} packs`);
+console.log(`provenance: ${provenance.size}/${QUESTIONS.length} resolved (${[...provenance.values()].filter((p) => p.defaulted).length} via universal defaults), ${stats.factChecks ?? 0} fact-consistency checks passed`);
 const fmt = (list) => {
   const byRule = {};
   list.forEach(({ rule, msg }) => { (byRule[rule] = byRule[rule] || []).push(msg); });

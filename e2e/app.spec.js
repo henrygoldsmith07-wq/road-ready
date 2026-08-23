@@ -98,7 +98,7 @@ test.describe("flashcards & settings", () => {
     expect(counter2).toMatch(/^2 \//);
   });
 
-  test("state pack select changes selection persistently", async ({ page }) => {
+  test("state pack exposes official sources in guide and dedicated practice", async ({ page }) => {
     await freshApp(page);
     if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
     await page.locator('#bottomNav button[data-nav="stats"]').click();
@@ -106,6 +106,36 @@ test.describe("flashcards & settings", () => {
     await page.waitForTimeout(150);
     const pack = await page.evaluate(() => JSON.parse(localStorage.getItem("roadready.v1")).settings.statePack);
     expect(pack).toBe("CA");
+
+    await page.locator('#bottomNav button[data-nav="guide"]').click();
+    const guideSource = page.locator("#stateFacts .state-source");
+    await expect(guideSource).toBeVisible();
+    await expect(guideSource).toHaveAttribute("href", /dmv\.ca\.gov/);
+    await expect(page.locator("#stateFacts .state-note")).not.toContainText("undefined");
+
+    await page.locator('#bottomNav button[data-nav="practice"]').click();
+    const stateDrill = page.locator('.setup-row:has-text("California (DMV) State Rules")');
+    await expect(stateDrill).toBeVisible();
+    await stateDrill.click();
+    await page.keyboard.press("1");
+    await expect(page.locator("#feedback")).toBeVisible();
+    await expect(page.locator("#fbSource")).toBeVisible();
+    await expect(page.locator("#fbSource")).toHaveAttribute("href", /dmv\.ca\.gov/);
+  });
+
+  test("test date builds a persistent daily plan", async ({ page }) => {
+    await freshApp(page);
+    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    await page.locator("#btnPlanAction").click();
+    await expect(page.locator("#view-stats")).toHaveClass(/active/);
+    const future = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+    await page.locator("#inpTestDate").fill(future);
+    await page.locator("#inpTestDate").dispatchEvent("change");
+    await page.locator('#bottomNav button[data-nav="home"]').click();
+    await expect(page.locator("#planTitle")).toContainText("day");
+    await expect(page.locator("#planMeta")).toContainText("/day");
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("roadready.v1")).settings.testDate);
+    expect(saved).toBe(future);
   });
 
   test("export produces a downloadable backup file", async ({ page }) => {

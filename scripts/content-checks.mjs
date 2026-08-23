@@ -5,6 +5,10 @@
 const ID_RE = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*\d{1,3}$/;
 const PLACEHOLDER_RE = /\b(todo|tbd|fixme|placeholder|lorem ipsum|xxx)\b/i;
 const CONCEPT_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+const VERIFIED_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const OFFICIAL_SOURCE_HOSTS = new Set([
+  "www.dmv.ca.gov", "www.dps.texas.gov", "dmv.ny.gov", "www.flhsmv.gov", "dol.wa.gov", "www.pa.gov",
+]);
 
 export const norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
 export const tokens = (s) => new Set(norm(s).split(" ").filter((w) => w.length > 2));
@@ -21,10 +25,54 @@ export function jaccard(aSet, bSet) {
 export function runChecks(data, opts = {}) {
   const { QUESTIONS, CATEGORIES, SIGNS } = data;
   const STATE_PACKS = data.STATE_PACKS || {};
+  const SOURCE_REGISTRY = data.SOURCE_REGISTRY || {};
+  const UNIVERSAL_DEFAULTS = data.UNIVERSAL_DEFAULTS || {};
+  const CONCEPT_FACT_KEYS = data.CONCEPT_FACT_KEYS || {};
   const errors = [];
   const warnings = [];
+  const provenance = new Map(); // qid -> {sourceId, section, defaulted}
   const err = (rule, msg) => errors.push({ rule, msg });
   const warn = (rule, msg, meta) => warnings.push(meta ? { rule, msg, ...meta } : { rule, msg });
+
+  /* ---------- 0. official source registry ---------- */
+  const MAX_AGE_DAYS = data.VERIFICATION_MAX_AGE_DAYS ?? 365;
+  const nowMs = opts.nowMs ?? Date.now();
+  for (const [sourceId, source] of Object.entries(SOURCE_REGISTRY)) {
+    if (!source || typeof source !== "object") { err("source-registry", `${sourceId} is not an object`); continue; }
+    if (typeof source.agency !== "string" || !source.agency.trim()) err("source-registry", `${sourceId} missing agency`);
+    if (typeof source.title !== "string" || !source.title.trim()) err("source-registry", `${sourceId} missing title`);
+    if (typeof source.jurisdiction !== "string" || !(source.jurisdiction === "*" || source.jurisdiction in STATE_PACKS))
+      err("source-registry", `${sourceId} has unknown jurisdiction "${source.jurisdiction || ""}"`);
+    if (typeof source.verified !== "string" || !VERIFIED_DATE_RE.test(source.verified)) {
+      err("source-registry", `${sourceId} needs a YYYY-MM-DD verified date`);
+    } else {
+      // verification must be fresh — stale citations fail CI
+      const ageDays = Math.floor((nowMs - Date.parse(source.verified + "T00:00:00Z")) / 86400000);
+      if (!isFinite(ageDays) || ageDays < 0) err("source-registry", `${sourceId} has an impossible verified date (${source.verified})`);
+      else if (ageDays > MAX_AGE_DAYS)
+        err("provenance-stale", `${sourceId} verification is ${ageDays} days old (max ${MAX_AGE_DAYS}) — re-verify against the current edition and update "verified"`);
+    }
+    if (source.url == null) {
+      // composite sources cite many documents; a note explaining that is mandatory
+      if (!source.note) err("source-registry", `${sourceId} has no URL and no note justifying its absence`);
+    } else {
+      try {
+        const url = new URL(source.url);
+        if (url.protocol !== "https:") err("source-registry", `${sourceId} URL must use HTTPS`);
+        if (!OFFICIAL_SOURCE_HOSTS.has(url.hostname)) err("source-registry", `${sourceId} URL is not on an approved issuing-agency host: ${url.hostname}`);
+      } catch {
+        err("source-registry", `${sourceId} has an invalid URL`);
+      }
+    }
+  }
+  for (const [packId, pack] of Object.entries(STATE_PACKS)) {
+    if (packId === "generic") continue;
+    if (typeof pack.sourceId !== "string" || !(pack.sourceId in SOURCE_REGISTRY)) {
+      err("source-registry", `${packId} pack has no registered official source`);
+    } else if (SOURCE_REGISTRY[pack.sourceId].jurisdiction !== packId) {
+      err("source-registry", `${packId} pack points to a ${SOURCE_REGISTRY[pack.sourceId].jurisdiction} source`);
+    }
+  }
 
   /* ---------- 1. question-bank schema validation ---------- */
   for (const q of QUESTIONS) {
@@ -59,12 +107,34 @@ export function runChecks(data, opts = {}) {
         err("provenance", `[${id}] jurisdiction-tagged question missing sourceId`);
       if (typeof q.sourceSection !== "string" || !q.sourceSection.trim())
         err("provenance", `[${id}] jurisdiction-tagged question missing sourceSection`);
+      if (typeof q.sourceId === "string" && !(q.sourceId in SOURCE_REGISTRY))
+        err("source-registry", `[${id}] references unregistered source "${q.sourceId}"`);
+      else if (typeof q.sourceId === "string") {
+        const sourceJurisdiction = SOURCE_REGISTRY[q.sourceId].jurisdiction;
+        if (!q.jurisdiction.includes(sourceJurisdiction))
+          err("source-registry", `[${id}] source jurisdiction ${sourceJurisdiction} does not match question tags`);
+        else
+          provenance.set(id, { sourceId: q.sourceId, section: q.sourceSection || null, defaulted: false });
+      }
       if (typeof q.concept !== "string" || !CONCEPT_RE.test(q.concept || ""))
         err("schema", `[${id}] jurisdiction-tagged question needs a kebab-case concept (e.g. "school-bus")`);
     } else {
-      // universal questions: provenance recommended, not yet enforced
-      if (typeof q.sourceId !== "string" || !q.sourceId.trim()) {
-        warn("provenance", `${q.id} has no sourceId (universal question — review-level until enforced)`, { review: true });
+      // universal questions MUST resolve through UNIVERSAL_DEFAULTS — hard
+      // requirement, no silent fallbacks anywhere in the toolchain
+      if (typeof q.sourceId === "string" && q.sourceId.trim()) {
+        if (!(q.sourceId in SOURCE_REGISTRY))
+          err("source-registry", `[${id}] references unregistered source "${q.sourceId}"`);
+        else
+          provenance.set(id, { sourceId: q.sourceId, section: q.sourceSection || null, defaulted: false });
+      } else {
+        const def = UNIVERSAL_DEFAULTS[q.cat];
+        if (!def) {
+          err("provenance", `[${id}] has no source and category "${q.cat}" has no universal default — add sourceId or a UNIVERSAL_DEFAULTS entry`);
+        } else if (!(def.sourceId in SOURCE_REGISTRY)) {
+          err("source-registry", `[${id}] default source "${def.sourceId}" is not registered`);
+        } else {
+          provenance.set(id, { sourceId: def.sourceId, section: q.sourceSection || def.section || null, defaulted: true });
+        }
       }
     }
     if (q.concept != null && typeof q.concept === "string" && !CONCEPT_RE.test(q.concept))
@@ -124,7 +194,52 @@ export function runChecks(data, opts = {}) {
     }
   }
 
-  /* ---------- 4. topic-balance checker ---------- */
+  /* ---------- 4. state-fact consistency (factual QA) ---------- */
+  // A jurisdiction-tagged question's correct answer + explanation must
+  // corroborate the pack's fact table for its concept. Numbers are compared
+  // numerically ("four" == "4"); non-numeric facts fall back to keyword overlap.
+  const WORD_NUMS = { one: "1", two: "2", three: "3", four: "4", five: "5", six: "6", seven: "7", eight: "8", nine: "9", ten: "10", fifteen: "15", twenty: "20", thirty: "30", forty: "40", fifty: "50" };
+  // Numbers are extracted from the RAW text (not norm()) so decimals survive:
+  // "0.01%" must never collapse into the same token as "0.05%".
+  const digitsOf = (s) => new Set(
+    (String(s).toLowerCase().replace(new RegExp(`\\b(${Object.keys(WORD_NUMS).join("|")})\\b`, "g"), (m) => WORD_NUMS[m])
+      .match(/\d+(?:\.\d+)?/g) || [])
+  );
+  const STOPWORDS = new Set(["the", "and", "for", "you", "your", "must", "may", "not", "are", "when", "with", "from", "this", "that", "have", "only", "any", "more", "least"]);
+  const keywordsOf = (s) => new Set(norm(s).split(" ").filter((w) => w.length > 3 && !STOPWORDS.has(w)));
+  const sharesKeyword = (aSet, bSet) => {
+    for (const t of aSet) if (bSet.has(t)) return true;
+    return false;
+  };
+
+  let factChecks = 0;
+  for (const q of QUESTIONS) {
+    if (!Array.isArray(q.jurisdiction) || !q.jurisdiction.length || typeof q.concept !== "string") continue;
+    const factKeys = CONCEPT_FACT_KEYS[q.concept];
+    if (!factKeys) continue; // concept has no fact-table guard — nothing to cross-check
+    const packId = q.jurisdiction[0];
+    const facts = (STATE_PACKS[packId] || {}).facts || {};
+    const candidates = factKeys.map((k) => [k, facts[k]]).filter(([, v]) => typeof v === "string" && v.trim());
+    if (!candidates.length) {
+      warn("fact-consistency", `[${q.id}] concept "${q.concept}" has no ${packId} fact-table entry to check against — add one to the pack`, { review: true });
+      continue;
+    }
+    const evidence = `${Number.isInteger(q.a) && Array.isArray(q.choices) ? String(q.choices[q.a] ?? "") : ""} ${q.why || ""}`;
+    const evidenceDigits = digitsOf(evidence);
+    const evidenceKeywords = keywordsOf(evidence);
+    const corroborates = candidates.some(([k, v]) => {
+      const nums = digitsOf(v);
+      if (nums.size) return [...nums].some((n) => evidenceDigits.has(n));
+      return sharesKeyword(keywordsOf(v), evidenceKeywords);
+    });
+    if (!corroborates) {
+      err("fact-consistency", `[${q.id}] "${q.concept}" answer/explanation does not corroborate the ${packId} fact table (${candidates.map(([k]) => k).join("/")})`);
+    } else {
+      factChecks++;
+    }
+  }
+
+  /* ---------- 5. topic-balance checker ---------- */
   const total = QUESTIONS.length;
   const counts = {};
   for (const q of QUESTIONS) counts[q.cat] = (counts[q.cat] || 0) + 1;
@@ -185,7 +300,8 @@ export function runChecks(data, opts = {}) {
   return {
     errors,
     warnings,
-    stats: { questions: total, signs: Object.keys(SIGNS).length, packs: Object.keys(STATE_PACKS).length, balance },
+    stats: { questions: total, signs: Object.keys(SIGNS).length, packs: Object.keys(STATE_PACKS).length, balance, factChecks },
+    provenance,
   };
 }
 

@@ -90,3 +90,41 @@ describe("streaks & daily goal", () => {
     expect(Core.DAILY_GOAL).toBe(10);
   });
 });
+
+describe("test day study plan", () => {
+  it("keeps the standard daily goal until a date is set", () => {
+    const plan = Core.studyPlan(bank, {}, [], {}, "", "2026-08-23");
+    expect(plan.status).toBe("no-date");
+    expect(plan.dailyTarget).toBe(10);
+    expect(plan.remainingToday).toBe(10);
+  });
+
+  it("turns unseen and weak questions into a date-based daily target", () => {
+    const stats = {
+      a1: { seen: 2, correct: 0, wrong: 2 },
+      a2: { seen: 2, correct: 2, wrong: 0 },
+    };
+    const plan = Core.studyPlan(bank, stats, [], { "2026-08-23": 3 }, "2026-08-24", "2026-08-23");
+    expect(plan.daysLeft).toBe(1);
+    expect(plan.unseen).toBe(2);
+    expect(plan.weak).toBe(1);
+    expect(plan.dailyTarget).toBe(10); // never encourages less than the proven habit goal
+    expect(plan.remainingToday).toBe(7);
+    expect(plan.action).toBe("exam"); // no passed mock exam with a week to go
+  });
+
+  it("raises the target for a large bank and chooses weak-topic review", () => {
+    const largeBank = Array.from({ length: 80 }, (_, i) => ({ id: `q${i}` }));
+    const stats = { q0: { seen: 3, correct: 0, wrong: 3 } };
+    const plan = Core.studyPlan(largeBank, stats, [{ pass: true }], {}, "2026-08-25", "2026-08-23");
+    expect(plan.dailyTarget).toBe(41); // 79 unseen + two passes over the weak item, across 2 days
+    expect(plan.action).toBe("review");
+  });
+
+  it("switches to test-day mode without producing negative workloads", () => {
+    const plan = Core.studyPlan(bank, {}, [], { "2026-08-23": 25 }, "2026-08-23", "2026-08-23");
+    expect(plan.status).toBe("today");
+    expect(plan.action).toBe("exam");
+    expect(plan.remainingToday).toBe(0);
+  });
+});
