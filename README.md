@@ -1,6 +1,16 @@
 # Road Ready — Pass Your Driving Test
 
-A self-contained driving-test study app. No build step, no dependencies, no internet needed — just open `index.html` in any browser.
+A self-contained driving-theory study app. No build step, no dependencies, no internet needed — just open `index.html` in any browser.
+
+## What Road Ready is (product decision)
+
+**Jurisdiction-pluggable driving-theory trainer. Launching with one jurisdiction done extremely well: the United States** (universal bank + CA, TX, NY, FL, WA, PA region packs with official exam simulations).
+
+The architecture is built for expansion to other countries: concepts, terminology, signs, scoring and test formats are jurisdiction modules (`js/jurisdictions.js` defines the contract; `js/state-packs.js`, `js/exam-blueprints.js` and the source registry are the U.S. module's data). The content QA system enforces the contract — packs and blueprints must be registered regions or CI fails.
+
+Two honest scoping calls that follow from this:
+- **Hazard Perception is labeled bonus training**, not "the real test" — most U.S. knowledge exams don't include it (it's a UK-style section). The trainer stays because early hazard spotting is universally valuable; when a jurisdiction module includes it in its exam (e.g., UK), its module declares `hazardPerception.includedInExam: true` and the UI copy updates itself.
+- **"DMV" wording is jurisdiction terminology**, driven by `terminology` in the active country module — not a hardcoded assumption.
 
 **Design:** minimal, monochrome, icon-driven — a hand-drawn stroke icon set (no emojis), flat surfaces with hairline borders, inverted primary actions, and dark/light themes. Road signs keep their real-world colors because they're the teaching content.
 
@@ -18,7 +28,7 @@ A self-contained driving-test study app. No build step, no dependencies, no inte
 | Marathon Mode | The full 186-question bank in one run — anything you miss comes back until you've seen it through |
 | Mock Exams | Quick Check (10), Standard (20), Full (46), or a Weak-Topics exam — timed at 1 min/question, DMV-style pass mark, no feedback until you submit |
 | Official Simulations | Pick your state and the exam locks to its real spec — CA 46/38, TX 30/21, NY 20/14, FL 50/40 in 60 min, WA 40/32, PA 18/15. Jurisdiction pool only, official pass bar, feedback at the end (`js/exam-blueprints.js`, source-cited) |
-| Hazard Perception | An interactive trainer with 6 animated scenarios (children, doors, deer, cyclists…) — react early, score more, chase your best out of 30 |
+| Hazard Perception | Interactive trainer with 6 animated scenarios (children, doors, deer, cyclists…) — honestly labeled bonus training (most U.S. exams don't include it); jurisdiction modules declare whether their exam does |
 | Sign Flashcards | 31 hand-drawn SVG road signs with flip animation and known/still-learning tracking |
 | Study Guide | Cheat sheets (sign system, markings, right-of-way, emergencies, hill parking, key numbers) plus a full behind-the-wheel road test guide |
 | Read Aloud | Text-to-speech for questions, choices, and explanations — great for commutes and accessibility |

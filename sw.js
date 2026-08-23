@@ -13,6 +13,7 @@ const SHELL = [
   "icon-maskable.svg",
   "css/styles.css",
   "js/core.js",
+  "js/jurisdictions.js",
   "js/state-packs.js",
   "js/exam-blueprints.js",
   "js/icons.js",

@@ -340,10 +340,44 @@ export function runChecks(data, opts = {}) {
     if (!(packId in EXAM_BLUEPRINTS)) err("blueprint", `jurisdiction "${packId}" has no exam blueprint — the Official Simulation cannot be offered`);
   }
 
+  /* ---------- 9. jurisdiction-module contract ---------- */
+  // The pluggable architecture is only real if the registry, packs and
+  // blueprints agree. Drift in any direction fails CI.
+  const JURISDICTIONS = data.JURISDICTIONS || {};
+  const country = JURISDICTIONS[data.ACTIVE_COUNTRY];
+  if (!country) {
+    if (data.ACTIVE_COUNTRY) err("jurisdictions", `active country "${data.ACTIVE_COUNTRY}" is not registered`);
+  } else {
+    const regions = new Set(country.regions || []);
+    for (const packId of jurisdictionalPacks) {
+      if (!regions.has(packId)) {
+        err("jurisdictions", `region pack "${packId}" is not listed in ${country.id}.regions — register it or remove the pack`);
+      }
+    }
+    for (const regionId of regions) {
+      if (!(regionId in STATE_PACKS)) {
+        err("jurisdictions", `${country.id}.regions lists "${regionId}" but no region pack exists`);
+      } else if (!(regionId in (data.EXAM_BLUEPRINTS || {}))) {
+        err("jurisdictions", `registered region "${regionId}" has no exam blueprint`);
+      }
+    }
+    const terms = country.terminology || {};
+    for (const key of ["agencyShort", "examName", "learnerPermit"]) {
+      if (typeof terms[key] !== "string" || !terms[key].trim())
+        err("jurisdictions", `active country "${country.id}" is missing terminology.${key}`);
+    }
+    if (!Array.isArray(country.regions) || !country.regions.length)
+      err("jurisdictions", `active country "${country.id}" declares no regions`);
+  }
+
   return {
     errors,
     warnings,
-    stats: { questions: total, signs: Object.keys(SIGNS).length, packs: Object.keys(STATE_PACKS).length, balance, factChecks, blueprints: Object.keys(data.EXAM_BLUEPRINTS || {}).length },
+    stats: {
+      questions: total, signs: Object.keys(SIGNS).length, packs: Object.keys(STATE_PACKS).length,
+      balance, factChecks, blueprints: Object.keys(data.EXAM_BLUEPRINTS || {}).length,
+      countries: Object.keys(JURISDICTIONS).length, regions: jurisdictionalPacks.length,
+    },
     provenance,
   };
 }

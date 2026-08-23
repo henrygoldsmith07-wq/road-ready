@@ -19,6 +19,8 @@ export function loadContent(rootDir) {
   try { p = loadClassicScriptFrom(root, "js/state-packs.js", ["STATE_PACKS", "SOURCE_REGISTRY", "UNIVERSAL_DEFAULTS", "CONCEPT_FACT_KEYS", "VERIFICATION_MAX_AGE_DAYS"]); } catch { /* packs optional */ }
   let bp = {};
   try { bp = loadClassicScriptFrom(root, "js/exam-blueprints.js", ["EXAM_BLUEPRINTS"]); } catch { /* blueprints optional */ }
+  let j = {};
+  try { j = loadClassicScriptFrom(root, "js/jurisdictions.js", ["JURISDICTIONS", "ACTIVE_COUNTRY"]); } catch { /* registry optional */ }
   const packs = p.STATE_PACKS || {};
   const sources = p.SOURCE_REGISTRY || {};
   const baseQuestions = q.QUESTIONS || [];
@@ -37,6 +39,8 @@ export function loadContent(rootDir) {
     CONCEPT_FACT_KEYS: p.CONCEPT_FACT_KEYS || {},
     VERIFICATION_MAX_AGE_DAYS: p.VERIFICATION_MAX_AGE_DAYS ?? null,
     EXAM_BLUEPRINTS: bp.EXAM_BLUEPRINTS || {},
+    JURISDICTIONS: j.JURISDICTIONS || {},
+    ACTIVE_COUNTRY: j.ACTIVE_COUNTRY || null,
   };
 }
 

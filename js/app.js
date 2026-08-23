@@ -4,6 +4,10 @@
 const Core = window.RoadReadyCore;
 const Packs = window.RoadReadyPacks;
 const BLUEPRINTS = (window.RoadReadyBlueprints || {}).EXAM_BLUEPRINTS || {};
+const Jur = window.RoadReadyJurisdictions || {};
+const COUNTRY = Jur.JURISDICTIONS ? Jur.JURISDICTIONS[Jur.ACTIVE_COUNTRY] : null;
+const TERMS = (COUNTRY && COUNTRY.terminology) || { agencyShort: "DMV", examName: "knowledge test", learnerPermit: "learner's permit" };
+const HAZARD_INFO = (COUNTRY && COUNTRY.hazardPerception) || { includedInExam: false, positioning: "bonus training" };
 const STORE_KEY = "roadready.v1";
 const $ = (id) => document.getElementById(id);
 const on = (el, ev, fn) => el.addEventListener(ev, fn);
@@ -212,7 +216,7 @@ function renderHome() {
 
   const passedMock = state.exams.some(e => e.pass);
   $("heroSub").textContent = state.answered === 0
-    ? "Study a little every day and you'll walk into the DMV with confidence."
+    ? `Study a little every day and walk into your ${TERMS.agencyShort} with confidence.`
     : passedMock
       ? "You've passed a practice mock exam — keep drilling to stay sharp."
       : "Keep going — review your weak spots and drill the questions you missed.";
@@ -220,9 +224,12 @@ function renderHome() {
   // level chip + hazard best + achievement checks
   const lv = levelFor(state.xp);
   $("heroLvl").textContent = state.answered ? `Level ${lv.lvl} · ${state.xp} XP` : "";
+  const hazardTag = HAZARD_INFO.includedInExam
+    ? "part of your exam"
+    : "bonus training — not part of most U.S. knowledge exams";
   $("hazardBestLabel").textContent = state.hazardBest
-    ? `Best score: ${state.hazardBest}/30 — hazards include hidden children, doors, and deer`
-    : "Train spotting developing hazards — like the real test";
+    ? `Best score: ${state.hazardBest}/30 — ${hazardTag}`
+    : `Spot developing hazards early (${hazardTag})`;
   checkProgressAchievements();
 
   // daily goal + test-date study plan
