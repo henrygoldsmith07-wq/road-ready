@@ -39,12 +39,12 @@
             <p class="sub" id="heroSub">Study a little every day and you'll walk into the DMV with confidence.</p>
             <p class="lvl" id="heroLvl"></p>
           </div>
-          <div class="readiness-ring" id="readinessRing" role="img" aria-label="Readiness score">
+          <div class="readiness-ring" id="readinessRing" role="img" aria-label="Study progress score">
             <svg viewBox="0 0 120 120">
               <circle class="ring-bg" cx="60" cy="60" r="52"></circle>
               <circle class="ring-fg" cx="60" cy="60" r="52" id="ringFg"></circle>
             </svg>
-            <div class="ring-label"><span id="ringPct">0%</span><small>ready</small></div>
+            <div class="ring-label"><span id="ringPct">0%</span><small>progress</small></div>
           </div>
         </div>
         <div class="quick-actions">
@@ -405,6 +405,22 @@
       <div class="card" id="masteryCard"><div id="masteryList"></div></div>
       <h2 class="section-title">Exam history</h2>
       <div class="card"><ul class="history-list" id="historyList"></ul></div>
+
+      <h2 class="section-title">Real test outcomes <small class="beta-pill">beta</small></h2>
+      <div class="card" id="calibrationCard">
+        <p class="state-note" style="margin:0 0 10px;">
+          Your progress % measures how much of the course you've covered — it is
+          <b>not yet a calibrated prediction</b> of passing the real exam.
+          Taking your real test? Log the outcome (stored only on your device,
+          included in backups) to help build a future pass-probability model.
+        </p>
+        <div id="outcomeList"></div>
+        <div class="data-actions" style="margin-top:10px;">
+          <button class="btn primary" id="btnOutcomePass">I passed my real test</button>
+          <button class="btn ghost" id="btnOutcomeFail">I didn't pass</button>
+        </div>
+      </div>
+
       <h2 class="section-title">Settings</h2>
       <div class="card settings-card">
         <label class="setting-row">
@@ -504,7 +520,7 @@
       <div class="ob-step" data-step="3">
         <span class="ob-ico" data-icon="gauge" data-size="40"></span>
         <h1>Little and often wins</h1>
-        <p>Answer <b>10 questions a day</b> to hit your daily goal and build a streak. At <b>80% readiness</b> the app will tell you you're ready to book the real thing.</p>
+        <p>Answer <b>10 questions a day</b> to hit your daily goal and build a streak. Passing <b>mock exams consistently</b> is the strongest sign you're on track for the real thing.</p>
       </div>
     </div>
     <div class="ob-foot">

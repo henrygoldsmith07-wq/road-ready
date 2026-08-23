@@ -246,6 +246,36 @@ test.describe("official simulation", () => {
   });
 });
 
+test.describe("outcome journal (calibration beta)", () => {
+  test("logging a real-test outcome persists and survives reload", async ({ page }) => {
+    await freshApp(page);
+    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    // seed some study so the snapshot is meaningful
+    await page.locator("#topicGrid .topic-card").first().click();
+    await expect(page.locator("#view-quiz")).toHaveClass(/active/);
+    await expect(page.locator(".choice")).toHaveCount(4);
+    await page.keyboard.press("1");
+    await expect(page.locator("#feedback")).toBeVisible();
+    await page.locator('#bottomNav button[data-nav="stats"]').click();
+
+    await expect(page.locator("#outcomeList")).toContainText("No outcomes logged yet");
+    page.once("dialog", (d) => d.accept());
+    await page.locator("#btnOutcomePass").click();
+    await expect(page.locator("#outcomeList .outcome-row")).toHaveCount(1);
+    await expect(page.locator("#outcomeList .res-pass")).toHaveText("PASS");
+
+    const logged = await page.evaluate(() => JSON.parse(localStorage.getItem("roadready.v1")).outcomes);
+    expect(logged).toHaveLength(1);
+    expect(logged[0].result).toBe("pass");
+    expect(logged[0].questionsSeen).toBeGreaterThanOrEqual(1);
+
+    await page.reload();
+    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    await page.locator('#bottomNav button[data-nav="stats"]').click();
+    await expect(page.locator("#outcomeList .outcome-row")).toHaveCount(1);
+  });
+});
+
 test.describe("accessibility basics", () => {
   test("skip link exists and quiz feedback is announced", async ({ page }) => {
     await freshApp(page);

@@ -24,7 +24,8 @@ A self-contained driving-test study app. No build step, no dependencies, no inte
 | Read Aloud | Text-to-speech for questions, choices, and explanations — great for commutes and accessibility |
 | XP & Achievements | Earn XP for every answer, climb levels, and unlock 12 achievements from First Steps to Hawk Eye |
 | Review Missed | Every question you've ever missed, with the correct answer and why — plus one-tap drills |
-| Progress | Readiness score, per-topic mastery, accuracy, day streak, daily goal, study time, exam history |
+| Progress | Study-progress score, per-topic mastery, accuracy, day streak, daily goal, study time, exam history |
+| Outcome Journal *(beta)* | The progress % is an **uncalibrated heuristic**, not a predicted pass probability. Log your real test result (opt-in, on-device only) — progress %, mock average, questions seen and study time are snapshotted with the outcome to ground a future P(pass) model |
 | Test Day Plan | Save your knowledge-test date and get an adaptive daily question target plus the best next action; private and fully offline |
 | Official Sources | State-rule explanations and Study Guide facts link directly to the issuing DMV/DPS/DOL handbook; dedicated State Rules drills keep the cited material together |
 | Settings | Pass mark (75/80/85%), exam length, instant-feedback toggle, full progress reset |

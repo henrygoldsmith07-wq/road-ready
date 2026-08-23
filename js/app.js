@@ -210,11 +210,12 @@ function renderHome() {
   const best = state.exams.length ? Math.max(...state.exams.map(e => e.pct)) : null;
   $("stBest").textContent = best === null ? "–" : Math.round(best * 100) + "%";
 
-  const ready = pct >= 80 && state.exams.some(e => e.pass);
-  $("heroSub").textContent = ready
-    ? "You're testing above the pass mark — keep it sharp with a mock exam."
-    : state.answered === 0 ? "Study a little every day and you'll walk into the DMV with confidence."
-    : "Keep going — review your weak spots and drill the questions you missed.";
+  const passedMock = state.exams.some(e => e.pass);
+  $("heroSub").textContent = state.answered === 0
+    ? "Study a little every day and you'll walk into the DMV with confidence."
+    : passedMock
+      ? "You've passed a practice mock exam — keep drilling to stay sharp."
+      : "Keep going — review your weak spots and drill the questions you missed.";
 
   // level chip + hazard best + achievement checks
   const lv = levelFor(state.xp);
@@ -765,6 +766,39 @@ function renderStats() {
     $("inpTestDate").value = state.settings.testDate || "";
     $("inpTestDate").min = todayStr();
   }
+  renderCalibration();
+}
+
+/* ---------------- real-test outcome journal (calibration beta) ---------------- */
+function outcomeSnapshot() {
+  return {
+    progressPct: Math.round(readiness() * 100),
+    mockAvgPct: Math.round((Core.mockAverage(state.exams) ?? 0) * 100),
+    questionsSeen: state.answered,
+    studyMinutes: Math.round((state.timeStudied || 0) / 60),
+  };
+}
+function logOutcome(result) {
+  state.outcomes = Core.appendOutcome(state.outcomes, { ...outcomeSnapshot(), result });
+  save();
+  renderCalibration();
+  toast("Outcome logged", "Stored on this device only — included in backups.", "chart");
+}
+function renderCalibration() {
+  const host = $("outcomeList");
+  if (!host) return;
+  const list = Array.isArray(state.outcomes) ? state.outcomes : [];
+  host.innerHTML = list.length
+    ? list.slice().reverse().map(o => {
+        const d = new Date(o.date);
+        const resLabel = o.result === "pass" ? "PASS" : o.result === "fail" ? "FAIL" : "?";
+        return `<div class="outcome-row">
+          <span>${d.toLocaleDateString()} · ${o.progressPct}% progress · mock avg ${o.mockAvgPct}% · ${o.questionsSeen} questions
+            <span class="outcome-meta">${fmtTime(o.studyMinutes * 60)} of study</span></span>
+          <b class="res-${o.result}">${resLabel}</b>
+        </div>`;
+      }).join("")
+    : `<p class="muted" style="margin:0;">No outcomes logged yet.</p>`;
 }
 
 /* ---------------- theme ---------------- */
@@ -1134,6 +1168,12 @@ function init() {
       "car");
   });
   on($("btnExport"), "click", exportProgress);
+  on($("btnOutcomePass"), "click", () => {
+    if (confirm("Log that you PASSED your real knowledge test? The snapshot below is stored only on this device.")) logOutcome("pass");
+  });
+  on($("btnOutcomeFail"), "click", () => {
+    if (confirm("Log that you DID NOT pass your real knowledge test? Honest data is what makes future predictions meaningful.")) logOutcome("fail");
+  });
   on($("btnImport"), "click", () => $("fileImport").click());
   on($("fileImport"), "change", e => {
     const f = e.target.files && e.target.files[0];

@@ -41,6 +41,7 @@
       xp: 0,
       timeStudied: 0,    // seconds
       hazardBest: 0,
+      outcomes: [],      // opt-in real-test outcome journal: {date, progressPct, mockAvgPct, questionsSeen, studyMinutes, result}
       settings: defaultSettings(),
     };
   }
@@ -116,6 +117,15 @@
     s.xp = num(s.xp, 0, 0, 1e9);
     s.timeStudied = num(s.timeStudied, 0, 0, 1e9);
     s.hazardBest = num(s.hazardBest, 0, 0, 30);
+    s.outcomes = Array.isArray(s.outcomes)
+      ? s.outcomes.filter((o) => o && typeof o === "object" && !Array.isArray(o)).map((o) => ({
+          date: num(o.date, Date.now(), 0, 8.64e15),
+          progressPct: num(o.progressPct, 0, 0, 100),
+          mockAvgPct: num(o.mockAvgPct, 0, 0, 100),
+          questionsSeen: num(o.questionsSeen, 0, 0, 1e6),
+          studyMinutes: num(o.studyMinutes, 0, 0, 1e6),
+          result: o.result === "pass" ? "pass" : o.result === "fail" ? "fail" : "unknown",
+        })) : [];
     s.settings = Object.assign(defaultSettings(), plainObject(s.settings));
     s.settings.passMark = num(s.settings.passMark, 0.8, 0.5, 1);
     s.settings.examLen = num(s.settings.examLen, 20, 5, 100);
@@ -228,7 +238,7 @@
     { id: "marathon",    name: "Marathoner",        desc: "Answer 100+ questions in one session",test: (s) => s.sessionAnswers >= 100 },
     { id: "sharp",       name: "Sharpshooter",      desc: "85%+ accuracy across 100+ answers",   test: (s) => s.answered >= 100 && s.accuracy >= 0.85 },
     { id: "hawk",        name: "Hawk Eye",          desc: "Score 24+ in Hazard Perception",      test: (s) => s.hazardBest >= 24 },
-    { id: "ready",       name: "Test Ready",        desc: "Reach 80% readiness",                 test: (s) => s.readinessPct >= 80 },
+    { id: "ready",       name: "Almost There",      desc: "Reach 80% study progress",            test: (s) => s.readinessPct >= 80 },
   ];
 
   const XP_PER_CORRECT = 10;
@@ -520,6 +530,45 @@
     return { pts, band };
   }
 
+  /* ---------------- outcome journal (calibration groundwork) ---------------- */
+  /**
+   * The readiness/progress score is an UNCALIBRATED heuristic. These helpers
+   * support opt-in logging of real test outcomes so a future P(pass) model
+   * can be fit against observed data.
+   */
+  const OUTCOME_RESULT_VALUES = ["pass", "fail"];
+
+  /** Pure append with clamping. */
+  function appendOutcome(outcomes, entry, nowMs) {
+    const list = Array.isArray(outcomes) ? outcomes.slice() : [];
+    list.push({
+      date: num(entry && entry.date, nowMs == null ? Date.now() : nowMs, 0, 8.64e15),
+      progressPct: num(entry && entry.progressPct, 0, 0, 100),
+      mockAvgPct: num(entry && entry.mockAvgPct, 0, 0, 100),
+      questionsSeen: num(entry && entry.questionsSeen, 0, 0, 1e6),
+      studyMinutes: num(entry && entry.studyMinutes, 0, 0, 1e6),
+      result: OUTCOME_RESULT_VALUES.includes(entry && entry.result) ? entry.result : "unknown",
+    });
+    return list;
+  }
+
+  /** Average pct of the most recent n exams (null when none). */
+  function mockAverage(exams, n) {
+    const recent = (exams || []).slice(-(n || 3));
+    if (!recent.length) return null;
+    return recent.reduce((t, e) => t + e.pct, 0) / recent.length;
+  }
+
+  /** Bucket label for calibration tables. */
+  function progressBucket(progressPct) {
+    if (progressPct >= 90) return "90–100%";
+    if (progressPct >= 80) return "80–89%";
+    if (progressPct >= 70) return "70–79%";
+    if (progressPct >= 60) return "60–69%";
+    if (progressPct >= 50) return "50–59%";
+    return "<50%";
+  }
+
   /* ---------------- import / export ---------------- */
   const EXPORT_APP_ID = "road-ready";
 
@@ -561,6 +610,7 @@
     defaultSched, reviewSched, schedDue,
     shuffle, timeLimitSecs, gradeExam, examBlueprint, assembleExam,
     hazardScore,
+    OUTCOME_RESULT_VALUES, appendOutcome, mockAverage, progressBucket,
     exportBundle, parseImport,
   };
 
