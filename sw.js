@@ -1,9 +1,9 @@
-/* Road Ready service worker â€” offline-first cache.
+/* Road Ready service worker Ã¢â‚¬â€ offline-first cache.
    Strategy: precache the app shell; serve cache-first with a background
    network refresh (stale-while-revalidate) for same-origin GETs. */
 "use strict";
 
-const VERSION = "v4";
+const VERSION = "v5";
 const CACHE = `roadready-${VERSION}`;
 const SHELL = [
   "./",
