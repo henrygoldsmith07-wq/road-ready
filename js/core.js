@@ -42,6 +42,7 @@
       timeStudied: 0,    // seconds
       hazardBest: 0,
       outcomes: [],      // opt-in real-test outcome journal: {date, progressPct, mockAvgPct, questionsSeen, studyMinutes, result}
+      practical: { log: [] }, // driving-log sessions: {date, minutes, conditions[], roadTypes[], skills{skillId:rating}, notes}
       settings: defaultSettings(),
     };
   }
@@ -117,6 +118,21 @@
     s.xp = num(s.xp, 0, 0, 1e9);
     s.timeStudied = num(s.timeStudied, 0, 0, 1e9);
     s.hazardBest = num(s.hazardBest, 0, 0, 30);
+    const practical = plainObject(s.practical);
+    practical.log = Array.isArray(practical.log)
+      ? practical.log.filter((x) => x && typeof x === "object" && !Array.isArray(x))
+        .map((x) => ({
+          date: num(x.date, Date.now(), 0, 8.64e15),
+          minutes: num(x.minutes, 0, 0, 1440),
+          conditions: Array.isArray(x.conditions) ? x.conditions.filter((c) => typeof c === "string").slice(0, 8) : [],
+          roadTypes: Array.isArray(x.roadTypes) ? x.roadTypes.filter((c) => typeof c === "string").slice(0, 8) : [],
+          skills: (() => { const sk = plainObject(x.skills); const out = {}; for (const k of Object.keys(sk)) { if (PRACTICAL_RATINGS.includes(sk[k]) && skillIds().includes(k)) out[k] = sk[k]; } return out; })(),
+          notes: typeof x.notes === "string" ? x.notes.slice(0, 2000) : "",
+        }))
+        // a log entry with no rated skills and no duration carries nothing — drop it
+        .filter((x) => x.minutes > 0 || Object.keys(x.skills).length > 0)
+      : [];
+    s.practical = practical;
     s.outcomes = Array.isArray(s.outcomes)
       ? s.outcomes.filter((o) => o && typeof o === "object" && !Array.isArray(o)).map((o) => ({
           date: num(o.date, Date.now(), 0, 8.64e15),
@@ -622,6 +638,111 @@
     return "<50%";
   }
 
+  /* ---------------- practical driving: log, competencies, readiness ---------------- */
+  // Ratings per practiced skill in a log session.
+  const PRACTICAL_RATINGS = ["good", "ok", "poor"]; // ✓ / △ / ✗
+  const RATING_VALUE = { good: 1, ok: 0.5, poor: 0 };
+
+  // Competency groups: each skill logged rolls up into exactly one competency.
+  const COMPETENCIES = [
+    { id: "observation",         name: "Observation",         skills: ["mirrors", "blind-spots", "scanning-ahead", "signal-timing"] },
+    { id: "control",             name: "Vehicle control",     skills: ["steering-smoothness", "speed-control", "braking-smoothness", "pull-away-control"] },
+    { id: "junctions",           name: "Junctions",           skills: ["junction-approach-speed", "gap-selection", "turning-position"] },
+    { id: "roundabouts",         name: "Roundabouts",         skills: ["roundabout-entry-lane", "yielding-circulating", "roundabout-exit-signal"] },
+    { id: "lane-discipline",     name: "Lane discipline",     skills: ["lane-keeping", "curve-positioning", "safe-following-distance"] },
+    { id: "parking",             name: "Parking",             skills: ["reverse-parking", "parallel-parking", "hill-parking"] },
+    { id: "independent-driving", name: "Independent driving", skills: ["route-following", "decision-confidence", "mistake-recovery"] },
+  ];
+
+  const CONDITIONS = ["dry", "wet", "rain", "night", "traffic-heavy", "snow"];
+  const ROAD_TYPES = ["residential", "urban", "rural", "highway", "dual-carriageway"];
+
+  const skillIds = () => COMPETENCIES.flatMap((c) => c.skills);
+  const competencyName = (id) => (COMPETENCIES.find((c) => c.id === id) || {}).name || id;
+
+  /** Append a validated session (pure). */
+  function appendPracticalSession(log, entry, nowMs) {
+    const list = Array.isArray(log) ? log.slice() : [];
+    const skills = {};
+    const raw = (entry && entry.skills) || {};
+    for (const k of Object.keys(raw)) {
+      if (PRACTICAL_RATINGS.includes(raw[k]) && skillIds().includes(k)) skills[k] = raw[k];
+    }
+    list.push({
+      date: num(entry && entry.date, nowMs == null ? Date.now() : nowMs, 0, 8.64e15),
+      minutes: num(entry && entry.minutes, 0, 0, 1440),
+      conditions: Array.isArray(entry && entry.conditions) ? entry.conditions.filter((c) => CONDITIONS.includes(c)).slice(0, 8) : [],
+      roadTypes: Array.isArray(entry && entry.roadTypes) ? entry.roadTypes.filter((c) => ROAD_TYPES.includes(c)).slice(0, 8) : [],
+      skills,
+      notes: typeof (entry && entry.notes) === "string" ? entry.notes.slice(0, 2000) : "",
+    });
+    return list;
+  }
+
+  /**
+   * Aggregate the log into per-competency scores (0..1) with coverage.
+   * score = mean rating across every recorded instance of the competency's
+   * skills; coverage = fraction of its skills ever practiced. null = no data.
+   */
+  function competencyScores(log) {
+    const tally = {}; // compId -> {sum, n, skills:Set}
+    for (const c of COMPETENCIES) tally[c.id] = { sum: 0, n: 0, skills: new Set() };
+    for (const session of log || []) {
+      for (const [skillId, rating] of Object.entries(session.skills || {})) {
+        const comp = COMPETENCIES.find((c) => c.skills.includes(skillId));
+        if (!comp) continue;
+        tally[comp.id].sum += RATING_VALUE[rating];
+        tally[comp.id].n++;
+        tally[comp.id].skills.add(skillId);
+      }
+    }
+    return COMPETENCIES.map((c) => {
+      const t = tally[c.id];
+      if (!t.n) return { id: c.id, name: c.name, score: null, coverage: 0, skillsPracticed: 0, skillsTotal: c.skills.length };
+      return { id: c.id, name: c.name, score: t.sum / t.n, coverage: t.skills.size / c.skills.length, skillsPracticed: t.skills.size, skillsTotal: c.skills.length };
+    });
+  }
+
+  /** Overall practical score: mean of scored competencies × mean coverage. */
+  function practicalScore(log) {
+    const scores = competencyScores(log).filter((c) => c.score !== null);
+    if (!scores.length) return null;
+    const avg = scores.reduce((t, c) => t + c.score, 0) / scores.length;
+    const coverage = scores.reduce((t, c) => t + c.coverage, 0) / scores.length;
+    return Math.min(1, Math.max(0, avg * Math.max(0.5, coverage)));
+  }
+
+  /**
+   * Combined DRIVING READINESS heuristic (uncalibrated): theory knowledge +
+   * practical skill, equally weighted once practical data exists.
+   */
+  function drivingReadiness(theoryPct, log) {
+    const theory = num(theoryPct, 0, 0, 100) / 100;
+    const practical = practicalScore(log);
+    if (practical === null) return { combined: null, theory, practical: null };
+    return { combined: Math.round(((theory + practical) / 2) * 100), theory, practical };
+  }
+
+  /** Next lesson focus: lowest-scored competency with data; falls back to
+   *  lowest-coverage competency when nothing is scored yet. */
+  function nextLessonFocus(log) {
+    const scores = competencyScores(log);
+    const withData = scores.filter((c) => c.score !== null);
+    if (!withData.length) {
+      const leastCovered = scores.slice().sort((a, b) => a.coverage - b.coverage)[0];
+      return { ...leastCovered, reason: "no sessions logged yet — start with the basics" };
+    }
+    const worst = withData.slice().sort((a, b) =>
+      (a.score - b.score) || (a.coverage - b.coverage))[0];
+    const uncovered = scores.find((c) => c.score === null);
+    return {
+      ...worst,
+      reason: uncovered
+        ? `weakest at ${Math.round(worst.score * 100)}% — also not yet practiced: ${uncovered.name.toLowerCase()}`
+        : `weakest at ${Math.round(worst.score * 100)}%`,
+    };
+  }
+
   /* ---------------- import / export ---------------- */
   const EXPORT_APP_ID = "road-ready";
 
@@ -665,6 +786,9 @@
     shuffle, timeLimitSecs, gradeExam, examBlueprint, assembleExam,
     hazardScore,
     OUTCOME_RESULT_VALUES, appendOutcome, mockAverage, progressBucket,
+    PRACTICAL_RATINGS, RATING_VALUE, COMPETENCIES, CONDITIONS, ROAD_TYPES,
+    skillIds, competencyName, appendPracticalSession, competencyScores,
+    practicalScore, drivingReadiness, nextLessonFocus,
     exportBundle, parseImport,
   };
 

@@ -824,6 +824,153 @@ function renderCalibration() {
     : `<p class="muted" style="margin:0;">No outcomes logged yet.</p>`;
 }
 
+/* ---------------- practical drive log ---------------- */
+const plFormState = { conditions: new Set(), roadTypes: new Set(), skills: {} };
+
+function renderPractical() {
+  if (!$("view-practical")) return;
+  const log = Array.isArray(state.practical) ? [] : (state.practical.log || []);
+  // readiness card
+  const theoryPct = Math.round(readiness() * 100);
+  const dr = Core.drivingReadiness(theoryPct, log);
+  $("drValue").textContent = dr.combined === null ? "–" : dr.combined + "%";
+  $("drTheory").textContent = theoryPct + "%";
+  $("drPractical").textContent = dr.practical === null ? "no sessions yet" : Math.round(dr.practical * 100) + "%";
+
+  // competencies + focus
+  const scores = Core.competencyScores(log);
+  const list = $("competencyList");
+  list.innerHTML = "";
+  for (const c of scores) {
+    const pct = c.score === null ? null : Math.round(c.score * 100);
+    const row = document.createElement("div");
+    row.className = "mastery-row";
+    row.innerHTML = `<span class="m-name">${c.name}</span>
+      <div class="bar"><div class="bar-fill" style="width:${pct ?? 0}%"></div></div>
+      <span class="m-val">${pct === null ? '<small>no data</small>' : pct + "%"}</span>`;
+    list.appendChild(row);
+    const meta = document.createElement("div");
+    meta.className = "outcome-meta";
+    meta.style.margin = "-4px 0 8px";
+    meta.textContent = `${c.skillsPracticed}/${c.skillsTotal} skills practiced`;
+    list.appendChild(meta);
+  }
+  const focus = Core.nextLessonFocus(log);
+  $("nextFocus").innerHTML = focus.score === null
+    ? `<b>${focus.name}</b> — ${focus.reason}.`
+    : `<b>${focus.name}</b> (${Math.round(focus.score * 100)}%) — ${focus.reason}.`;
+
+  // history
+  const hist = $("sessionList");
+  hist.innerHTML = log.length
+    ? log.slice().reverse().map((s, idxRev) => {
+        const realIdx = log.length - 1 - idxRev;
+        const d = new Date(s.date).toLocaleDateString();
+        const marks = Object.values(s.skills || {});
+        const good = marks.filter(r => r === "good").length;
+        const ok = marks.filter(r => r === "ok").length;
+        const poor = marks.filter(r => r === "poor").length;
+        const tags = s.conditions.concat(s.roadTypes).join(" · ");
+        return `<li class="pl-session">
+          <div class="pl-session-head">
+            <span><b>${d}</b> · ${s.minutes} min</span>
+            <span class="pl-marks">✓${good} △${ok} ✗${poor}</span>
+          </div>
+          <div class="outcome-meta">${tags || "—"}${s.notes ? ` · ${escapeHTML(s.notes.slice(0, 120))}` : ""}</div>
+          <button class="btn ghost pl-del" data-i="${realIdx}" aria-label="Delete session">Delete</button>
+        </li>`;
+      }).join("")
+    : `<li class="muted">No sessions logged yet.</li>`;
+  list.querySelectorAll && null;
+  hist.querySelectorAll(".pl-del").forEach(b => on(b, "click", () => {
+    state.practical.log.splice(Number(b.dataset.i), 1);
+    save(); renderPractical();
+  }));
+
+  // form defaults once
+  if ($("plDate") && !$("plDate").value) $("plDate").value = todayStr();
+}
+
+function buildPracticalForm() {
+  const chipRow = (host, values, set, key) => {
+    host.innerHTML = "";
+    for (const v of values) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip";
+      b.textContent = v.replace(/-/g, " ");
+      b.setAttribute("aria-pressed", set.has(v));
+      on(b, "click", () => {
+        set.has(v) ? set.delete(v) : set.add(v);
+        b.setAttribute("aria-pressed", set.has(v));
+      });
+      host.appendChild(b);
+    }
+  };
+  chipRow($("plConditions"), Core.CONDITIONS, plFormState.conditions, "conditions");
+  chipRow($("plRoadTypes"), Core.ROAD_TYPES, plFormState.roadTypes, "roadTypes");
+
+  const sk = $("plSkills");
+  sk.innerHTML = "";
+  for (const comp of Core.COMPETENCIES) {
+    const block = document.createElement("div");
+    block.className = "pl-comp";
+    const title = document.createElement("div");
+    title.className = "pl-comp-name";
+    title.textContent = comp.name;
+    block.appendChild(title);
+    for (const skillId of comp.skills) {
+      const rowEl = document.createElement("div");
+      rowEl.className = "pl-skill-row";
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "pl-skill-name";
+      nameSpan.textContent = skillId.replace(/-/g, " ");
+      rowEl.appendChild(nameSpan);
+      const seg = document.createElement("div");
+      seg.className = "seg3";
+      for (const [val, glyph] of [["good", "✓"], ["ok", "△"], ["poor", "✗"]]) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = glyph;
+        btn.setAttribute("aria-label", `${skillId}: ${val}`);
+        btn.setAttribute("aria-pressed", plFormState.skills[skillId] === val);
+        on(btn, "click", () => {
+          if (plFormState.skills[skillId] === val) delete plFormState.skills[skillId];
+          else plFormState.skills[skillId] = val;
+          seg.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", plFormState.skills[skillId] === x.getAttribute("aria-label").split(": ")[1]));
+        });
+        seg.appendChild(btn);
+      }
+      rowEl.appendChild(seg);
+      block.appendChild(rowEl);
+    }
+    sk.appendChild(block);
+  }
+}
+
+function savePracticalSession() {
+  const minutes = parseInt($("plMinutes").value, 10);
+  const skills = Object.keys(plFormState.skills);
+  if (!skills.length) { alert("Rate at least one skill before saving."); return; }
+  const dateVal = $("plDate").value ? Date.parse($("plDate").value + "T12:00:00Z") : Date.now();
+  state.practical.log = Core.appendPracticalSession(state.practical.log || [], {
+    date: isFinite(dateVal) ? dateVal : Date.now(),
+    minutes: isFinite(minutes) ? minutes : 45,
+    conditions: [...plFormState.conditions],
+    roadTypes: [...plFormState.roadTypes],
+    skills: { ...plFormState.skills },
+    notes: $("plNotes").value,
+  });
+  save();
+  plFormState.conditions.clear();
+  plFormState.roadTypes.clear();
+  plFormState.skills = {};
+  buildPracticalForm();
+  $("plNotes").value = "";
+  renderPractical();
+  toast("Session logged", "Competencies updated.", "car");
+}
+
 /* ---------------- theme ---------------- */
 function applyTheme() {
   document.documentElement.dataset.theme = state.settings.theme;
@@ -1126,6 +1273,9 @@ function init() {
   on($("qaPractice"), "click", () => startSetup("practice"));
   on($("qaExam"), "click", () => startSetup("exam"));
   on($("qaCards"), "click", () => { renderFlashcards(); showView("flashcards"); });
+  on($("qaPractical"), "click", () => { renderPractical(); showView("practical"); });
+  buildPracticalForm();
+  on($("btnSaveSession"), "click", savePracticalSession);
   on($("qaReview"), "click", () => {
     const m = missedQuestions();
     if (!m.length) { alert("Nothing missed yet â€” keep practicing!"); return; }

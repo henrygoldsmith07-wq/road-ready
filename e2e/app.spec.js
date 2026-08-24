@@ -276,6 +276,43 @@ test.describe("outcome journal (calibration beta)", () => {
   });
 });
 
+test.describe("practical drive log", () => {
+  test("log a session → competencies + readiness appear → persist reload", async ({ page }) => {
+    await freshApp(page);
+    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    await page.locator("#qaPractical").click();
+    await expect(page.locator("#view-practical")).toHaveClass(/active/);
+    await expect(page.locator("#drValue")).toHaveText("–"); // nothing logged yet
+
+    // fill the form: rate three skills across two competencies
+    await page.locator('.pl-skill-row', { hasText: "mirrors" }).locator('button[aria-label*="good"]').click();
+    await page.locator('.pl-skill-row', { hasText: "roundabout entry lane" }).locator('button[aria-label*="ok"]').click();
+    await page.locator('.pl-skill-row', { hasText: "lane keeping" }).locator('button[aria-label*="poor"]').click();
+    await page.locator(".chip", { hasText: "dry" }).click();
+    await page.locator("#btnSaveSession").click();
+
+    // readiness now blends theory with the fresh practical data
+    await expect(page.locator("#drValue")).not.toHaveText("–");
+    const competencyRows = page.locator("#competencyList .m-name");
+    await expect(competencyRows.filter({ hasText: "Roundabouts" })).toContainText("Roundabouts");
+    await expect(page.locator("#nextFocus")).toContainText("Lane discipline");
+
+    // persisted
+    const log = await page.evaluate(() => JSON.parse(localStorage.getItem("roadready.v1")).practical.log);
+    expect(log).toHaveLength(1);
+    expect(log[0].skills.mirrors).toBe("good");
+    await page.reload();
+    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    await page.locator("#qaPractical").click();
+    await expect(page.locator("#sessionList .pl-session")).toHaveCount(1);
+
+    // delete works
+    page.once("dialog", (d) => d.accept());
+    await page.locator("#sessionList .pl-del").first().click();
+    await expect(page.locator("#sessionList")).toContainText("No sessions logged yet");
+  });
+});
+
 test.describe("accessibility basics", () => {
   test("skip link exists and quiz feedback is announced", async ({ page }) => {
     await freshApp(page);

@@ -50,6 +50,7 @@
         <div class="quick-actions">
           <button class="qa" id="qaPractice"><span class="qa-ico" data-icon="book" data-size="20"></span>Practice</button>
           <button class="qa" id="qaExam"><span class="qa-ico" data-icon="clipboard" data-size="20"></span>Mock Exam</button>
+          <button class="qa" id="qaPractical"><span class="qa-ico" data-icon="car" data-size="20"></span>Drive Log</button>
           <button class="qa" id="qaCards"><span class="qa-ico" data-icon="layers" data-size="20"></span>Flashcards</button>
           <button class="qa" id="qaReview"><span class="qa-ico" data-icon="target" data-size="20"></span>Review Missed</button>
         </div>
@@ -193,6 +194,44 @@
       <div class="results-actions">
         <button class="btn primary" id="btnDrillMissed">Drill These Questions</button>
       </div>
+    </section>
+
+    <!-- ============ PRACTICAL / DRIVE LOG ============ -->
+    <section class="view" id="view-practical">
+      <h1 class="view-title">Drive Log</h1>
+      <p class="view-sub">Log supervised practice sessions to track real-world skills alongside your theory progress.</p>
+
+      <div class="card" id="drivingReadinessCard">
+        <div class="dr-head">
+          <span class="dr-label">Driving readiness</span>
+          <b id="drValue" class="dr-value">–</b>
+        </div>
+        <div class="dr-parts">
+          <span>Theory <b id="drTheory">–</b></span>
+          <span>Practical <b id="drPractical">–</b></span>
+        </div>
+        <p class="state-note" style="margin:8px 0 0;">Heuristic blend, not yet calibrated against pass rates.</p>
+      </div>
+
+      <h2 class="section-title">Competencies</h2>
+      <div class="card"><div id="competencyList"></div></div>
+
+      <h2 class="section-title">Next lesson focus</h2>
+      <div class="card"><p id="nextFocus" class="focus-line"></p></div>
+
+      <h2 class="section-title">Log a session</h2>
+      <div class="card settings-card" id="practicalForm">
+        <label class="setting-row"><span>Date</span><input type="date" id="plDate"></label>
+        <label class="setting-row"><span>Duration (min)</span><input type="number" id="plMinutes" min="5" max="480" value="45"></label>
+        <div class="pl-block"><span class="pl-label">Conditions</span><div class="chip-row" id="plConditions"></div></div>
+        <div class="pl-block"><span class="pl-label">Road types</span><div class="chip-row" id="plRoadTypes"></div></div>
+        <div class="pl-block"><span class="pl-label">Skills practiced</span><div id="plSkills"></div></div>
+        <label class="setting-row pl-notes-row"><span>Instructor notes</span><textarea id="plNotes" rows="3" maxlength="2000" placeholder="What went well, what to drill next…"></textarea></label>
+        <button class="btn primary" id="btnSaveSession">Save session</button>
+      </div>
+
+      <h2 class="section-title">Session history</h2>
+      <div class="card"><ul class="history-list" id="sessionList"></ul></div>
     </section>
 
     <!-- ============ GUIDE: CHEAT SHEETS + ROAD TEST ============ -->
