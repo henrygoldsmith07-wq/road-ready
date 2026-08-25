@@ -798,16 +798,23 @@ function assembleExam(opts) {
 
   /**
    * Cohort-grade metric snapshot for one participant.
-   * diagnostic = first tagged-diagnostic exam (falls back to first exam);
-   * improvement = latest exam pct − diagnostic pct (null with <2 exams).
+   *
+   * IMPROVEMENT GATE: improvement is measured ONLY when
+   *   (a) a diagnostic exists, AND
+   *   (b) at least one NON-diagnostic exam was taken AFTER it.
+   * A participant with a lone diagnostic has improvement null — never 0 —
+   * so they cannot silently enter the cohort's improvement average.
    */
   /** @param {any} stateLike */
-function studyMetrics(stateLike) {
-    const { enrolledAt, exams, answered, timeStudied, study, qstats } = stateLike;
-    const diagnostics = (exams || []).filter((e) => e.tag === "diagnostic");
-    const baseline = diagnostics[0] || (exams || [])[0] || null;
-    const latest = (exams || []).length ? (exams)[(exams).length - 1] : null;
-    const mockScores = (exams || []).map((e) => e.pct);
+  function studyMetrics(stateLike) {
+    const { enrolledAt, exams, answered, timeStudied, study } = stateLike;
+    const all = (exams || []).slice().sort((a, b) => a.date - b.date);
+    const baseline = all.find((e) => e.tag === "diagnostic") || null;
+    // follow-ups: non-diagnostic exams strictly after the baseline
+    const followUps = baseline
+      ? all.filter((e) => e !== baseline && e.tag !== "diagnostic" && e.date > baseline.date)
+      : [];
+    const latest = followUps.length ? followUps[followUps.length - 1] : null;
     const retention = study && Array.isArray(study.retentionLog)
       ? {
           attempts: study.retentionLog.length,
@@ -822,7 +829,7 @@ function studyMetrics(stateLike) {
       diagnosticPct: baseline ? Math.round(baseline.pct * 100) : null,
       latestMockPct: latest ? Math.round(latest.pct * 100) : null,
       improvementPct: baseline && latest ? Math.round((latest.pct - baseline.pct) * 100) : null,
-      mockCount: mockScores.length,
+      mockCount: all.filter((e) => e.tag !== "diagnostic").length,
       confidence: study && Array.isArray(study.confidence) ? study.confidence : [],
       retentionAttempts: retention.attempts,
       retentionCorrect: retention.correct,
@@ -830,14 +837,45 @@ function studyMetrics(stateLike) {
     };
   }
 
+  /* ---------------- learner study protocol (frozen before recruiting) ---------------- */
+  // Changing ANY of these values mid-study contaminates the cohort — a new
+  // study must instead bump PROTOCOL_VERSION and start a fresh cohort.
+  const PROTOCOL_VERSION = "rr-study-1.0";
+  const SCORING_VERSION = "scoring-1";      // gradeExam + XP rules
+  const MASTERY_VERSION = "mastery-v3-concepts"; // concept → topic → overall
+
+  /** Cheap deterministic fingerprint of bank size + question ids. */
+  function bankFingerprint(bank) {
+    const ids = (bank || []).map((q) => q.id).sort().join(",");
+    let h = 5381;
+    for (let i = 0; i < ids.length; i++) h = ((h * 33) ^ ids.charCodeAt(i)) >>> 0;
+    return `${(bank || []).length}-${h.toString(16)}`;
+  }
+
+
   /**
    * Anonymized export for cohort analysis. Contains ids, numbers and dates —
    * never free-text notes, question content, or anything account-like.
+   * Carries the frozen study protocol envelope so mid-study app changes are
+   * detectable: cohort analysis groups by protocolVersion.
+   * @param {any} stateLike
+   * @param {Array} bank
+   * @param {number} [exportedAtMs]
+   * @param {{appVersion?: string}} [meta]
    */
-  function buildStudyExport(stateLike, bank, exportedAtMs) {
+  function buildStudyExport(stateLike, bank, exportedAtMs, meta) {
+    const m = meta || {};
     const metrics = studyMetrics({ ...stateLike, bank });
     return {
       schema: "road-ready-study@1",
+      protocol: {
+        protocolVersion: PROTOCOL_VERSION,
+        contentVersion: bankFingerprint(bank),
+        scoringVersion: SCORING_VERSION,
+        masteryVersion: MASTERY_VERSION,
+        jurisdiction: (stateLike.settings && stateLike.settings.statePack) || "generic",
+        appVersion: m.appVersion || null,
+      },
       participantId: (stateLike.study && stateLike.study.participantId) || null,
       enrolledAt: (stateLike.study && stateLike.study.enrolledAt) || null,
       exportedAt: new Date(exportedAtMs == null ? Date.now() : exportedAtMs).toISOString(),
@@ -908,6 +946,7 @@ function studyMetrics(stateLike) {
     practicalScore, drivingReadiness, nextLessonFocus,
     RETENTION_DELAY_DAYS, RETENTION_PROBE_SIZE, createEnrollment,
     retentionProbePool, studyMetrics, buildStudyExport,
+    PROTOCOL_VERSION, SCORING_VERSION, MASTERY_VERSION, bankFingerprint,
     exportBundle, parseImport,
   };
 

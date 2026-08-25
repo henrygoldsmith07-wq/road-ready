@@ -26,6 +26,7 @@ for (const f of files) {
   try {
     const d = JSON.parse(readFileSync(f, "utf8"));
     if (d.schema !== "road-ready-study@1") { console.error(`skip: ${f} (wrong schema)`); continue; }
+    if (!d.protocol || typeof d.protocol.protocolVersion !== "string") { console.error(`skip: ${f} (missing protocol envelope — pre-rr-study-1.0 export)`); continue; }
     if (!d.participantId) { console.error(`skip: ${f} (no participant id)`); continue; }
     participants.push(d);
   } catch (e) {
@@ -33,6 +34,16 @@ for (const f of files) {
   }
 }
 if (!participants.length) { console.error("no valid exports"); process.exit(1); }
+
+const versions = new Set(participants.map((p) => p.protocol.protocolVersion + "|" + (p.protocol.contentVersion ?? "?")));
+if (versions.size > 1) {
+  console.warn("WARNING: cohort mixes protocol/content versions — results are NOT comparable:");
+  for (const v of versions) console.warn("  - " + v);
+}
+console.log("protocol: " + participants[0].protocol.protocolVersion
+  + " · content " + participants[0].protocol.contentVersion
+  + " · scoring " + participants[0].protocol.scoringVersion
+  + " · mastery " + participants[0].protocol.masteryVersion);
 
 const pct = (v) => (v == null ? "–" : `${Math.round(v * 100)}%`);
 

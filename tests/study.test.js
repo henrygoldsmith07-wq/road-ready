@@ -90,10 +90,12 @@ describe("study metrics", () => {
     expect(m.diagnosticPct).toBe(null);
   });
 
-  it("falls back to first exam when no diagnostic was tagged", () => {
+  it("untagged legacy exams never fabricate a baseline (strict protocol)", () => {
     const exams = stateLike.exams.map(({ tag, ...e }) => e);
-    expect(Core.studyMetrics({ ...stateLike, exams }).diagnosticPct).toBe(64);
-    void exams;
+    const m = Core.studyMetrics({ ...stateLike, exams });
+    // no tagged diagnostic → no baseline, no improvement measurement
+    expect(m.diagnosticPct).toBe(null);
+    expect(m.improvementPct).toBe(null);
   });
 });
 
@@ -110,7 +112,7 @@ describe("study export (privacy-first)", () => {
     const exp = Core.buildStudyExport(s, bank, NOW);
     expect(exp.schema).toBe("road-ready-study@1");
     expect(exp.participantId).toBe("rr-deadbeef");
-    expect(exp.metrics.latestMockPct).toBe(80);
+    expect(exp.metrics.latestMockPct).toBe(null); // no tagged diagnostic → no measured follow-up
     expect(exp.timeline.exams).toHaveLength(1);
     const raw = JSON.stringify(exp);
     expect(raw).not.toContain("Jane");

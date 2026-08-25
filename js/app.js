@@ -7,6 +7,7 @@ const BLUEPRINTS = (window.RoadReadyBlueprints || {}).EXAM_BLUEPRINTS || {};
 const Jur = window.RoadReadyJurisdictions || {};
 const COUNTRY = Jur.JURISDICTIONS ? Jur.JURISDICTIONS[Jur.ACTIVE_COUNTRY] : null;
 const TERMS = (COUNTRY && COUNTRY.terminology) || { agencyShort: "DMV", examName: "knowledge test", learnerPermit: "learner's permit" };
+const APP_VERSION = "1.1.0";
 const HAZARD_INFO = (COUNTRY && COUNTRY.hazardPerception) || { includedInExam: false, positioning: "bonus training" };
 const STORE_KEY = "roadready.v1";
 /** @returns {any} element by id — vanilla app, DOM types vary per caller */
@@ -1055,7 +1056,7 @@ function startRetentionProbes() {
 }
 
 function exportStudyData() {
-  const bundle = Core.buildStudyExport(state, bank);
+  const bundle = Core.buildStudyExport(state, bank, Date.now(), { appVersion: APP_VERSION });
   const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
