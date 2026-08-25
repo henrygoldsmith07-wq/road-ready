@@ -50,6 +50,44 @@ function activeJurisdiction() {
   return JURISDICTIONS[ACTIVE_COUNTRY] || null;
 }
 
-const RoadReadyJurisdictions = { JURISDICTIONS, ACTIVE_COUNTRY, activeJurisdiction };
+/**
+ * The runtime jurisdiction TREE (the product map):
+ *   Road Ready
+ *   ├─ United States
+ *   │   ├─ California …
+ * Built by joining the registry with the loaded region packs, blueprints and
+ * source agencies, so a new country module appears here automatically once its
+ * data files + registry entry exist. Only `active: true` countries are listed.
+ */
+function jurisdictionTree(registries) {
+  const { STATE_PACKS = {}, EXAM_BLUEPRINTS = {}, SOURCE_REGISTRY = {} } = registries || {};
+  return Object.values(JURISDICTIONS)
+    .filter((c) => c.active)
+    .map((c) => ({
+      id: c.id,
+      name: c.name,
+      terminology: c.terminology,
+      hazardPerception: c.hazardPerception,
+      regions: (c.regions || []).map((rid) => {
+        const pack = STATE_PACKS[rid];
+        const bp = EXAM_BLUEPRINTS[rid];
+        const src = bp && SOURCE_REGISTRY[bp.sourceId];
+        return {
+          id: rid,
+          name: pack ? pack.name : rid,
+          questionCount: pack ? (pack.questions || []).length : 0,
+          exam: bp ? {
+            label: bp.label,
+            questionCount: bp.questionCount,
+            minCorrect: bp.minCorrect,
+            timeLimitMin: bp.timeLimitMin ?? null,
+            authority: src ? src.agency : null,
+          } : null,
+        };
+      }),
+    }));
+}
+
+const RoadReadyJurisdictions = { JURISDICTIONS, ACTIVE_COUNTRY, activeJurisdiction, jurisdictionTree };
 if (typeof module !== "undefined" && module.exports) module.exports = RoadReadyJurisdictions;
 else if (typeof globalThis !== "undefined") globalThis.RoadReadyJurisdictions = RoadReadyJurisdictions;

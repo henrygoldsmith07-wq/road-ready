@@ -1,4 +1,4 @@
-/* Road Ready â€” app logic */
+/* Road Ready — app logic */
 "use strict";
 
 const Core = window.RoadReadyCore;
@@ -105,7 +105,7 @@ function addXP(n) {
   state.xp += n;
   const after = levelFor(state.xp);
   save();
-  if (after.lvl > before) toast("Level " + after.lvl + " reached", "Keep going â€” you're building real muscle memory.", "sparkles");
+  if (after.lvl > before) toast("Level " + after.lvl + " reached", "Keep going — you're building real muscle memory.", "sparkles");
 }
 /* Build the pure progress snapshot the achievement evaluator consumes. */
 function achievementSnapshot(sessionAnswers) {
@@ -144,7 +144,7 @@ function speak(text) {
     const u = new SpeechSynthesisUtterance(text);
     u.rate = 1.02;
     speechSynthesis.speak(u);
-  } catch (e) { /* speech unavailable â€” silently ignore */ }
+  } catch (e) { /* speech unavailable — silently ignore */ }
 }
 function stopSpeaking() {
   if (ttsSupported()) { try { speechSynthesis.cancel(); } catch (e) {} }
@@ -209,26 +209,26 @@ function renderHome() {
   fg.style.strokeDashoffset = C * (1 - pct / 100);
   const acc = state.answered ? Math.round(100 * state.correctCount / state.answered) : null;
   $("stAnswered").textContent = state.answered;
-  $("stAccuracy").textContent = acc === null ? "â€“" : acc + "%";
+  $("stAccuracy").textContent = acc === null ? "–" : acc + "%";
   $("stStreak").textContent = state.streak.count;
   const best = state.exams.length ? Math.max(...state.exams.map(e => e.pct)) : null;
-  $("stBest").textContent = best === null ? "â€“" : Math.round(best * 100) + "%";
+  $("stBest").textContent = best === null ? "–" : Math.round(best * 100) + "%";
 
   const passedMock = state.exams.some(e => e.pass);
   $("heroSub").textContent = state.answered === 0
     ? `Study a little every day and walk into your ${TERMS.agencyShort} with confidence.`
     : passedMock
-      ? "You've passed a practice mock exam â€” keep drilling to stay sharp."
-      : "Keep going â€” review your weak spots and drill the questions you missed.";
+      ? "You've passed a practice mock exam — keep drilling to stay sharp."
+      : "Keep going — review your weak spots and drill the questions you missed.";
 
   // level chip + hazard best + achievement checks
   const lv = levelFor(state.xp);
-  $("heroLvl").textContent = state.answered ? `Level ${lv.lvl} Â· ${state.xp} XP` : "";
+  $("heroLvl").textContent = state.answered ? `Level ${lv.lvl} · ${state.xp} XP` : "";
   const hazardTag = HAZARD_INFO.includedInExam
     ? "part of your exam"
-    : "bonus training â€” not part of most U.S. knowledge exams";
+    : "bonus training — not part of most U.S. knowledge exams";
   $("hazardBestLabel").textContent = state.hazardBest
-    ? `Best score: ${state.hazardBest}/30 â€” ${hazardTag}`
+    ? `Best score: ${state.hazardBest}/30 — ${hazardTag}`
     : `Spot developing hazards early (${hazardTag})`;
   checkProgressAchievements();
 
@@ -239,14 +239,14 @@ function renderHome() {
   const goalEl = $("dailyGoal");
   goalEl.querySelector(".dg-bar-fill").style.width = Math.min(100, 100 * t / target) + "%";
   goalEl.querySelector(".dg-label").innerHTML = t >= target
-    ? `Daily goal complete â€” <b>${t}</b> answered today`
+    ? `Daily goal complete — <b>${t}</b> answered today`
     : `Today's goal: <b>${t}/${target}</b> questions answered`;
 
   const planBtn = $("btnPlanAction");
   if (plan.status === "no-date") {
     $("planTitle").textContent = "Turn practice into a plan";
     $("planDetail").textContent = "Add your test date and Road Ready will calculate what to study each day.";
-    $("planMeta").textContent = "Private Â· offline Â· adjustable anytime";
+    $("planMeta").textContent = "Private · offline · adjustable anytime";
     planBtn.textContent = "Set test date";
     planBtn.dataset.action = "set-date";
   } else if (plan.status === "past") {
@@ -261,7 +261,7 @@ function renderHome() {
     $("planDetail").textContent = plan.remainingToday
       ? `${plan.remainingToday} more question${plan.remainingToday === 1 ? "" : "s"} today keeps you on pace.`
       : "Today's target is complete. Keep the momentum or take a mock exam.";
-    $("planMeta").textContent = `${plan.unseen} unseen Â· ${plan.weak} weak Â· ${plan.dailyTarget}/day`;
+    $("planMeta").textContent = `${plan.unseen} unseen · ${plan.weak} weak · ${plan.dailyTarget}/day`;
     planBtn.dataset.action = plan.action;
     planBtn.textContent = plan.action === "exam" ? "Take mock exam"
       : plan.action === "review" ? "Review weak spots" : "Start today's practice";
@@ -302,14 +302,14 @@ function renderHome() {
 function startSetup(mode, focusCat) {
   quizBackTarget = "home";
   $("setupTitle").textContent = mode === "practice" ? "Practice" : "Mock Exam";
-  $("setupSub").textContent = mode === "practice" ? "Pick a topic â€” or drill smart with adaptive mix." : "Timed test with real exam conditions â€” no feedback until the end.";
+  $("setupSub").textContent = mode === "practice" ? "Pick a topic — or drill smart with adaptive mix." : `Timed ${TERMS.agencyShort}-style ${TERMS.examName} — real exam conditions, no feedback until the end.`;
   const list = $("setupList");
   list.innerHTML = "";
   if (mode === "practice") {
     const items = [
       { id: "adaptive", icon: "sparkles", name: "Adaptive Mix", desc: `Prioritizes your weak spots across all ${bank.length} questions`, action: () => startPractice(pickWeighted(adaptivePool(), 10), "Adaptive Mix", "home") },
-      { id: "marathon", icon: "infinity", name: "Marathon â€” Full Bank", desc: `All ${bank.length} questions in one run â€” anything you miss comes back. Quit anytime`, action: () => startPractice(shuffle(bank).slice(), "Marathon", "home", true) },
-      { id: "missed", icon: "target", name: "Missed Questions", desc: missedQuestions().length ? `Re-drill the ${Math.min(10, missedQuestions().length)} you've gotten wrong` : "Nothing missed yet â€” nice!", action: () => { const m = missedQuestions(); if (m.length) startPractice(pickWeighted(m.map(q => ({ q, w: 1 })), Math.min(10, m.length)), "Missed Questions", "home"); } },
+      { id: "marathon", icon: "infinity", name: "Marathon — Full Bank", desc: `All ${bank.length} questions in one run — anything you miss comes back. Quit anytime`, action: () => startPractice(shuffle(bank).slice(), "Marathon", "home", true) },
+      { id: "missed", icon: "target", name: "Missed Questions", desc: missedQuestions().length ? `Re-drill the ${Math.min(10, missedQuestions().length)} you've gotten wrong` : "Nothing missed yet — nice!", action: () => { const m = missedQuestions(); if (m.length) startPractice(pickWeighted(m.map(q => ({ q, w: 1 })), Math.min(10, m.length)), "Missed Questions", "home"); } },
       { id: "flagged", icon: "flag", name: "Flagged Questions", desc: Object.keys(state.flagged).length ? `${Object.keys(state.flagged).length} flagged for review` : "Flag questions during practice to build this set", action: () => { const f = Object.keys(state.flagged).map(id => byId[id]).filter(Boolean); if (f.length) startPractice(shuffle(f).slice(0, 15), "Flagged Questions", "home"); } },
     ];
     const stateQuestions = bank.filter(q => Array.isArray(q.jurisdiction) && q.jurisdiction.includes(state.settings.statePack));
@@ -317,7 +317,7 @@ function startSetup(mode, focusCat) {
       const pack = Packs.STATE_PACKS[state.settings.statePack];
       items.splice(1, 0, {
         id: "state-rules", icon: "scale", name: `${pack.name} State Rules`,
-        desc: `${stateQuestions.length} jurisdiction-specific questions Â· every answer cites the official handbook`,
+        desc: `${stateQuestions.length} jurisdiction-specific questions · every answer cites the official handbook`,
         action: () => startPractice(shuffle(stateQuestions), `${pack.name} State Rules`, "home"),
       });
     }
@@ -336,21 +336,21 @@ function startSetup(mode, focusCat) {
     if (bp) {
       items.push({
         id: "official", icon: "grad", name: bp.label,
-        desc: `${bp.questionCount} questions Â· pass ${bp.minCorrect}/${bp.questionCount} (official threshold) Â· ${bp.timeLimitMin ? bp.timeLimitMin + "-min limit" : "standard pacing"} Â· feedback at end`,
+        desc: `${bp.questionCount} questions · pass ${bp.minCorrect}/${bp.questionCount} (official threshold) · ${bp.timeLimitMin ? bp.timeLimitMin + "-min limit" : "standard pacing"} · feedback at end`,
         action: () => startOfficialExam(packId),
       });
     }
     items.push(
-      { id: "std", icon: "clipboard", name: `Standard Exam â€” ${state.settings.examLen} questions`, desc: `Pass mark ${Math.round(state.settings.passMark * 100)}% Â· ${state.settings.examLen} min time limit`, action: () => startExam(state.settings.examLen) },
-      { id: "quick", icon: "zap", name: "Quick Check â€” 10 questions", desc: "5-minute diagnostic across all topics", action: () => startExam(10) },
-      { id: "full", icon: "grad", name: "Full Test â€” 46 questions", desc: "Simulates many states' full knowledge test Â· 46 min", action: () => startExam(46) },
+      { id: "std", icon: "clipboard", name: `Standard Exam — ${state.settings.examLen} questions`, desc: `Pass mark ${Math.round(state.settings.passMark * 100)}% · ${state.settings.examLen} min time limit`, action: () => startExam(state.settings.examLen) },
+      { id: "quick", icon: "zap", name: "Quick Check — 10 questions", desc: "5-minute diagnostic across all topics", action: () => startExam(10) },
+      { id: "full", icon: "grad", name: "Full Test — 46 questions", desc: "Simulates many states' full knowledge test · 46 min", action: () => startExam(46) },
       { id: "weak", icon: "target", name: "Weak Topics Exam", desc: "20 questions weighted toward your lowest categories", action: () => startExam(20, true) },
     );
     items.forEach(it => list.appendChild(setupRow(it)));
     if (!bp) {
       const note = document.createElement("p");
       note.className = "setting-note";
-      note.textContent = "Pick your state in Settings â†’ \"Your state's rules\" to unlock the Official Simulation of that state's real knowledge exam.";
+      note.textContent = "Pick your state in Settings → \"Your state's rules\" to unlock the Official Simulation of that state's real knowledge exam.";
       list.appendChild(note);
     } else {
       const notes = document.createElement("p");
@@ -387,7 +387,7 @@ function startExam(n, weakBias) {
   beginQuiz();
 }
 
-/* Official Simulation â€” locked to the jurisdiction's real exam parameters.
+/* Official Simulation — locked to the jurisdiction's real exam parameters.
    Pool: universal + this state's questions only. Feedback stays hidden until
    the end; pass bar and pacing come from EXAM_BLUEPRINTS, not settings. */
 function startOfficialExam(packId) {
@@ -471,8 +471,8 @@ function renderQuiz() {
   $("btnNext").textContent = session.i + 1 >= total ? "Finish" : "Next";
   const hint = document.querySelector(".kbd-hint");
   if (hint) hint.innerHTML = session.mode === "exam"
-    ? `Tip: press <kbd>1</kbd>â€“<kbd>4</kbd> to answer â€” it advances automatically`
-    : `Tip: press <kbd>1</kbd>â€“<kbd>4</kbd> to answer, <kbd>Enter</kbd> for next`;
+    ? `Tip: press <kbd>1</kbd>–<kbd>4</kbd> to answer — it advances automatically`
+    : `Tip: press <kbd>1</kbd>–<kbd>4</kbd> to answer, <kbd>Enter</kbd> for next`;
   updateFlagBtn();
   speak(q.q + ". " + q.choices.map((c, i) => (i + 1) + ". " + c).join(" "));
 }
@@ -505,7 +505,7 @@ function answer(origIdx, btnEl) {
     sourceLink.hidden = !source;
     if (source) {
       sourceLink.href = source.url;
-      sourceLink.textContent = `Official source: ${source.agency} Â· ${q.sourceSection} â†—`;
+      sourceLink.textContent = `Official source: ${source.agency} · ${q.sourceSection} ↗`;
       sourceLink.setAttribute("aria-label", `Open ${source.title}, section ${q.sourceSection}, in a new tab`);
     } else {
       sourceLink.removeAttribute("href");
@@ -598,14 +598,14 @@ function finishSession(timedOut) {
     showResults({
       pass, correct, total, timedOut,
       answers: session.answers,
-      title: pass ? (bp ? "Passed â€” Official Standard" : "Passed") : "Not yet",
+      title: pass ? (bp ? "Passed — Official Standard" : "Passed") : "Not yet",
       sub: pass
         ? bp
           ? `You met ${bp.label.replace(" Simulation", "")}'s real bar: ${bp.minCorrect} of ${bp.questionCount}. ${bp.notes}`
           : `You scored above the ${Math.round(state.settings.passMark * 100)}% pass mark. Take another exam to build consistency.`
         : bp
           ? `The real ${bp.label.replace(" Simulation", "")} requires ${bp.minCorrect} of ${total}. Review your misses and try again.`
-          : `You need ${g.needed} of ${total} to pass. Review your misses and try again â€” most people pass on a retake.`,
+          : `You need ${g.needed} of ${total} to pass. Review your misses and try again — most people pass on a retake.`,
     });
   } else {
     // practice: score only the questions actually answered
@@ -666,7 +666,7 @@ function showResults(r) {
   $("resultTitle").textContent = r.title;
   $("resultScore").textContent = Math.round(100 * r.correct / r.total) + "%";
   $("resultScore").className = "score-big " + (r.pass ? "pass" : "fail");
-  $("resultSub").textContent = (r.timedOut ? "Time ran out â€” your unanswered questions were counted. " : "") + r.sub;
+  $("resultSub").textContent = (r.timedOut ? "Time ran out — your unanswered questions were counted. " : "") + r.sub;
 
   const grid = $("resultGrid");
   grid.innerHTML = "";
@@ -697,7 +697,7 @@ function showResults(r) {
              ${sourceCitationHTML(q)}
            </div></div>`;
       }).join("")
-    : `<p class="muted">Nothing missed â€” flawless.</p>`;
+    : `<p class="muted">Nothing missed — flawless.</p>`;
   $("reviewSub").textContent = `${missed.length} question${missed.length === 1 ? "" : "s"} to review`;
   $("btnDrillMissed").style.display = missed.length ? "" : "none";
   $("btnDrillMissed").innerHTML = `${icon("target", 15)} Drill These Questions`;
@@ -805,11 +805,11 @@ function renderSkillProfile() {
 function renderStats() {
   const acc = state.answered ? Math.round(100 * state.correctCount / state.answered) : null;
   $("ssAnswered").textContent = state.answered;
-  $("ssAccuracy").textContent = acc === null ? "â€“" : acc + "%";
+  $("ssAccuracy").textContent = acc === null ? "–" : acc + "%";
   $("ssStreak").textContent = state.streak.count;
   $("ssExams").textContent = state.exams.length;
   $("ssTime").textContent = fmtTime(state.timeStudied);
-  $("ssHazard").textContent = state.hazardBest ? state.hazardBest + "/30" : "â€“";
+  $("ssHazard").textContent = state.hazardBest ? state.hazardBest + "/30" : "–";
 
   const lv = levelFor(state.xp);
   $("xpLabel").textContent = "Level " + lv.lvl;
@@ -849,7 +849,7 @@ function renderStats() {
           <span>${Math.round(e.pct * 100)}% (${e.correct}/${e.total})</span>
           <small>${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small></li>`;
       }).join("")
-    : `<li class="muted">No exams yet â€” take your first mock exam!</li>`;
+    : `<li class="muted">No exams yet — take your first mock exam!</li>`;
 
   $("selPassMark").value = String(state.settings.passMark);
   $("selExamLen").value = String(state.settings.examLen);
@@ -876,7 +876,7 @@ function logOutcome(result) {
   state.outcomes = Core.appendOutcome(state.outcomes, { ...outcomeSnapshot(), result });
   save();
   renderCalibration();
-  toast("Outcome logged", "Stored on this device only â€” included in backups.", "chart");
+  toast("Outcome logged", "Stored on this device only — included in backups.", "chart");
 }
 function renderCalibration() {
   const host = $("outcomeList");
@@ -887,7 +887,7 @@ function renderCalibration() {
         const d = new Date(o.date);
         const resLabel = o.result === "pass" ? "PASS" : o.result === "fail" ? "FAIL" : "?";
         return `<div class="outcome-row">
-          <span>${d.toLocaleDateString()} Â· ${o.progressPct}% progress Â· mock avg ${o.mockAvgPct}% Â· ${o.questionsSeen} questions
+          <span>${d.toLocaleDateString()} · ${o.progressPct}% progress · mock avg ${o.mockAvgPct}% · ${o.questionsSeen} questions
             <span class="outcome-meta">${fmtTime(o.studyMinutes * 60)} of study</span></span>
           <b class="res-${o.result}">${resLabel}</b>
         </div>`;
@@ -1138,7 +1138,7 @@ const Y = (t, ts) => -46 + HZ.V * (t - ts);           // scroll position of an o
 const HZ_SCENARIOS = [
   {
     name: "Ball & child", win: [2.6, 6.0], max: 7.6,
-    tip: "A rolling ball means a child is close behind â€” react the moment you see it.",
+    tip: "A rolling ball means a child is close behind — react the moment you see it.",
     objs: t => {
       let s = "";
       if (t >= 1.2) s += hzBall(300 - 50 * (t - 2.6), Y(t, 2.6));
@@ -1148,7 +1148,7 @@ const HZ_SCENARIOS = [
   },
   {
     name: "Parked car door", win: [3.0, 5.6], max: 7.2,
-    tip: "Park beside the door zone â€” expect doors to open and leave a gap.",
+    tip: "Park beside the door zone — expect doors to open and leave a gap.",
     objs: t => {
       let s = hzParked(Y(t, 2.0));
       if (t >= 3.2) s += hzDoor(Y(t, 2.0), Math.min(1, (t - 3.2) / 1.1));
@@ -1157,7 +1157,7 @@ const HZ_SCENARIOS = [
   },
   {
     name: "Brake lights ahead", win: [3.0, 5.1], max: 6.8,
-    tip: "Brake lights far ahead are your first warning â€” ease off the gas early.",
+    tip: "Brake lights far ahead are your first warning — ease off the gas early.",
     objs: t => {
       const y = -46 + HZ.V * (t - 3.0) + (t > 3.6 ? 30 * (t - 3.6) * (t - 3.6) : 0);
       return hzCarAhead(178, y, t > 3.4 && Math.floor(t * 4) % 2 === 0);
@@ -1165,7 +1165,7 @@ const HZ_SCENARIOS = [
   },
   {
     name: "Deer crossing", win: [3.2, 4.9], max: 6.5,
-    tip: "Where one animal crosses, more follow â€” brake in your lane, don't swerve.",
+    tip: "Where one animal crosses, more follow — brake in your lane, don't swerve.",
     objs: t => hzDeer(30 + (t >= 3.2 ? 60 * (t - 3.2) : 0), Y(t, 1.6)),
   },
   {
@@ -1179,7 +1179,7 @@ const HZ_SCENARIOS = [
   },
   {
     name: "Cyclist swerve", win: [2.6, 4.6], max: 6.2,
-    tip: "Riders swerve for hazards you can't see â€” give them room to do it.",
+    tip: "Riders swerve for hazards you can't see — give them room to do it.",
     objs: t => hzCyclist(246 - (t >= 2.6 ? 38 * (t - 2.6) : 0), Y(t, 1.8)),
   },
 ];
@@ -1233,12 +1233,12 @@ function hzStartGame() {
   hzIntro();
 }
 function hzIntro() {
-  const best = state.hazardBest ? ` Â· best ${state.hazardBest}/30` : "";
+  const best = state.hazardBest ? ` · best ${state.hazardBest}/30` : "";
   hzShowOverlay(`
     <div class="ov-inner">
       <span class="ov-ico">${icon("eye", 34)}</span>
       <h2>Hazard Perception</h2>
-      <p>6 scenarios. One hazard each.<br>Tap <b>SLOW</b> â€” or press <b>Space</b> â€” as soon as the hazard starts to develop.</p>
+      <p>6 scenarios. One hazard each.<br>Tap <b>SLOW</b> — or press <b>Space</b> — as soon as the hazard starts to develop.</p>
       <p class="ov-dim">5 points for instant recognition, down to 1. Too early or too late scores 0${best}.</p>
       <button class="btn primary" id="hzGo">Start</button>
     </div>`);
@@ -1251,7 +1251,7 @@ function hzNextScenario() {
   hz.press = null; hz.marked = false; hz.running = false;
   $("hzSlow").classList.remove("pressed");
   $("hzFlash").hidden = true;
-  hzShowOverlay(`<div class="ov-inner"><p class="ov-count">${hz.i + 1} / ${HZ_SCENARIOS.length}</p><h2>${sc.name}</h2><p class="ov-dim">Get readyâ€¦</p></div>`);
+  hzShowOverlay(`<div class="ov-inner"><p class="ov-count">${hz.i + 1} / ${HZ_SCENARIOS.length}</p><h2>${sc.name}</h2><p class="ov-dim">Get ready…</p></div>`);
   $("hzSvg").innerHTML = hzScene(0, { objs: () => "" });
   setTimeout(() => {
     hzHideOverlay();
@@ -1277,15 +1277,15 @@ function hzEndScenario(sc) {
   const press = hz.press;
   const r = Core.hazardScore(press, s, e);
   let pts = r.pts, verdict;
-  if (r.band === "late") { verdict = "Too late â€” the hazard fully developed"; $("hzFlash").hidden = false; }
-  else if (r.band === "early") { verdict = "Too early â€” nothing was developing yet"; }
+  if (r.band === "late") { verdict = "Too late — the hazard fully developed"; $("hzFlash").hidden = false; }
+  else if (r.band === "early") { verdict = "Too early — nothing was developing yet"; }
   else if (r.band === "instant") verdict = "Instant recognition";
   else if (r.band === "good") verdict = "Good spot";
   else verdict = "Cutting it close";
   hz.scores.push(pts);
   hzShowOverlay(`
     <div class="ov-inner">
-      <p class="ov-count">${hz.i + 1} / ${HZ_SCENARIOS.length} Â· ${sc.name}</p>
+      <p class="ov-count">${hz.i + 1} / ${HZ_SCENARIOS.length} · ${sc.name}</p>
       <div class="ov-pts ${pts ? "" : "zero"}">${pts ? "+" + pts : "0"} pts</div>
       <p><b>${verdict}</b></p>
       <p class="ov-dim">${sc.tip}</p>
@@ -1306,7 +1306,7 @@ function hzResults() {
     <div class="ov-inner">
       <span class="ov-ico">${icon(total >= 18 ? "trophy" : "eye", 34)}</span>
       <h2>${total} / 30</h2>
-      <p>${total >= 24 ? "Hawk-level awareness." : total >= 18 ? "Solid instincts â€” polish the early spots." : "Keep training â€” early recognition is the skill."}</p>
+      <p>${total >= 24 ? "Hawk-level awareness." : total >= 18 ? "Solid instincts — polish the early spots." : "Keep training — early recognition is the skill."}</p>
       ${isNew ? `<p class="ov-dim">New personal best</p>` : `<p class="ov-dim">Best: ${best}/30</p>`}
       <div class="ov-btns">
         <button class="btn ghost" id="hzAgain">Play Again</button>
@@ -1350,7 +1350,7 @@ function finishOnboarding() {
   save();
   $("onboarding").hidden = true;
   renderHome();
-  toast("Welcome aboard", "Start with Adaptive Practice â€” 10 questions.", "car");
+  toast("Welcome aboard", "Start with Adaptive Practice — 10 questions.", "car");
 }
 
 /* ---------------- wire up ---------------- */
@@ -1433,7 +1433,7 @@ function init() {
   on($("btnSaveSession"), "click", savePracticalSession);
   on($("qaReview"), "click", () => {
     const m = missedQuestions();
-    if (!m.length) { alert("Nothing missed yet â€” keep practicing!"); return; }
+    if (!m.length) { alert("Nothing missed yet — keep practicing!"); return; }
     startPractice(pickWeighted(m.map(q => ({ q, w: 1 })), Math.min(10, m.length)), "Missed Questions", "home");
   });
   on($("btnPlanAction"), "click", e => {
@@ -1492,7 +1492,7 @@ function init() {
     const pack = Packs.STATE_PACKS[e.target.value] || Packs.STATE_PACKS.generic;
     const n = (pack.questions || []).length;
     toast("State pack: " + pack.name,
-      n ? `${n} state-specific questions added Â· key rules updated` : "Universal questions â€” confirm specifics with your handbook.",
+      n ? `${n} state-specific questions added · key rules updated` : "Universal questions — confirm specifics with your handbook.",
       "car");
   });
   on($("btnExport"), "click", exportProgress);
@@ -1551,12 +1551,36 @@ function initStatePackSelect() {
   const sel = $("selStatePack");
   if (!sel) return;
   sel.innerHTML = "";
-  Packs.PACK_IDS.forEach(id => {
-    const o = document.createElement("option");
-    o.value = id;
-    o.textContent = Packs.STATE_PACKS[id].name;
-    sel.appendChild(o);
-  });
+  // country group header, then its regions — the pluggable tree, visible
+  if (COUNTRY) {
+    const g = document.createElement("optgroup");
+    g.label = COUNTRY.name + " — " + TERMS.agencyShort;
+    const tree = Jur.jurisdictionTree({
+      STATE_PACKS: Packs.STATE_PACKS,
+      EXAM_BLUEPRINTS: BLUEPRINTS,
+      SOURCE_REGISTRY: Packs.SOURCE_REGISTRY || {},
+    });
+    const us = tree.find((c) => c.id === COUNTRY.id);
+    const generic = document.createElement("option");
+    generic.value = "generic";
+    generic.textContent = "General U.S. rules";
+    g.appendChild(generic);
+    (us ? us.regions : []).forEach((r) => {
+      const o = document.createElement("option");
+      o.value = r.id;
+      o.textContent = r.name + (r.exam ? ` · ${r.exam.questionCount}q` : "");
+      o.dataset.exam = r.exam ? JSON.stringify(r.exam) : "";
+      g.appendChild(o);
+    });
+    sel.appendChild(g);
+  } else {
+    Packs.PACK_IDS.forEach(id => {
+      const o = document.createElement("option");
+      o.value = id;
+      o.textContent = Packs.STATE_PACKS[id].name;
+      sel.appendChild(o);
+    });
+  }
   sel.value = Packs.PACK_IDS.includes(state.settings.statePack) ? state.settings.statePack : "generic";
 }
 
@@ -1587,7 +1611,7 @@ function renderStateFacts() {
       <p class="state-note">${escapeHTML(note)}</p>
       <div class="facts-grid">${rows}</div>
       ${n ? `<p class="state-qcount">${n} ${packId}-specific questions are included in your practice and exams.</p>` : ""}
-      ${source ? `<a class="source-link state-source" href="${escapeHTML(source.url)}" target="_blank" rel="noopener noreferrer">Open official ${escapeHTML(source.agency)} handbook â†—</a>` : ""}
+      ${source ? `<a class="source-link state-source" href="${escapeHTML(source.url)}" target="_blank" rel="noopener noreferrer">Open official ${escapeHTML(source.agency)} handbook ↗</a>` : ""}
     </div>`;
 }
 

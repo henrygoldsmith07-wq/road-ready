@@ -43,4 +43,25 @@ describe("jurisdiction module contract", () => {
     const r = runChecks(mutated);
     expect(r.errors.some((e) => e.rule === "jurisdictions" && /terminology\.examName/.test(e.msg))).toBe(true);
   });
+
+  it("jurisdictionTree joins registry + packs + blueprints into the product map", () => {
+    const c = data.JURISDICTIONS[data.ACTIVE_COUNTRY];
+    const regions = c.regions.map((rid) => {
+      const bp = data.EXAM_BLUEPRINTS[rid];
+      const src = data.SOURCE_REGISTRY[bp.sourceId];
+      return {
+        id: rid,
+        name: data.STATE_PACKS[rid].name,
+        questionCount: (data.STATE_PACKS[rid].questions || []).length,
+        examAuthority: src.agency,
+        examQuestions: bp.questionCount,
+      };
+    });
+    expect(regions).toHaveLength(6);
+    for (const r of regions) {
+      expect(r.questionCount).toBeGreaterThanOrEqual(6);
+      expect(r.examAuthority).toBeTruthy();
+      expect(r.examQuestions).toBeGreaterThanOrEqual(18);
+    }
+  });
 });
