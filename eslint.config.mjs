@@ -48,7 +48,7 @@ export default [
       globals: {
         console: "readonly", process: "readonly", URL: "readonly", Buffer: "readonly",
         localStorage: "readonly", navigator: "readonly", document: "readonly", window: "readonly",
-        fetch: "readonly",
+        fetch: "readonly", QUESTIONS: "readonly",
       },
     },
     rules: { "no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }] },

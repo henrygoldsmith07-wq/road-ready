@@ -201,8 +201,62 @@ function showView(name) {
   window.scrollTo(0, 0);
 }
 
+
+/* ---------------- readiness panel (home) ---------------- */
+function renderReadinessPanel() {
+  const host = $("readinessPanel");
+  if (!host) return;
+  host.hidden = false;
+  const theoryPct = Math.round(readiness() * 100);
+  const log = Array.isArray(state.practical) ? (state.practical.log || []) : [];
+  const dr = Core.drivingReadiness(theoryPct, log);
+  const pct = dr.combined === null ? theoryPct : dr.combined;
+
+  // per-topic mastery snapshot
+  const topics = Object.keys(CATEGORIES).map((id) => {
+    const qs = catQ(id);
+    return {
+      id,
+      name: CATEGORIES[id].name,
+      mastery: Core.topicMastery(qs, state.qstats),
+      seen: qs.some((q) => state.qstats[q.id] && state.qstats[q.id].seen > 0),
+    };
+  });
+  const { strong, risk } = Core.strongAndRiskTopics(topics);
+
+  // unmastered count + days until test date (if set)
+  const unmastered = topics.reduce((t, tp) => {
+    const qs = catQ(tp.id);
+    return t + qs.filter((q) => !state.qstats[q.id] || Core.qMastery(state.qstats[q.id]) < 0.8).length;
+  }, 0);
+  let daysLeft = null;
+  if (state.settings.testDate) {
+    const diff = Math.ceil((Date.parse(state.settings.testDate + "T12:00:00Z") - Date.now()) / Core.DAY_MS);
+    if (diff > 0) daysLeft = diff;
+  }
+  const rec = Core.recommendedToday({ unmasteredQuestions: unmastered, daysUntilTest: daysLeft, dailyGoal: Core.DAILY_GOAL, riskCount: risk.length });
+
+  $("rpBand").textContent = pct <= 0 && !topics.some((t) => t.seen) ? "Not Started" : Core.readinessBand(pct).label;
+
+  const items = [];
+  strong.forEach((t) => items.push(`<li class="rp-strong"><span class="rp-glyph">✓</span> Strong: ${t.name.toLowerCase()}</li>`));
+  risk.forEach((t) => items.push(`<li class="rp-risk"><span class="rp-glyph">△</span> Risk: ${t.name.toLowerCase()}</li>`));
+  if (!items.length) items.push('<li class="muted">Answer a few questions and your strong/risk areas will appear here.</li>');
+  if (rec > 0) items.push(`<li class="rp-rec">Recommended today: <b>${rec} questions</b>${daysLeft ? ` (test in ${daysLeft} day${daysLeft === 1 ? "" : "s"})` : ""}</li>`);
+  else items.push('<li class="rp-rec"><b>Bank mastered</b> — keep sharp with mock exams.</li>');
+  $("rpList").innerHTML = items.join("");
+
+  // Start today's set: adaptive mix weighted toward risk topics, sized to rec
+  on($("rpStart"), "click", () => {
+    const n = Math.max(5, Math.min(rec || Core.DAILY_GOAL, bank.length));
+    const qs = pickWeighted(adaptivePool(), n);
+    if (qs.length) startPractice(qs, "Today's Set", "home");
+  });
+}
+
 /* ---------------- HOME ---------------- */
 function renderHome() {
+  renderReadinessPanel();
   const pct = Math.round(readiness() * 100);
   $("ringPct").textContent = pct + "%";
   const C = 2 * Math.PI * 52;

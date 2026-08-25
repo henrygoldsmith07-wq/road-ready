@@ -929,6 +929,47 @@ function assembleExam(opts) {
     };
   }
 
+  /* ---------------- readiness panel (home) ---------------- */
+  /** Band labels for the combined readiness heuristic. */
+  function readinessBand(pct) {
+    const p = num(pct, 0, 0, 100);
+    if (p >= 90) return { label: "Ready", tone: "ready" };
+    if (p >= 75) return { label: "Nearly Ready", tone: "nearly" };
+    if (p >= 55) return { label: "Getting There", tone: "getting" };
+    if (p > 0) return { label: "Early Days", tone: "early" };
+    return { label: "Not Started", tone: "early" };
+  }
+
+  /**
+   * Strong/risk topic lists for the home panel.
+   * strong: topics with mastery >= 0.8 (top 2, highest first)
+   * risk:   topics with data but mastery < 0.6 (bottom 2, lowest first)
+   */
+  function strongAndRiskTopics(topicsWithMastery) {
+    // topicsWithMastery: [{id,name,mastery(0..1), seen:boolean}]
+    const withData = topicsWithMastery.filter((t) => t.seen);
+    const strong = withData.filter((t) => t.mastery >= 0.8)
+      .sort((a, b) => b.mastery - a.mastery).slice(0, 2);
+    const risk = withData.filter((t) => t.mastery < 0.6)
+      .sort((a, b) => a.mastery - b.mastery).slice(0, 2);
+    return { strong, risk };
+  }
+
+  /**
+   * Recommended practice count for today.
+   * With a test date: spread remaining unmastered questions across the days
+   * left (clamped 10..40). Without: the daily goal, +5 per risk topic.
+   */
+  function recommendedToday({ unmasteredQuestions, daysUntilTest, dailyGoal, riskCount }) {
+    const goal = Math.max(5, dailyGoal || DAILY_GOAL);
+    if (!unmasteredQuestions || unmasteredQuestions <= 0) return 0;
+    if (daysUntilTest != null && daysUntilTest > 0) {
+      return Math.min(40, Math.max(10, Math.ceil(unmasteredQuestions / daysUntilTest)));
+    }
+    const risks = Math.max(0, Math.min(4, riskCount || 0));
+    return Math.min(25, goal + risks * 5);
+  }
+
   /* ---------------- import / export ---------------- */
   const EXPORT_APP_ID = "road-ready";
 
@@ -978,6 +1019,7 @@ function assembleExam(opts) {
     RETENTION_DELAY_DAYS, RETENTION_PROBE_SIZE, createEnrollment,
     retentionProbePool, studyMetrics, buildStudyExport,
     PROTOCOL_VERSION, SCORING_VERSION, MASTERY_VERSION, bankFingerprint,
+    readinessBand, strongAndRiskTopics, recommendedToday,
     exportBundle, parseImport,
   };
 

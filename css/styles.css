@@ -666,3 +666,17 @@ kbd {
 .pl-session-head { display: flex; justify-content: space-between; font-size: 13.5px; }
 .pl-marks { color: var(--muted); }
 .pl-del { margin-top: 6px; font-size: 11px; padding: 4px 10px; }
+
+/* readiness panel (home) */
+.readiness-panel { padding: 14px 14px 16px; margin-top: 12px; }
+.rp-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.rp-head h2 { margin: 0; font-size: 15px; }
+.rp-band { font-size: 17px; font-weight: 800; }
+.rp-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 5px; }
+.rp-list li { font-size: 13.5px; line-height: 1.45; display: flex; gap: 8px; align-items: baseline; }
+.rp-glyph { width: 16px; text-align: center; flex-shrink: 0; }
+.rp-strong .rp-glyph, .rp-strong b { color: #1a9134; }
+.rp-risk .rp-glyph, .rp-risk b { color: #c1272d; }
+.rp-rec { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 4px; }
+.rp-start { width: 100%; margin-top: 12px; }
+@media (min-width: 721px) { .readiness-panel { max-width: 640px; } }
