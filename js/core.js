@@ -155,6 +155,10 @@ function sanitizeState(s, opts) {
           mockAvgPct: num(o.mockAvgPct, 0, 0, 100),
           questionsSeen: num(o.questionsSeen, 0, 0, 1e6),
           studyMinutes: num(o.studyMinutes, 0, 0, 1e6),
+          coveragePct: num(o.coveragePct, 0, 0, 100),
+          stabilitySpread: num(o.stabilitySpread, 0, 0, 100),
+          diagnosticPct: num(o.diagnosticPct, 0, 0, 100) || undefined,
+          jurisdiction: typeof o.jurisdiction === "string" ? o.jurisdiction.slice(0, 8) : undefined,
           result: o.result === "pass" ? "pass" : o.result === "fail" ? "fail" : "unknown",
         })) : [];
     s.settings = Object.assign(defaultSettings(), plainObject(s.settings));
@@ -668,6 +672,10 @@ function assembleExam(opts) {
       date: num(entry && entry.date, nowMs == null ? Date.now() : nowMs, 0, 8.64e15),
       progressPct: num(entry && entry.progressPct, 0, 0, 100),
       mockAvgPct: num(entry && entry.mockAvgPct, 0, 0, 100),
+      coveragePct: num(entry && entry.coveragePct, 0, 0, 100),
+      stabilitySpread: num(entry && entry.stabilitySpread, 0, 0, 100),
+      diagnosticPct: num(entry && entry.diagnosticPct, 0, 0, 100) || undefined,
+      jurisdiction: typeof (entry && entry.jurisdiction) === "string" ? entry.jurisdiction.slice(0, 8) : undefined,
       questionsSeen: num(entry && entry.questionsSeen, 0, 0, 1e6),
       studyMinutes: num(entry && entry.studyMinutes, 0, 0, 1e6),
       result: OUTCOME_RESULT_VALUES.includes(entry && entry.result) ? entry.result : "unknown",
@@ -898,7 +906,7 @@ function assembleExam(opts) {
     const m = meta || {};
     const metrics = studyMetrics({ ...stateLike, bank });
     return {
-      schema: "road-ready-study@1",
+      schema: "road-ready-study@2",
       protocol: {
         protocolVersion: PROTOCOL_VERSION,
         contentVersion: bankFingerprint(bank),
@@ -970,6 +978,91 @@ function assembleExam(opts) {
     return Math.min(25, goal + risks * 5);
   }
 
+  /* ---------------- calibration (outcome → probability) ---------------- */
+  // The readiness score becomes meaningful ONLY after real theory-test
+  // outcomes are pooled against it. Until each bucket reaches MIN_BUCKET_N,
+  // the product must not state a pass probability.
+  const MIN_BUCKET_N = 8;
+  const CALIBRATION_BUCKETS = ["<50%", "50–59%", "60–69%", "70–79%", "80–89%", "90–100%"];
+
+  /** Spread of the most recent n mock scores (null with <2 exams). */
+  function mockStability(exams, n) {
+    const recent = (exams || []).slice(-(n || 3)).map((e) => e.pct);
+    if (recent.length < 2) return null;
+    return Math.max(...recent) - Math.min(...recent);
+  }
+
+  /** Share of the bank ever attempted (0..1). */
+  function bankCoverage(questions, qstats) {
+    if (!questions || !questions.length) return 0;
+    let seen = 0;
+    for (const q of questions) {
+      const st = qstats && qstats[q.id];
+      if (st && st.seen > 0) seen++;
+    }
+    return seen / questions.length;
+  }
+
+  /**
+   * Build the calibration curve from logged outcome samples.
+   * Each sample: { readinessPct, result: "pass"|"fail" }.
+   * Buckets with fewer than opts.minN outcomes report rate:null.
+   */
+  function calibrationCurve(samples, opts) {
+    const minN = (opts && opts.minN) ?? MIN_BUCKET_N;
+    const out = [];
+    for (const label of CALIBRATION_BUCKETS) {
+      const inBucket = (samples || []).filter((s) => progressBucket(s.readinessPct) === label);
+      const passes = inBucket.filter((s) => s.result === "pass").length;
+      out.push({
+        bucket: label,
+        n: inBucket.length,
+        passes,
+        failRate: inBucket.length ? inBucket.length - passes : 0,
+        passRate: inBucket.length >= minN ? passes / inBucket.length : null,
+      });
+    }
+    return out;
+  }
+
+  /** The bucket row matching a readiness percentage (may be empty). */
+  function calibrationRowFor(curve, readinessPct) {
+    return curve.find((row) => row.bucket === progressBucket(readinessPct)) || null;
+  }
+
+  /**
+   * Honest narrative for the home/stats surfaces.
+   * Returns {mode:"uncalibrated"|"calibrated"|"insufficient",
+   *          text, disclaimer, calibratedPassRate?}.
+   * Calibrated text names the bucket, the observed pass rate and any unstable
+   * (high-spread) recent mocks; it NEVER implies practical-driving readiness.
+   */
+  function readinessNarrative(opts) {
+    const { readinessPct, curve, riskTopics, stabilitySpread } = opts || {};
+    const DISCLAIMER = "Theory-test readiness is not a claim that you are safe or ready for independent practical driving.";
+    const band = readinessBand(readinessPct);
+    const builtCurve = Array.isArray(curve) && curve.length && curve[0].bucket
+      ? curve // already a built curve
+      : calibrationCurve(curve || [], opts);
+    const row = calibrationRowFor(builtCurve, readinessPct);
+    const riskLine = (riskTopics || []).length
+      ? ` Focus areas right now: ${riskTopics.map((r) => r.toLowerCase()).join(", ")}.`
+      : "";
+    if (!curve || !row || row.n < ((opts && opts.minN) ?? MIN_BUCKET_N)) {
+      return {
+        mode: "insufficient",
+        text: `Your study-progress score is ${Math.round(readinessPct)}% (${band.label}). Not enough learner outcomes exist yet to convert this into a pass probability.`,
+        disclaimer: DISCLAIMER,
+      };
+    }
+    return {
+      mode: "calibrated",
+      calibratedPassRate: row.passRate,
+      text: `Learners scoring ${row.bucket} with comparable recent performance historically passed about ${Math.round(row.passRate * 100)}% of official theory exams.${riskLine}`,
+      disclaimer: DISCLAIMER,
+    };
+  }
+
   /* ---------------- import / export ---------------- */
   const EXPORT_APP_ID = "road-ready";
 
@@ -1020,6 +1113,8 @@ function assembleExam(opts) {
     retentionProbePool, studyMetrics, buildStudyExport,
     PROTOCOL_VERSION, SCORING_VERSION, MASTERY_VERSION, bankFingerprint,
     readinessBand, strongAndRiskTopics, recommendedToday,
+    MIN_BUCKET_N, CALIBRATION_BUCKETS, mockStability, bankCoverage,
+    calibrationCurve, calibrationRowFor, readinessNarrative,
     exportBundle, parseImport,
   };
 

@@ -110,7 +110,7 @@ describe("study export (privacy-first)", () => {
     s.outcomes = [{ date: NOW, progressPct: 70, mockAvgPct: 65, questionsSeen: 100, studyMinutes: 60, result: "pass" }];
 
     const exp = Core.buildStudyExport(s, bank, NOW);
-    expect(exp.schema).toBe("road-ready-study@1");
+    expect(exp.schema).toBe("road-ready-study@2");
     expect(exp.participantId).toBe("rr-deadbeef");
     expect(exp.metrics.latestMockPct).toBe(null); // no tagged diagnostic → no measured follow-up
     expect(exp.timeline.exams).toHaveLength(1);
@@ -126,6 +126,6 @@ describe("study export (privacy-first)", () => {
     s.study.enrolledAt = NOW;
     s.study.participantId = "rr-test0001";
     const exp = Core.buildStudyExport(s, bank, NOW);
-    expect(exp.schema).toBe("road-ready-study@1");
+    expect(exp.schema).toBe("road-ready-study@2");
   });
 });

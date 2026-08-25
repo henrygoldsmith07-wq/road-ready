@@ -458,17 +458,14 @@
 
       <h2 class="section-title">Real test outcomes <small class="beta-pill">beta</small></h2>
       <div class="card" id="calibrationCard">
-        <p class="state-note" style="margin:0 0 10px;">
-          Your progress % measures how much of the course you've covered — it is
-          <b>not yet a calibrated prediction</b> of passing the real exam.
-          Taking your real test? Log the outcome (stored only on your device,
-          included in backups) to help build a future pass-probability model.
-        </p>
+        <p id="calibrationNarrative" class="focus-line" style="margin:0 0 10px;"></p>
+        <p class="state-note" style="margin:0 0 10px;" id="calibrationDisclaimer"></p>
         <div id="outcomeList"></div>
-        <div class="data-actions" style="margin-top:10px;">
+        <div class="data-actions" style="margin-top:10px; flex-wrap:wrap;">
           <button class="btn primary" id="btnOutcomePass">I passed my real test</button>
           <button class="btn ghost" id="btnOutcomeFail">I didn't pass</button>
         </div>
+      </div>
       </div>
 
       <h2 class="section-title">Learner study <small class="beta-pill">research</small></h2>

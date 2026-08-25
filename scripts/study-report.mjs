@@ -25,7 +25,7 @@ for (const f of files) {
   if (!existsSync(f)) { console.error(`skip: ${f} (not found)`); continue; }
   try {
     const d = JSON.parse(readFileSync(f, "utf8"));
-    if (d.schema !== "road-ready-study@1") { console.error(`skip: ${f} (wrong schema)`); continue; }
+    if (!/^road-ready-study@(1|2)$/.test(d.schema || "")) { console.error(`skip: ${f} (unsupported schema ${d.schema})`); continue; }
     if (!d.protocol || typeof d.protocol.protocolVersion !== "string") { console.error(`skip: ${f} (missing protocol envelope — pre-rr-study-1.0 export)`); continue; }
     if (!d.participantId) { console.error(`skip: ${f} (no participant id)`); continue; }
     participants.push(d);
@@ -97,7 +97,33 @@ if (rows.length) {
   console.log(`  improved (Δ>0)           : ${deltas.filter((d) => d > 0).length}/${rows.length}`);
   console.log(`  median study time        : ${median(hours)?.toFixed(1) ?? "–"} h (mean ${mean(hours)?.toFixed(1) ?? "–"} h)`);
   console.log(`  retention after ≥7 days  : ${retA ? Math.round((100 * retC) / retA) + "% of " + retA + " probes" : "–"}`);
-  console.log(`\nHeadline template:`);
+  
+// ---- calibration curve (pooled outcomes) ----
+const samples = [];
+for (const p of participants) {
+  for (const o of p.outcomes || []) {
+    if ((o.result === "pass" || o.result === "fail") && typeof o.progressPct === "number") {
+      samples.push({ readinessPct: o.progressPct, result: o.result });
+    }
+  }
+}
+if (samples.length) {
+  const BUCKETS = ["<50%", "50\u201359%", "60\u201369%", "70\u201379%", "80\u201389%", "90\u2013100%"];
+  const MIN_N = 8;
+  console.log("\nCalibration curve (progress bucket -> observed pass rate):");
+  for (const b of BUCKETS) {
+    const inB = samples.filter((x) => {
+      const p = x.readinessPct;
+      const lbl = p >= 90 ? "90\u2013100%" : p >= 80 ? "80\u201389%" : p >= 70 ? "70\u201379%" : p >= 60 ? "60\u201369%" : p >= 50 ? "50\u201359%" : "<50%";
+      return lbl === b;
+    });
+    const passes = inB.filter((x) => x.result === "pass").length;
+    const rate = inB.length >= MIN_N ? Math.round((100 * passes) / inB.length) + "%" : "insufficient (<" + MIN_N + ")";
+    console.log("  " + b.padEnd(9) + String(inB.length).padStart(4) + " outcomes   pass " + rate);
+  }
+}
+
+console.log(`\nHeadline template:`);
   console.log(`  Learners improved from ${mean(diags)?.toFixed(0)}% to ${mean(lasts)?.toFixed(0)}% after a median of ${(median(hours) ?? 0).toFixed(1)} hours of Road Ready practice.`);
 } else {
   console.log("\nNo participant has both a diagnostic and a follow-up mock yet.");
