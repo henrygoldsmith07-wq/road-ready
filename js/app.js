@@ -383,7 +383,7 @@ function startExam(n, weakBias) {
   quizBackTarget = "home";
   // Blueprint-stratified assembly: every mock mirrors the real test's topic
   // mix; weakBias reserves ~60% of seats for your three weakest topics.
-  const qs = Core.assembleExam({ bank, n, qstats: state.qstats, flags: state.flagged, weakBias });
+  const qs = Core.assembleExam({ bank, n, qstats: state.qstats, flags: state.flagged, weakBias, samplingMode: "adaptive" });
   session = { mode: "exam", label: n >= 40 ? "Full Test" : n > 12 ? "Mock Exam" : "Quick Check", questions: qs, i: 0, correct: 0, answers: [], timeLeft: Core.timeLimitSecs(qs.length), endTs: 0, timerId: null };
   beginQuiz();
 }
@@ -395,7 +395,7 @@ function startOfficialExam(packId) {
   const bp = BLUEPRINTS[packId];
   if (!bp) return;
   quizBackTarget = "home";
-  const qs = Core.assembleExam({ bank, n: bp.questionCount, qstats: state.qstats, flags: state.flagged, weights: bp.topicWeights });
+  const qs = Core.assembleExam({ bank, n: bp.questionCount, samplingMode: "representative", weights: bp.topicWeights });
   session = {
     mode: "exam", official: true, blueprint: bp,
     label: bp.label,
@@ -1042,7 +1042,7 @@ function joinStudy() {
 
 function startDiagnostic() {
   quizBackTarget = "stats";
-  const qs = Core.assembleExam({ bank, n: 20, qstats: state.qstats });
+  const qs = Core.assembleExam({ bank, n: 20, samplingMode: "fixed", seed: 0xD1A6 });
   session = { mode: "exam", tag: "diagnostic", label: "Baseline Diagnostic", questions: qs, i: 0, correct: 0, answers: [], timeLeft: Core.timeLimitSecs(qs.length), endTs: 0, timerId: null };
   beginQuiz();
 }

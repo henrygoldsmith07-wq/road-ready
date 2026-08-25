@@ -510,6 +510,17 @@ function reviewSched(sched, right, nowMs, quality) {
     return a;
   }
 
+  /** Small deterministic PRNG so "fixed" assessment forms are reproducible. */
+  function mulberry32(seed) {
+    let a = seed >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
   const timeLimitSecs = (nQuestions) => nQuestions * EXAM_SECONDS_PER_QUESTION;
 
   /**
@@ -567,20 +578,33 @@ function reviewSched(sched, right, nowMs, quality) {
    * test's topic mix; weakBias reserves ~60% of seats for the 3 weakest topics.
    */
   /**
- * @param {{bank: Array, n: number, qstats: object, weakBias?: boolean, rand?: Function, nowMs?: number, flags?: object, weights?: object|null}} opts
+ * @param {{bank: Array, n: number, qstats?: object, weakBias?: boolean, rand?: Function,
+ *     nowMs?: number, flags?: object, weights?: object|null,
+ *     samplingMode?: "adaptive"|"representative"|"fixed", seed?: number}} opts
  */
 function assembleExam(opts) {
-    const bank = opts.bank, n = Math.min(opts.n, bank.length), qstats = opts.qstats;
-    const rand = opts.rand || Math.random;
+    const bank = opts.bank, n = Math.min(opts.n, bank.length), qstats = opts.qstats || {};
+    // Sampling modes:
+    //   adaptive       — practice/weak-topic exams; weights lean toward the
+    //                    learner's misses, unseen and due items (uses qstats/flags)
+    //   representative — OFFICIAL SIMULATIONS; uniform random within each topic
+    //                    stratum. Never inspects qstats, flags or due dates, so
+    //                    two learners of equal knowledge get equally hard forms.
+    //   fixed          — study diagnostic/post-test; a LOCKED FORM from a seeded
+    //                    PRNG so every participant answers identical items.
+    const mode = opts.samplingMode === "representative" || opts.samplingMode === "fixed"
+      ? opts.samplingMode : "adaptive";
+    let rand = opts.rand || Math.random;
+    if (mode === "fixed" && !opts.rand) rand = mulberry32(opts.seed == null ? 0x5EED : opts.seed);
     const nowMs = opts.nowMs == null ? Date.now() : opts.nowMs;
-    const flags = opts.flags || {};
+    const flags = mode === "adaptive" ? (opts.flags || {}) : {};
     const cats = Array.from(new Set(bank.map((q) => q.cat)));
     const byCat = {};
     cats.forEach((c) => { byCat[c] = bank.filter((q) => q.cat === c); });
 
     let alloc = examBlueprint(bank, n, opts.weights);
 
-    if (opts.weakBias && cats.length > 1) {
+    if (opts.weakBias && mode === "adaptive" && cats.length > 1) {
       const accs = cats.map((c) => ({ c, acc: catAccuracy(byCat[c], qstats) }))
         .sort((a, b) => (a.acc == null ? 1 : a.acc) - (b.acc == null ? 1 : b.acc));
       const weak = accs.slice(0, Math.min(3, cats.length)).map((x) => x.c);
@@ -594,7 +618,14 @@ function assembleExam(opts) {
 
     const chosen = [];
     alloc.forEach(({ cat, take }) => {
-      const pool = buildAdaptivePool(byCat[cat], qstats, flags, nowMs);
+      let pool;
+      if (mode === "adaptive") {
+        pool = buildAdaptivePool(byCat[cat], qstats, flags, nowMs);
+      } else {
+        // representative/fixed: every item in the stratum is equally likely —
+        // learner history is deliberately invisible to the assessment.
+        pool = shuffle(byCat[cat], rand).map((q) => ({ q, w: 1 }));
+      }
       chosen.push(...pickWeighted(pool, Math.min(take, pool.length), rand));
     });
 
