@@ -5,7 +5,7 @@
 const ID_RE = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*\d{1,3}$/;
 const PLACEHOLDER_RE = /\b(todo|tbd|fixme|placeholder|lorem ipsum|xxx)\b/i;
 const CONCEPT_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-export const QUESTION_FORMS = ["recall", "scenario", "diagram", "sign-combo", "lane-choice", "what-next", "prioritisation"];
+export const QUESTION_FORMS = ["recall", "scenario", "diagram", "sign-combo", "lane-choice", "what-next", "prioritisation", "photo", "multi-step"];
 const VERIFIED_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const OFFICIAL_SOURCE_HOSTS = new Set([
   "www.dmv.ca.gov", "www.dps.texas.gov", "dmv.ny.gov", "www.flhsmv.gov", "dol.wa.gov", "www.pa.gov",

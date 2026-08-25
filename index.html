@@ -441,6 +441,13 @@
       </div>
       <h2 class="section-title">Achievements</h2>
       <div class="ach-grid" id="achGrid"></div>
+      <h2 class="section-title">Argument skill profile</h2>
+      <div class="card" id="skillProfileCard">
+        <p class="state-note" style="margin:0 0 12px;">Seven skill dimensions scored 0–100 from your answer history across all topics. Lower bars are your training focus.</p>
+        <div id="skillProfileBars"></div>
+        <div id="trainingFocus" class="focus-line" style="margin-top:14px;"></div>
+      </div>
+
       <h2 class="section-title">Mastery by topic</h2>
       <div class="card" id="masteryCard"><div id="masteryList"></div></div>
       <h2 class="section-title">Exam history</h2>
@@ -458,6 +465,25 @@
         <div class="data-actions" style="margin-top:10px;">
           <button class="btn primary" id="btnOutcomePass">I passed my real test</button>
           <button class="btn ghost" id="btnOutcomeFail">I didn't pass</button>
+        </div>
+      </div>
+
+      <h2 class="section-title">Learner study <small class="beta-pill">research</small></h2>
+      <div class="card" id="studyCard">
+        <div id="studyIntro">
+          <p class="state-note" style="margin:0 0 10px;">Help prove what works. Fully anonymous (random ID, no account), stored only on this device until you export it. Free-text notes are never included in study data.</p>
+          <button class="btn primary" id="btnStudyJoin">Join anonymously</button>
+        </div>
+        <div id="studyBody" hidden>
+          <p class="outcome-meta" style="margin:0 0 8px;">Participant <b id="studyPid"></b> · day <span id="studyDay"></span></p>
+          <div id="confidenceSurvey" hidden></div>
+          <div id="studyMetrics" class="pl-session" style="border:0;"></div>
+          <div class="data-actions" style="margin-top:10px; flex-wrap:wrap;">
+            <button class="btn ghost" id="btnDiagnostic">Baseline diagnostic exam</button>
+            <button class="btn ghost" id="btnRetentionProbes" hidden>Memory check</button>
+            <button class="btn ghost" id="btnStudyExport">Export study data</button>
+          </div>
+          <p class="outcome-meta" id="retentionHint" style="margin-top:8px;"></p>
         </div>
       </div>
 

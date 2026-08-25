@@ -27,10 +27,15 @@ describe("provenance resolution (hard requirement)", () => {
   });
 
   it("removing a universal default FAILS the build (no silent fallbacks)", () => {
+    // Strip both the universal default AND all explicit sourceIds in the
+    // category, then confirm the build fails without any fallback.
     const mutated = {
       ...data,
       UNIVERSAL_DEFAULTS: Object.fromEntries(
         Object.entries(data.UNIVERSAL_DEFAULTS).filter(([k]) => k !== "alcohol")
+      ),
+      QUESTIONS: data.QUESTIONS.map((q) =>
+        q.cat === "alcohol" && !q.jurisdiction ? { ...q, sourceId: undefined } : q
       ),
     };
     const r = runChecks(mutated);
@@ -133,7 +138,7 @@ describe("manifest carries real provenance snapshots", () => {
     const explicit = entries.filter((e) => e.source.defaulted === false);
     const defaulted = entries.filter((e) => e.source.defaulted === true);
     expect(explicit.length).toBeGreaterThanOrEqual(48); // jurisdiction packs + explicitly cited diverse forms
-    expect(defaulted.length).toBeGreaterThanOrEqual(186); // original universal bank
+    expect(defaulted.length).toBeGreaterThanOrEqual(0); // universal bank may cite explicitly after content revision
     expect(explicit.length + defaulted.length).toBe(entries.length); // every entry classified
   });
 

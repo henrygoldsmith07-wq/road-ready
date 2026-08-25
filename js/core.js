@@ -43,6 +43,7 @@
       hazardBest: 0,
       outcomes: [],      // opt-in real-test outcome journal: {date, progressPct, mockAvgPct, questionsSeen, studyMinutes, result}
       practical: { log: [] }, // driving-log sessions: {date, minutes, conditions[], roadTypes[], skills{skillId:rating}, notes}
+      study: { enrolledAt: undefined, participantId: "", confidence: [], retentionLog: [] },
       settings: defaultSettings(),
     };
   }
@@ -104,6 +105,7 @@
       total: num(e.total, 0, 1, 1e6),
       pass: bool(e.pass),
       durationSec: e.durationSec == null ? undefined : num(e.durationSec, 0, 0, 86400),
+      tag: typeof e.tag === "string" ? e.tag.slice(0, 16) : undefined,
     })) : [];
     s.answered = num(s.answered, 0, 0, 1e9);
     s.correctCount = num(s.correctCount, 0, 0, s.answered);
@@ -133,6 +135,20 @@
         .filter((x) => x.minutes > 0 || Object.keys(x.skills).length > 0)
       : [];
     s.practical = practical;
+    const study = plainObject(s.study);
+    study.enrolledAt = num(study.enrolledAt, 0, 0, 8.64e15) || undefined;
+    study.participantId = typeof study.participantId === "string" ? study.participantId.slice(0, 16) : "";
+    study.confidence = Array.isArray(study.confidence)
+      ? study.confidence.filter((c) => c && typeof c === "object" && typeof c.catId === "string"
+          && Number.isFinite(c.level)).map((c) => ({ catId: c.catId, level: Math.min(5, Math.max(1, Math.round(c.level))) }))
+      : [];
+    study.retentionLog = Array.isArray(study.retentionLog)
+      ? study.retentionLog.filter((o) => o && typeof o === "object" && typeof o.qid === "string").map((o) => ({
+          qid: o.qid.slice(0, 24),
+          askedAt: num(o.askedAt, Date.now(), 0, 8.64e15),
+          right: bool(o.right),
+        })) : [];
+    s.study = study;
     s.outcomes = Array.isArray(s.outcomes)
       ? s.outcomes.filter((o) => o && typeof o === "object" && !Array.isArray(o)).map((o) => ({
           date: num(o.date, Date.now(), 0, 8.64e15),
@@ -743,6 +759,99 @@
     };
   }
 
+  /* ---------------- learner study (research instrumentation) ---------------- */
+  // Anonymous, opt-in. Everything stays on-device until the user exports.
+  // Free-text fields (notes) are deliberately EXCLUDED from study exports.
+
+  const RETENTION_DELAY_DAYS = 7;
+  const RETENTION_PROBE_SIZE = 5;
+
+  function createEnrollment(nowMs) {
+    // random anonymous id — no account, no PII, stable for the cohort join
+    let id = "";
+    for (let i = 0; i < 8; i++) id += "0123456789abcdef"[Math.floor(Math.random() * 16)];
+    return { participantId: `rr-${id}`, enrolledAt: nowMs == null ? Date.now() : nowMs };
+  }
+
+  /** Questions mastered ≥7 days ago → retention probe candidates (oldest first). */
+  function retentionProbePool(questions, qstats, retentionLog, nowMs) {
+    const asked = new Set((retentionLog || []).map((r) => r.qid));
+    const cutoff = nowMs - RETENTION_DELAY_DAYS * DAY_MS;
+    return questions
+      .filter((q) => {
+        const st = qstats[q.id];
+        if (!st || st.seen === 0 || asked.has(q.id)) return false;
+        const lastSeen = st.lastSeen || 0;
+        if (lastSeen > cutoff) return false;                 // too recent
+        return st.correct >= 1 && qMastery(st) >= 0.6;       // was actually learned
+      })
+      .sort((a, b) => ((qstats[a.id].lastSeen || 0) - (qstats[b.id].lastSeen || 0)))
+      .slice(0, RETENTION_PROBE_SIZE);
+  }
+
+  /**
+   * Cohort-grade metric snapshot for one participant.
+   * diagnostic = first tagged-diagnostic exam (falls back to first exam);
+   * improvement = latest exam pct − diagnostic pct (null with <2 exams).
+   */
+  function studyMetrics(stateLike) {
+    const { enrolledAt, exams, answered, timeStudied, study, qstats } = stateLike;
+    const diagnostics = (exams || []).filter((e) => e.tag === "diagnostic");
+    const baseline = diagnostics[0] || (exams || [])[0] || null;
+    const latest = (exams || []).length ? (exams)[(exams).length - 1] : null;
+    const mockScores = (exams || []).map((e) => e.pct);
+    const retention = study && Array.isArray(study.retentionLog)
+      ? {
+          attempts: study.retentionLog.length,
+          correct: study.retentionLog.filter((r) => r.right).length,
+        }
+      : { attempts: 0, correct: 0 };
+    return {
+      enrolledAt: enrolledAt || null,
+      daysSinceEnroll: enrolledAt ? Math.max(0, Math.floor((((stateLike.nowMs == null ? Date.now() : stateLike.nowMs)) - enrolledAt) / DAY_MS)) : null,
+      questionsAnswered: answered || 0,
+      studyHours: Math.round(((timeStudied || 0) / 3600) * 10) / 10,
+      diagnosticPct: baseline ? Math.round(baseline.pct * 100) : null,
+      latestMockPct: latest ? Math.round(latest.pct * 100) : null,
+      improvementPct: baseline && latest ? Math.round((latest.pct - baseline.pct) * 100) : null,
+      mockCount: mockScores.length,
+      confidence: study && Array.isArray(study.confidence) ? study.confidence : [],
+      retentionAttempts: retention.attempts,
+      retentionCorrect: retention.correct,
+      retentionRate: retention.attempts ? retention.correct / retention.attempts : null,
+    };
+  }
+
+  /**
+   * Anonymized export for cohort analysis. Contains ids, numbers and dates —
+   * never free-text notes, question content, or anything account-like.
+   */
+  function buildStudyExport(stateLike, bank, exportedAtMs) {
+    const metrics = studyMetrics({ ...stateLike, bank });
+    return {
+      schema: "road-ready-study@1",
+      participantId: (stateLike.study && stateLike.study.participantId) || null,
+      enrolledAt: (stateLike.study && stateLike.study.enrolledAt) || null,
+      exportedAt: new Date(exportedAtMs == null ? Date.now() : exportedAtMs).toISOString(),
+      metrics,
+      timeline: {
+        exams: (stateLike.exams || []).map((e) => ({
+          date: e.date, tag: e.tag || "mock", label: e.label || "Exam",
+          pct: e.pct, correct: e.correct, total: e.total, pass: !!e.pass,
+        })),
+        dailyAnswers: clone(stateLike.daily || {}),
+        retentionLog: clone((stateLike.study && stateLike.study.retentionLog) || []),
+      },
+      practicalSessions: (stateLike.practical && Array.isArray(stateLike.practical.log)
+        ? stateLike.practical.log.map((s) => ({ date: s.date, minutes: s.minutes, skills: clone(s.skills || {}) }))
+        : []),
+      outcomes: (stateLike.outcomes || []).map((o) => ({
+        date: o.date, progressPct: o.progressPct, mockAvgPct: o.mockAvgPct,
+        questionsSeen: o.questionsSeen, studyMinutes: o.studyMinutes, result: o.result,
+      })),
+    };
+  }
+
   /* ---------------- import / export ---------------- */
   const EXPORT_APP_ID = "road-ready";
 
@@ -789,6 +898,8 @@
     PRACTICAL_RATINGS, RATING_VALUE, COMPETENCIES, CONDITIONS, ROAD_TYPES,
     skillIds, competencyName, appendPracticalSession, competencyScores,
     practicalScore, drivingReadiness, nextLessonFocus,
+    RETENTION_DELAY_DAYS, RETENTION_PROBE_SIZE, createEnrollment,
+    retentionProbePool, studyMetrics, buildStudyExport,
     exportBundle, parseImport,
   };
 

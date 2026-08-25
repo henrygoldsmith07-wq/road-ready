@@ -432,7 +432,7 @@ function renderQuiz() {
   $("qprogBar").style.width = (100 * session.i / total) + "%";
   $("qCounter").textContent = `Q ${session.i + 1}/${total}`;
   $("qCategory").textContent = CATEGORIES[q.cat].name;
-  // question forms: single sign, sign combination, and/or ASCII road-layout scene
+  // question forms: single sign, sign combination, ASCII road-layout scene, and photo placeholder
   const signIds = Array.isArray(q.signIds) && q.signIds.length ? q.signIds : (q.signId ? [q.signId] : []);
   $("signFrame").hidden = !signIds.length;
   if (signIds.length) {
@@ -442,8 +442,11 @@ function renderQuiz() {
   }
   const sceneHost = $("qScene");
   if (q.scene) {
+    const isPhoto = q.form === "photo";
+    const label = isPhoto ? "photograph — described scene" : "road layout diagram";
+    const photoHead = isPhoto ? `<div class="photo-badge">${icon("camera", 12)} PHOTO — imagine this view</div>` : "";
     sceneHost.hidden = false;
-    sceneHost.innerHTML = `<pre class="scene" aria-label="road layout diagram">${escapeHTML(q.scene)}</pre>`;
+    sceneHost.innerHTML = `${photoHead}<pre class="scene${isPhoto ? " photo-scene" : ""}" aria-label="${label}">${escapeHTML(q.scene)}</pre>`;
   } else {
     sceneHost.hidden = true;
     sceneHost.innerHTML = "";
@@ -584,7 +587,7 @@ function finishSession(timedOut) {
     const passMark = bp ? bp.minCorrect / Math.max(1, bp.questionCount) : state.settings.passMark;
     const g = Core.gradeExam(correct, total, passMark);
     const pass = g.pass && (!bp || total === Math.min(bp.questionCount, bank.length));
-    state.exams.push({ date: Date.now(), label: session.label, pct: g.pct, correct, total, pass, durationSec: Core.timeLimitSecs(total) - Math.max(0, session.timeLeft || 0), official: !!bp });
+    state.exams.push({ date: Date.now(), label: session.label, pct: g.pct, correct, total, pass, durationSec: Core.timeLimitSecs(total) - Math.max(0, session.timeLeft || 0), official: !!bp, tag: session.tag || undefined });
     if (state.exams.length > Core.MAX_EXAM_HISTORY) state.exams = state.exams.slice(-Core.MAX_EXAM_HISTORY);
     save();
     checkProgressAchievements();
@@ -611,6 +614,11 @@ function finishSession(timedOut) {
     const correct = session.answers.filter(a => a.right).length;
     const early = total < session.questions.length;
     session.perfectRun = correct === total && total >= 10;
+    // memory-check answers feed the retention metric
+    if (session.tag === "retention" && session.answers.length) {
+      state.study.retentionLog = (state.study.retentionLog || []).concat(
+        session.answers.map(a => ({ qid: a.qid, askedAt: Date.now(), right: a.right })));
+    }
     if (session.perfectRun) { unlock("perfect"); addXP(20); }
     showResults({
       pass: correct / total >= 0.8, correct, total, timedOut,
@@ -733,6 +741,67 @@ function fcMark(known) {
 }
 
 /* ---------------- STATS ---------------- */
+
+/* Argument Skill Profile — 7 dimensions scored from concept mastery.
+ * Maps topic categories + concepts into the 7-dimension coach model. */
+const SKILL_DIMENSIONS = [
+  { key: "evidence",       label: "Evidence",       topics: ["signs"],           concepts: [] },
+  { key: "rebuttal",       label: "Rebuttal",       topics: ["row", "vulnerable"], concepts: ["junction-priority", "roundabout-priority", "merge-priority"] },
+  { key: "logic",          label: "Logic",          topics: ["laws"],            concepts: ["emergency-vehicles", "work-zones"] },
+  { key: "clarity",        label: "Clarity",        topics: ["speed"],           concepts: ["low-visibility", "hydroplaning", "skid-recovery"] },
+  { key: "impact",         label: "Impact",         topics: ["alcohol"],         concepts: ["zero-tolerance", "bac-limits"] },
+  { key: "steelmanning",   label: "Steelmanning",   topics: ["safety"],          concepts: ["following-distance", "brake-failure", "tire-blowout"] },
+  { key: "structure",      label: "Structure",      topics: ["parking", "vehicle", "markings"], concepts: ["lane-selection", "pedestrian-priority", "curb-distance"] },
+];
+
+function skillProfile() {
+  return SKILL_DIMENSIONS.map(dim => {
+    // Collect all questions belonging to this dimension
+    const qs = bank.filter(q => {
+      if (dim.concepts.length && q.concept && dim.concepts.includes(q.concept)) return true;
+      if (!q.concept || !dim.concepts.length) {
+        if (dim.topics.includes(q.cat)) {
+          // Only match via topic if the question doesn't belong to a different dimension's concept
+          const otherDim = SKILL_DIMENSIONS.find(d =>
+            d.key !== dim.key && d.concepts.length && q.concept && d.concepts.includes(q.concept));
+          if (!otherDim) return true;
+        }
+      }
+      return false;
+    });
+    if (!qs.length) return { ...dim, score: null, n: 0 };
+    const m = Core.topicMastery(qs, state.qstats);
+    const acc = catAccuracy(qs[0].cat); // approximate
+    return { ...dim, score: Math.round(m * 100), n: qs.length };
+  });
+}
+
+function renderSkillProfile() {
+  const host = $("skillProfileBars");
+  if (!host) return;
+  const dims = skillProfile();
+  let worst = null, worstScore = 101;
+  host.innerHTML = "";
+  for (const d of dims) {
+    if (d.score === null) continue;
+    const filled = Math.round(d.score / 10);
+    const blocks = "\u2588".repeat(filled) + "\u2591".repeat(10 - filled);
+    const row = document.createElement("div");
+    row.className = "skill-bar-row";
+    row.innerHTML = `<span class="skill-label">${d.label}</span>` +
+      `<span class="skill-blocks tabular">${blocks}</span>` +
+      `<span class="skill-score tabular">${d.score}</span>`;
+    host.appendChild(row);
+    if (d.score < worstScore) { worstScore = d.score; worst = d; }
+  }
+  const focusEl = $("trainingFocus");
+  if (focusEl && worst) {
+    focusEl.innerHTML = worst.score < 82
+      ? `<b>Today\u2019s training focus:</b> ${worst.label} (${worst.score}/100) \u2014 practice ${worst.label.toLowerCase()} questions to raise this score.`
+      : `<b>All dimensions strong.</b> Take a mock exam to confirm readiness.`;
+  }
+}
+
 function renderStats() {
   const acc = state.answered ? Math.round(100 * state.correctCount / state.answered) : null;
   $("ssAnswered").textContent = state.answered;
@@ -770,6 +839,7 @@ function renderStats() {
       <span class="m-val">${m}%${accC !== null ? ` <small>(${Math.round(accC * 100)}% acc)</small>` : ""}</span></div>`;
   });
 
+  renderSkillProfile();
   const hl = $("historyList");
   hl.innerHTML = state.exams.length
     ? state.exams.slice().reverse().map(e => {
@@ -790,6 +860,7 @@ function renderStats() {
     $("inpTestDate").min = todayStr();
   }
   renderCalibration();
+  renderStudy();
 }
 
 /* ---------------- real-test outcome journal (calibration beta) ---------------- */
@@ -969,6 +1040,90 @@ function savePracticalSession() {
   $("plNotes").value = "";
   renderPractical();
   toast("Session logged", "Competencies updated.", "car");
+}
+
+/* ---------------- learner study (research) ---------------- */
+function renderStudy() {
+  const intro = $("studyIntro"), body = $("studyBody");
+  if (!intro || !body) return;
+  const enrolled = !!state.study.enrolledAt;
+  intro.hidden = enrolled;
+  body.hidden = !enrolled;
+  if (!enrolled) return;
+  $("studyPid").textContent = state.study.participantId;
+
+  const m = Core.studyMetrics({
+    enrolledAt: state.study.enrolledAt, exams: state.exams, answered: state.answered,
+    timeStudied: state.timeStudied, study: state.study, nowMs: Date.now(),
+  });
+  const days = Math.max(1, m.daysSinceEnroll || 1);
+  $("studyDay").textContent = days;
+  $("studyMetrics").innerHTML =
+    `<div>Diagnostic <b>${m.diagnosticPct === null ? "–" : m.diagnosticPct + "%"}</b> · latest mock <b>${m.latestMockPct === null ? "–" : m.latestMockPct + "%"}</b> · improvement <b>${m.improvementPct === null ? "–" : (m.improvementPct > 0 ? "+" : "") + m.improvementPct + " pts"}</b></div>
+     <div class="outcome-meta">${m.questionsAnswered} questions · ${m.studyHours} h · mocks ${m.mockCount} · retention ${m.retentionAttempts ? Math.round(100 * m.retentionCorrect / m.retentionAttempts) + "% (" + m.retentionAttempts + ")" : "–"}</div>`;
+
+  // confidence survey until all topics rated
+  const survey = $("confidenceSurvey");
+  const rated = new Set(state.study.confidence.map(c => c.catId));
+  const missing = Object.keys(CATEGORIES).filter(c => !rated.has(c));
+  if (missing.length) {
+    survey.hidden = false;
+    survey.innerHTML = `<p class="outcome-meta" style="margin:0 0 6px;">Before studying: how confident are you per topic? (1 = no idea, 5 = very confident)</p>` +
+      missing.slice(0, 3).map(cat => {
+        const c = CATEGORIES[cat];
+        return `<div class="pl-skill-row"><span class="pl-skill-name">${c.name}</span><span class="seg3">` +
+          [1, 2, 3, 4, 5].map(l => `<button type="button" data-cat="${cat}" data-level="${l}" aria-label="${c.name}: ${l}" aria-pressed="false">${l}</button>`).join("") + `</span></div>`;
+      }).join("");
+    survey.querySelectorAll("button[data-cat]").forEach(b => on(b, "click", () => {
+      state.study.confidence.push({ catId: b.dataset.cat, level: Number(b.dataset.level) });
+      save(); renderStudy();
+    }));
+    if ($("btnDiagnostic")) $("btnDiagnostic").disabled = true;
+  } else {
+    survey.hidden = true;
+    if ($("btnDiagnostic")) $("btnDiagnostic").disabled = !!state.exams.some(e => e.tag === "diagnostic");
+    if ($("btnDiagnostic")) $("btnDiagnostic").textContent = state.exams.some(e => e.tag === "diagnostic") ? "Baseline recorded ✓" : "Baseline diagnostic exam";
+  }
+
+  // retention probes
+  const pool = Core.retentionProbePool(bank, state.qstats, state.study.retentionLog, Date.now());
+  $("btnRetentionProbes").hidden = pool.length === 0;
+  $("retentionHint").textContent = pool.length
+    ? `${pool.length} question${pool.length === 1 ? "" : "s"} from a week or more ago are ready for a memory check.`
+    : `Memory checks appear once you've mastered questions 7+ days ago.`;
+}
+
+function joinStudy() {
+  if (!confirm("Join the learner study?\n\n· Fully anonymous random ID — no account, no personal data\n· Data stays on this device until you export it\n· Free-text notes are never exported")) return;
+  const e = Core.createEnrollment(Date.now());
+  state.study.enrolledAt = e.enrolledAt;
+  state.study.participantId = e.participantId;
+  save(); renderStudy();
+}
+
+function startDiagnostic() {
+  quizBackTarget = "stats";
+  const qs = Core.assembleExam({ bank, n: 20, qstats: state.qstats });
+  session = { mode: "exam", tag: "diagnostic", label: "Baseline Diagnostic", questions: qs, i: 0, correct: 0, answers: [], timeLeft: Core.timeLimitSecs(qs.length), endTs: 0, timerId: null };
+  beginQuiz();
+}
+
+function startRetentionProbes() {
+  const pool = Core.retentionProbePool(bank, state.qstats, state.study.retentionLog, Date.now());
+  if (!pool.length) return;
+  quizBackTarget = "stats";
+  session = { mode: "practice", tag: "retention", label: "Memory Check", questions: shuffle(pool), i: 0, correct: 0, answers: [], endTs: 0, timerId: null, marathon: false, requeued: {} };
+  beginQuiz();
+}
+
+function exportStudyData() {
+  const bundle = Core.buildStudyExport(state, bank);
+  const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `road-ready-study-${state.study.participantId}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
 
 /* ---------------- theme ---------------- */
@@ -1344,6 +1499,10 @@ function init() {
   on($("btnOutcomePass"), "click", () => {
     if (confirm("Log that you PASSED your real knowledge test? The snapshot below is stored only on this device.")) logOutcome("pass");
   });
+  on($("btnStudyJoin"), "click", joinStudy);
+  on($("btnDiagnostic"), "click", startDiagnostic);
+  on($("btnRetentionProbes"), "click", startRetentionProbes);
+  on($("btnStudyExport"), "click", exportStudyData);
   on($("btnOutcomeFail"), "click", () => {
     if (confirm("Log that you DID NOT pass your real knowledge test? Honest data is what makes future predictions meaningful.")) logOutcome("fail");
   });
