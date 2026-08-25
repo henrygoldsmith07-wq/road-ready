@@ -335,6 +335,34 @@ export function runChecks(data, opts = {}) {
     }
   }
 
+/* ---------- 5d. answer-position bias ---------- */
+  {
+    const posCount = {};
+    let totalA = 0;
+    for (const q of QUESTIONS) {
+      if (!Number.isInteger(q.a)) continue;
+      posCount[q.a] = (posCount[q.a] || 0) + 1;
+      totalA++;
+    }
+    for (const [p, c] of Object.entries(posCount)) {
+      const share = c / Math.max(1, totalA);
+      if (share < 0.15 || share > 0.35) {
+        err("answer-bias", `correct answers sit at position ${p} ${(share * 100).toFixed(1)}% of the time — rebalance choice order`);
+      }
+    }
+  }
+
+  /* ---------- 5e. explanation leakage ---------- */
+  for (const q of QUESTIONS) {
+    if (!Array.isArray(q.choices) || typeof q.why !== "string") continue;
+    for (const choice of q.choices) {
+      if (typeof choice === "string" && choice.trim().length >= 25 && q.why.includes(choice.trim())) {
+        err("leakage", `[${q.id}] explanation echoes a verbatim choice — reword so it teaches instead of giving the answer away`);
+        break;
+      }
+    }
+  }
+
 /* ---------- 6. sign-data validation ---------- */
   const referenced = new Set(QUESTIONS.filter((q) => q.signId).map((q) => q.signId));
   for (const [id, s] of Object.entries(SIGNS)) {

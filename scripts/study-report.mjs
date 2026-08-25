@@ -98,6 +98,21 @@ if (rows.length) {
   console.log(`  median study time        : ${median(hours)?.toFixed(1) ?? "–"} h (mean ${mean(hours)?.toFixed(1) ?? "–"} h)`);
   console.log(`  retention after ≥7 days  : ${retA ? Math.round((100 * retC) / retA) + "% of " + retA + " probes" : "–"}`);
   
+// ---- confidence calibration (self-rated vs measured) ----
+let gaps = [];
+for (const p of participants) {
+  for (const cc of p.metrics.confidence || []) {
+    const tm = (p.metrics.topicMastery || []).find((t) => t.catId === cc.catId);
+    if (!tm) continue;
+    const conf = Math.max(0, Math.min(1, (cc.level - 1) / 4));
+    gaps.push({ catId: cc.catId, gap: +(conf - tm.mastery).toFixed(3) });
+  }
+}
+if (gaps.length) {
+  const meanGap = gaps.reduce((t, g) => t + g.gap, 0) / gaps.length;
+  const worst = gaps.slice().sort((a, b) => b.gap - a.gap)[0];
+  console.log("Confidence calibration: mean gap " + meanGap.toFixed(2) + " (positive = over-confident); most over-confident topic: " + worst.catId);
+}
 // ---- calibration curve (pooled outcomes) ----
 const samples = [];
 for (const p of participants) {

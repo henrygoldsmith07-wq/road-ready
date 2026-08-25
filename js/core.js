@@ -846,6 +846,14 @@ function assembleExam(opts) {
    */
   /** @param {any} stateLike */
   function studyMetrics(stateLike) {
+    const topicMastery = (st) => {
+      const byCat = {};
+      for (const q of st.bank || []) { (byCat[q.cat] ||= []).push(q); }
+      return Object.entries(byCat).map(([catId, qs]) => ({
+        catId,
+        mastery: +topicMasteryOf(qs, st.qstats).toFixed(3),
+      }));
+    };
     const { enrolledAt, exams, answered, timeStudied, study } = stateLike;
     const all = (exams || []).slice().sort((a, b) => a.date - b.date);
     const baseline = all.find((e) => e.tag === "diagnostic") || null;
@@ -870,6 +878,7 @@ function assembleExam(opts) {
       improvementPct: baseline && latest ? Math.round((latest.pct - baseline.pct) * 100) : null,
       mockCount: all.filter((e) => e.tag !== "diagnostic").length,
       confidence: study && Array.isArray(study.confidence) ? study.confidence : [],
+      topicMastery: topicMastery(stateLike),
       retentionAttempts: retention.attempts,
       retentionCorrect: retention.correct,
       retentionRate: retention.attempts ? retention.correct / retention.attempts : null,
@@ -986,6 +995,16 @@ function assembleExam(opts) {
   const CALIBRATION_BUCKETS = ["<50%", "50–59%", "60–69%", "70–79%", "80–89%", "90–100%"];
 
   /** Spread of the most recent n mock scores (null with <2 exams). */
+  function topicMasteryOf(qs, qstats) {
+    let num = 0, den = 0;
+    for (const q of qs) {
+      const w = 0.75 + 0.5 * qDifficulty(qstats && qstats[q.id]);
+      num += conceptMastery([q], qstats) * w;
+      den += w;
+    }
+    return den ? num / den : 0;
+  }
+
   function mockStability(exams, n) {
     const recent = (exams || []).slice(-(n || 3)).map((e) => e.pct);
     if (recent.length < 2) return null;
@@ -1057,7 +1076,6 @@ function assembleExam(opts) {
         mode: "insufficient",
         text: `Your study-progress score is ${Math.round(readinessPct)}% (${band.label}). Not enough learner outcomes exist yet to convert this into a pass probability.${riskLine}${stabilityLine}`,
         disclaimer: DISCLAIMER,
-        disclaimer: DISCLAIMER,
       };
     }
     return {
@@ -1066,6 +1084,19 @@ function assembleExam(opts) {
       text: `Learners scoring ${row.bucket} with comparable recent performance historically passed about ${Math.round(row.passRate * 100)}% of official theory exams.${riskLine}${stabilityLine}`,
       disclaimer: DISCLAIMER,
     };
+  }
+
+  /** Self-confidence vs measured mastery per rated topic.
+   *  gap > 0 = over-confident; < 0 = under-confident. */
+  function confidenceCalibration(confidence, topicsWithMastery) {
+    return (confidence || [])
+      .map((cv) => {
+        const t = (topicsWithMastery || []).find((x) => x.id === cv.catId);
+        if (!t || typeof t.mastery !== "number") return null;
+        const confidencePct = Math.max(0, Math.min(1, (cv.level - 1) / 4));
+        return { catId: cv.catId, confidencePct, masteryPct: t.mastery, gap: +(confidencePct - t.mastery).toFixed(3) };
+      })
+      .filter(Boolean);
   }
 
   /* ---------------- import / export ---------------- */
@@ -1118,7 +1149,7 @@ function assembleExam(opts) {
     retentionProbePool, studyMetrics, buildStudyExport,
     PROTOCOL_VERSION, SCORING_VERSION, MASTERY_VERSION, bankFingerprint,
     readinessBand, strongAndRiskTopics, recommendedToday,
-    MIN_BUCKET_N, CALIBRATION_BUCKETS, mockStability, bankCoverage,
+    MIN_BUCKET_N, CALIBRATION_BUCKETS, mockStability, bankCoverage, confidenceCalibration,
     calibrationCurve, calibrationRowFor, readinessNarrative,
     exportBundle, parseImport,
   };
