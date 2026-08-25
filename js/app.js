@@ -9,7 +9,9 @@ const COUNTRY = Jur.JURISDICTIONS ? Jur.JURISDICTIONS[Jur.ACTIVE_COUNTRY] : null
 const TERMS = (COUNTRY && COUNTRY.terminology) || { agencyShort: "DMV", examName: "knowledge test", learnerPermit: "learner's permit" };
 const HAZARD_INFO = (COUNTRY && COUNTRY.hazardPerception) || { includedInExam: false, positioning: "bonus training" };
 const STORE_KEY = "roadready.v1";
+/** @returns {any} element by id — vanilla app, DOM types vary per caller */
 const $ = (id) => document.getElementById(id);
+const qsa = /** @returns {NodeListOf<HTMLElement>} */(sel) => document.querySelectorAll(sel);
 const on = (el, ev, fn) => el.addEventListener(ev, fn);
 
 /* ---------------- state ---------------- */
@@ -23,13 +25,12 @@ const rawSet = (k, v) => { if (storageOk) localStorage.setItem(k, v); else memSt
 let state = loadState();
 
 function loadState() {
-  let parsed = null;
+  let parsed;
   try {
     const raw = rawGet(STORE_KEY);
-    if (!raw) return Core.defaultState();
-    parsed = JSON.parse(raw);
-  } catch (e) {
-    parsed = null;
+    parsed = raw ? JSON.parse(raw) : undefined;
+  } catch {
+    parsed = undefined;
   }
   const m = Core.migrateState(parsed, { packIds: Packs.PACK_IDS });
   m.warnings.forEach((w) => console.warn("[road-ready] state:", w));
@@ -194,7 +195,7 @@ function showView(name) {
   if (v) v.classList.add("active");
   if (name !== "quiz") stopSpeaking();
   $("btnBack").hidden = !(name === "quiz" || name === "setup" || name === "results");
-  document.querySelectorAll("#bottomNav button").forEach(b =>
+  /** @type {NodeListOf<HTMLElement>} */(/** @type {NodeListOf<HTMLElement>} */(document.querySelectorAll("#bottomNav button"))).forEach(b =>
     b.classList.toggle("active", b.dataset.nav === name || (b.dataset.nav === "practice" && name === "quiz" && quizBackTarget !== "home") ));
   window.scrollTo(0, 0);
 }
@@ -208,8 +209,8 @@ function renderHome() {
   fg.style.strokeDasharray = C;
   fg.style.strokeDashoffset = C * (1 - pct / 100);
   const acc = state.answered ? Math.round(100 * state.correctCount / state.answered) : null;
-  $("stAnswered").textContent = state.answered;
-  $("stAccuracy").textContent = acc === null ? "–" : acc + "%";
+  $("stAnswered").textContent = String(state.answered);
+  $("stAccuracy").textContent = acc === null ? "–" : `${acc}%`;
   $("stStreak").textContent = state.streak.count;
   const best = state.exams.length ? Math.max(...state.exams.map(e => e.pct)) : null;
   $("stBest").textContent = best === null ? "–" : Math.round(best * 100) + "%";
@@ -237,7 +238,7 @@ function renderHome() {
   const t = plan.todayCount;
   const target = plan.dailyTarget;
   const goalEl = $("dailyGoal");
-  goalEl.querySelector(".dg-bar-fill").style.width = Math.min(100, 100 * t / target) + "%";
+  /** @type {HTMLElement} */(goalEl.querySelector(".dg-bar-fill")).style.width = Math.min(100, 100 * t / target) + "%";
   goalEl.querySelector(".dg-label").innerHTML = t >= target
     ? `Daily goal complete — <b>${t}</b> answered today`
     : `Today's goal: <b>${t}/${target}</b> questions answered`;
@@ -524,7 +525,7 @@ function answer(origIdx, btnEl) {
     // exam: brief visual acknowledge, then auto-advance
     $("btnNext").disabled = true;
     const btns = document.querySelectorAll("#choices .choice");
-    btns.forEach(b => b.disabled = true);
+    /** @type {NodeListOf<HTMLButtonElement>} */(btns).forEach(b => (b.disabled = true));
     session.advanceId = setTimeout(() => {
       session.answeredCurrent = false;
       session.i++;
@@ -535,11 +536,11 @@ function answer(origIdx, btnEl) {
   recordAnswer(q, right);
 }
 function markChoiceButtons(q) {
-  const btns = document.querySelectorAll("#choices .choice");
+  const btns = /** @type {NodeListOf<HTMLElement>} */(document.querySelectorAll("#choices .choice"));
   btns.forEach((b, disp) => {
     const orig = session.order[disp];
     const picked = b === document.activeElement || b.classList.contains("picked");
-    b.disabled = true;
+    /** @type {HTMLButtonElement} */(b).disabled = true;
     if (orig === q.a) {
       b.classList.add("correct");
       b.querySelector(".choice-mark").innerHTML = icon("check", 16);
@@ -970,10 +971,10 @@ function buildPracticalForm() {
       b.type = "button";
       b.className = "chip";
       b.textContent = v.replace(/-/g, " ");
-      b.setAttribute("aria-pressed", set.has(v));
+      b.setAttribute("aria-pressed", String(set.has(v)));
       on(b, "click", () => {
         set.has(v) ? set.delete(v) : set.add(v);
-        b.setAttribute("aria-pressed", set.has(v));
+        b.setAttribute("aria-pressed", String(set.has(v)));
       });
       host.appendChild(b);
     }
@@ -1004,11 +1005,11 @@ function buildPracticalForm() {
         btn.type = "button";
         btn.textContent = glyph;
         btn.setAttribute("aria-label", `${skillId}: ${val}`);
-        btn.setAttribute("aria-pressed", plFormState.skills[skillId] === val);
+        btn.setAttribute("aria-pressed", String(plFormState.skills[skillId] === val));
         on(btn, "click", () => {
           if (plFormState.skills[skillId] === val) delete plFormState.skills[skillId];
           else plFormState.skills[skillId] = val;
-          seg.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", plFormState.skills[skillId] === x.getAttribute("aria-label").split(": ")[1]));
+          seg.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(plFormState.skills[skillId] === x.getAttribute("aria-label").split(": ")[1])));
         });
         seg.appendChild(btn);
       }
@@ -1337,7 +1338,7 @@ function showOnboarding() {
 }
 function obRender() {
   const steps = document.querySelectorAll(".ob-step");
-  steps.forEach(s => s.classList.toggle("on", +s.dataset.step === obStep));
+  /** @type {NodeListOf<HTMLElement>} */(steps).forEach(s => s.classList.toggle("on", +s.dataset.step === obStep));
   document.querySelectorAll("#obDots span").forEach((d, i) => d.classList.toggle("on", i === obStep));
   $("obNext").textContent = obStep >= 3 ? "Start studying" : obStep === 2 ? "Almost done" : "Next";
   document.querySelectorAll("#obThemeDark, #obThemeLight").forEach(b =>
@@ -1413,7 +1414,7 @@ function init() {
   });
 
   // nav
-  document.querySelectorAll("#bottomNav button").forEach(b => {
+  /** @type {NodeListOf<HTMLElement>} */(document.querySelectorAll("#bottomNav button")).forEach(b => {
     on(b, "click", () => {
       const t = b.dataset.nav;
       if (t === "practice") startSetup("practice");
@@ -1527,7 +1528,7 @@ function init() {
     if (!active) return;
     if (active.id === "view-quiz") {
       if (e.key >= "1" && e.key <= "4") {
-        const btns = document.querySelectorAll("#choices .choice");
+        const btns = /** @type {NodeListOf<HTMLElement>} */(document.querySelectorAll("#choices .choice"));
         const b = btns[parseInt(e.key, 10) - 1];
         if (b && !session.answeredCurrent) { b.classList.add("picked"); b.click(); }
       } else if (e.key === "Enter") { if (!$("btnNext").disabled) nextQuestion(); }

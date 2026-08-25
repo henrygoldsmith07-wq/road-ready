@@ -11,11 +11,18 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "validate": "node scripts/validate-content.mjs --strict",
-    "provenance:update": "node scripts/validate-content.mjs --update-manifest"
+    "provenance:update": "node scripts/validate-content.mjs --update-manifest",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "audit": "npm audit --omit=dev --audit-level=high"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.62.1",
+    "eslint": "^10.9.1",
     "jsdom": "^24.1.0",
+    "typescript": "^7.0.2",
     "vitest": "^2.1.1"
   }
 }

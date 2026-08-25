@@ -140,10 +140,11 @@ describe("migration honors real pack ids", () => {
     expect(m.state.settings.statePack).toBe("CA");
   });
 
-  it("unknown pack ids still clamp to generic", () => {
+  it("unknown pack ids: clamped when a whitelist is supplied, preserved otherwise", () => {
     const saved = Core.defaultState();
     saved.settings.statePack = "XX";
     expect(Core.migrateState(JSON.parse(JSON.stringify(saved)), { packIds: Packs.PACK_IDS }).state.settings.statePack).toBe("generic");
-    expect(Core.migrateState(JSON.parse(JSON.stringify(saved))).state.settings.statePack).toBe("generic");
+    // without a whitelist core cannot verify — it preserves instead of destroying
+    expect(Core.migrateState(JSON.parse(JSON.stringify(saved))).state.settings.statePack).toBe("XX");
   });
 });

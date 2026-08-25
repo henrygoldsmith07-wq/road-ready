@@ -72,11 +72,10 @@
     },
   };
 
-  function sanitizeState(s, opts) {
-    // Valid pack ids are injected by the caller (app/test supply the real
-    // list from state-packs.js); core stays dependency-free with a safe default.
+  /** @param {any} s @param {{packIds?: string[]}} [opts] */
+function sanitizeState(s, opts) {
     const packIds = (opts && Array.isArray(opts.packIds) && opts.packIds.length)
-      ? opts.packIds : ["generic"];
+      ? opts.packIds : null;
     s.v = SCHEMA_VERSION;
     s.qstats = plainObject(s.qstats);
     Object.keys(s.qstats).forEach((qid) => {
@@ -164,7 +163,11 @@
     s.settings.feedback = bool(s.settings.feedback);
     s.settings.theme = strEnum(s.settings.theme, ["dark", "light"], "dark");
     s.settings.tts = bool(s.settings.tts);
-    s.settings.statePack = strEnum(s.settings.statePack, packIds, "generic");
+    // Pack validation: clamp against the supplied whitelist when we can;
+    // without one, PRESERVE the stored value — never destroy unverifiable data.
+    if (packIds) s.settings.statePack = strEnum(s.settings.statePack, packIds, "generic");
+    else if (typeof s.settings.statePack !== "string" || !s.settings.statePack.trim())
+      s.settings.statePack = "generic";
     s.settings.testDate = validIsoDate(s.settings.testDate) ? s.settings.testDate : "";
     return s;
   }
@@ -172,7 +175,7 @@
   /**
    * Migrate any stored payload (object or JSON string) to the current schema.
    * Never throws; never destroys data it does not understand.
-   * @param {object|string} raw
+   * @param {any} raw
    * @param {{packIds?: string[]}} [opts] valid state-pack ids (from state-packs.js)
    * @returns {{state: object, fromVersion: number|null, warnings: string[]}}
    */
@@ -468,10 +471,11 @@
    * @param {number} [quality] optional graded recall 0..5 (defaults from `right`)
    * @returns {{due:number, ef:number, interval:number, reps:number}}
    */
-  function reviewSched(sched, right, nowMs, quality) {
+  /** @param {any} sched @param {boolean} right @param {number} nowMs @param {number} [quality] */
+function reviewSched(sched, right, nowMs, quality) {
     const q = quality == null ? (right ? 4 : 1) : Math.min(5, Math.max(0, quality));
     const prev = sched || defaultSched();
-    let { ef, interval, reps } = prev;
+    let { ef, interval, reps } = { ef: prev.ef ?? 2.5, interval: prev.interval ?? 0, reps: prev.reps ?? 0 };
     ef = num(ef, 2.5, 1.3, 2.8);
     if (q < 3) {
       reps = 0;
@@ -562,7 +566,10 @@
    * Stratified: honors the topic blueprint so every mock mirrors the real
    * test's topic mix; weakBias reserves ~60% of seats for the 3 weakest topics.
    */
-  function assembleExam(opts) {
+  /**
+ * @param {{bank: Array, n: number, qstats: object, weakBias?: boolean, rand?: Function, nowMs?: number, flags?: object, weights?: object|null}} opts
+ */
+function assembleExam(opts) {
     const bank = opts.bank, n = Math.min(opts.n, bank.length), qstats = opts.qstats;
     const rand = opts.rand || Math.random;
     const nowMs = opts.nowMs == null ? Date.now() : opts.nowMs;
@@ -794,7 +801,8 @@
    * diagnostic = first tagged-diagnostic exam (falls back to first exam);
    * improvement = latest exam pct − diagnostic pct (null with <2 exams).
    */
-  function studyMetrics(stateLike) {
+  /** @param {any} stateLike */
+function studyMetrics(stateLike) {
     const { enrolledAt, exams, answered, timeStudied, study, qstats } = stateLike;
     const diagnostics = (exams || []).filter((e) => e.tag === "diagnostic");
     const baseline = diagnostics[0] || (exams || [])[0] || null;
