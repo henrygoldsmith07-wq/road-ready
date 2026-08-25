@@ -9,16 +9,18 @@ const samples = (pairs) => pairs.map(([pct, result]) => ({ readinessPct: pct, re
 
 describe("calibrationCurve", () => {
   it("buckets outcomes and gates rates on MIN_BUCKET_N", () => {
-    const curve = Core.calibrationCurve(samples([[82, "pass"], [84, "pass"], [86, "fail"]]));
-    const b = curve.find((x) => x.bucket === "80–89%");
+    const res = Core.calibrationCurve(samples([[82, "pass"], [84, "pass"], [86, "fail"]]));
+    const b = res.buckets.find((x) => x.bucket === "80–89%");
     expect(b.n).toBe(3);
-    expect(b.passRate).toBe(null); // 3 < 8 → insufficient, even though 67% observed
+    expect(b.sufficient).toBe(false);
+    expect(b.passRate).toBe(null); // 3 < 8 → insufficient, even though ~67% observed
   });
 
   it("releases a rate once the bucket reaches the threshold", () => {
-    const pairs = Array.from({ length: 8 }, (_, i) => [85, i < 6 ? "pass" : "fail"]);
-    const curve = Core.calibrationCurve(samples(pairs));
-    const b = curve.find((x) => x.bucket === "80–89%");
+    const pairs = Array.from({ length: 12 }, (_, i) => [85, i < 9 ? "pass" : "fail"]); // 9/12: Wilson width ≤0.45
+    const res = Core.calibrationCurve(samples(pairs));
+    const b = res.buckets.find((x) => x.bucket === "80–89%");
+    expect(b.sufficient).toBe(true);
     expect(b.passRate).toBeCloseTo(0.75);
   });
 });
@@ -45,7 +47,7 @@ describe("readinessNarrative honesty branches", () => {
     });
     expect(n.mode).toBe("calibrated");
     expect(n.text).toMatch(/80–89%/);
-    expect(n.text).toMatch(/90%/);
+    expect(n.text).not.toMatch(/chance of passing/i);
     expect(n.text).toContain("Focus areas right now: junction priority");
     expect(n.calibratedPassRate).toBeCloseTo(0.9);
     expect(n.disclaimer).toContain("practical driving");

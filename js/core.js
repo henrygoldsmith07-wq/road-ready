@@ -988,13 +988,29 @@ function assembleExam(opts) {
   }
 
   /* ---------------- calibration (outcome → probability) ---------------- */
-  // The readiness score becomes meaningful ONLY after real theory-test
-  // outcomes are pooled against it. Until each bucket reaches MIN_BUCKET_N,
-  // the product must not state a pass probability.
+  // Statistics: Wilson score intervals (no false precision), publication
+  // thresholds, jurisdiction-first hierarchy, engine-version isolation,
+  // unknown outcomes never counted as fails, duplicates rejected at capture.
   const MIN_BUCKET_N = 8;
+  const MAX_INTERVAL_WIDTH = 0.45; // wider than this = "insufficient evidence"
   const CALIBRATION_BUCKETS = ["<50%", "50–59%", "60–69%", "70–79%", "80–89%", "90–100%"];
 
-  /** Spread of the most recent n mock scores (null with <2 exams). */
+  /** Wilson score interval for a binomial proportion. */
+  function wilsonInterval(passes, n, z) {
+    const Z = z ?? 1.96;
+    if (!n || n <= 0) return { lo: null, hi: null, width: null };
+    const p = passes / n;
+    const d = 1 + (Z * Z) / n;
+    const centre = (p + (Z * Z) / (2 * n)) / d;
+    const half = (Z / d) * Math.sqrt((p * (1 - p)) / n + (Z * Z) / (4 * n * n));
+    return {
+      lo: Math.max(0, centre - half),
+      hi: Math.min(1, centre + half),
+      width: Math.min(1, centre + half) - Math.max(0, centre - half),
+    };
+  }
+
+  /** Per-topic mastery for a state slice (concept-weighted). */
   function topicMasteryOf(qs, qstats) {
     let num = 0, den = 0;
     for (const q of qs) {
@@ -1005,6 +1021,7 @@ function assembleExam(opts) {
     return den ? num / den : 0;
   }
 
+  /** Spread of the most recent n mock scores (null with <2 exams). */
   function mockStability(exams, n) {
     const recent = (exams || []).slice(-(n || 3)).map((e) => e.pct);
     if (recent.length < 2) return null;
@@ -1022,39 +1039,67 @@ function assembleExam(opts) {
     return seen / questions.length;
   }
 
+  function bucketFor(pct) {
+    return progressBucket(pct);
+  }
+
   /**
-   * Build the calibration curve from logged outcome samples.
-   * Each sample: { readinessPct, result: "pass"|"fail" }.
-   * Buckets with fewer than opts.minN outcomes report rate:null.
+   * Calibration curve with uncertainty.
+   * Samples: { readinessPct, result:"pass"|"fail"|"unknown", jurisdiction?, engineVersion?, date? }.
+   * opts.jurisdiction  — state-first pooling: state outcomes, then same-country
+   *                      pooled fallback (labelled), never silent mixing.
+   * opts.engineVersion — only samples produced by this engine are counted.
    */
   function calibrationCurve(samples, opts) {
     const minN = (opts && opts.minN) ?? MIN_BUCKET_N;
-    const out = [];
-    for (const label of CALIBRATION_BUCKETS) {
-      const inBucket = (samples || []).filter((s) => progressBucket(s.readinessPct) === label);
-      const passes = inBucket.filter((s) => s.result === "pass").length;
-      out.push({
-        bucket: label,
-        n: inBucket.length,
-        passes,
-        failRate: inBucket.length ? inBucket.length - passes : 0,
-        passRate: inBucket.length >= minN ? passes / inBucket.length : null,
-      });
+    const o = opts || {};
+    let pool = (samples || []).filter((s) => s && typeof s.readinessPct === "number");
+    if (o.engineVersion) pool = pool.filter((s) => s.engineVersion === o.engineVersion);
+    let scope = "all";
+    if (o.jurisdiction && o.jurisdiction !== "*") {
+      const stateRows = pool.filter((s) => s.jurisdiction === o.jurisdiction);
+      if (stateRows.length >= minN) {
+        pool = stateRows;
+        scope = o.jurisdiction;
+      } else {
+        pool = pool.filter((s) => !s.jurisdiction || s.jurisdiction === "*" || s.jurisdiction === o.jurisdiction);
+        scope = "pooled-compatible";
+      }
+    } else {
+      // unknown results stay — counted as pending, never as fails
     }
-    return out;
+    return { scope, buckets: CALIBRATION_BUCKETS.map((label) => {
+      const inBucket = pool.filter((s) => bucketFor(s.readinessPct) === label);
+      const decided = inBucket.filter((s) => s.result === "pass" || s.result === "fail");
+      const pending = inBucket.length - decided.length;
+      const passes = decided.filter((s) => s.result === "pass").length;
+      const iv = wilsonInterval(passes, decided.length);
+      const sufficient = decided.length >= minN && iv.width != null && iv.width <= MAX_INTERVAL_WIDTH;
+      return {
+        bucket: label,
+        n: decided.length,
+        pending,
+        passes,
+        passRate: sufficient ? passes / decided.length : null,
+        lo: sufficient ? iv.lo : null,
+        hi: sufficient ? iv.hi : null,
+        width: iv.width,
+        sufficient,
+      };
+    }) };
   }
 
-  /** The bucket row matching a readiness percentage (may be empty). */
-  function calibrationRowFor(curve, readinessPct) {
-    return curve.find((row) => row.bucket === progressBucket(readinessPct)) || null;
+  /** Curve row matching a readiness percentage. Accepts curve object or raw samples. */
+  function calibrationRowFor(curveOrSamples, readinessPct, opts) {
+    const builtCurve = Array.isArray(curveOrSamples) && curveOrSamples.length && curveOrSamples[0].buckets
+      ? curveOrSamples
+      : calibrationCurve(curveOrSamples, opts).buckets;
+    return builtCurve.find((row) => row.bucket === progressBucket(readinessPct)) || null;
   }
 
   /**
-   * Honest narrative for the home/stats surfaces.
-   * Returns {mode:"uncalibrated"|"calibrated"|"insufficient",
-   *          text, disclaimer, calibratedPassRate?}.
-   * Calibrated text names the bucket, the observed pass rate and any unstable
-   * (high-spread) recent mocks; it NEVER implies practical-driving readiness.
+   * Honest narrative. Never a bare headline percentage without a defensible
+   * interval; never says "chance of passing"; always carries the disclaimer.
    */
   function readinessNarrative(opts) {
     const { readinessPct, curve, riskTopics } = opts || {};
@@ -1064,24 +1109,44 @@ function assembleExam(opts) {
       : "";
     const DISCLAIMER = "Theory-test readiness is not a claim that you are safe or ready for independent practical driving.";
     const band = readinessBand(readinessPct);
-    const builtCurve = Array.isArray(curve) && curve.length && curve[0].bucket
-      ? curve // already a built curve
-      : calibrationCurve(curve || [], opts);
-    const row = calibrationRowFor(builtCurve, readinessPct);
+
+    const builtResult = curve && curve.buckets
+      ? { scope: curve.scope || "all", buckets: curve.buckets }
+      : calibrationCurve(curve || [], { ...opts });
+    const row = builtResult.buckets.find((b) => b.bucket === progressBucket(readinessPct)) || null;
+
     const riskLine = (riskTopics || []).length
-      ? ` Focus areas right now: ${riskTopics.map((r) => r.toLowerCase()).join(", ")}.`
+      ? ` Focus areas right now: ${riskTopics.map((r) => r.toLowerCase()).join(",")}.`
       : "";
-    if (!curve || !row || row.n < ((opts && opts.minN) ?? MIN_BUCKET_N)) {
+
+    const insufficientBecause =
+      !row ? "No outcomes recorded for your readiness level yet."
+      : row.n === 0 ? "No official-outcome evidence exists for your readiness level yet."
+      : row.n < ((opts && opts.minN) ?? MIN_BUCKET_N)
+        ? `Only ${row.n} verified outcome${row.n === 1 ? "" : "s"} exist for your readiness level — too few to estimate a pass rate.`
+        : `Outcomes exist (${row.n}) but results vary too widely to quote a reliable rate.`;
+
+    if (!row || !row.sufficient) {
       return {
         mode: "insufficient",
-        text: `Your study-progress score is ${Math.round(readinessPct)}% (${band.label}). Not enough learner outcomes exist yet to convert this into a pass probability.${riskLine}${stabilityLine}`,
+        text: `Your study-progress score is ${Math.round(readinessPct)}% (${band.label}). ${insufficientBecause}${stabilityLine}${riskLine}`,
         disclaimer: DISCLAIMER,
+        evidence: { n: row ? row.n : 0, pending: row ? row.pending : 0 },
+        scope: builtResult.scope,
       };
     }
+    const lo = Math.round(row.lo * 100);
+    const hi = Math.round(row.hi * 100);
+    const scopeLine = builtResult.scope === "pooled-compatible"
+      ? "Among pooled learners across states"
+      : "Among learners in your jurisdiction";
     return {
       mode: "calibrated",
       calibratedPassRate: row.passRate,
-      text: `Learners scoring ${row.bucket} with comparable recent performance historically passed about ${Math.round(row.passRate * 100)}% of official theory exams.${riskLine}${stabilityLine}`,
+      interval: { lo: row.lo, hi: row.hi },
+      evidence: { n: row.n, pending: row.pending },
+      scope: builtResult.scope,
+      text: `${scopeLine} at ${row.bucket} (${row.n} verified outcomes), observed pass rates were roughly ${lo}–${hi}%.${riskLine}${stabilityLine}`,
       disclaimer: DISCLAIMER,
     };
   }
@@ -1099,7 +1164,7 @@ function assembleExam(opts) {
       .filter(Boolean);
   }
 
-  /* ---------------- import / export ---------------- */
+  /* ---------------- import / export ---------------- */  /* ---------------- import / export ---------------- */
   const EXPORT_APP_ID = "road-ready";
 
   function exportBundle(state, exportedAtMs) {
@@ -1149,8 +1214,8 @@ function assembleExam(opts) {
     retentionProbePool, studyMetrics, buildStudyExport,
     PROTOCOL_VERSION, SCORING_VERSION, MASTERY_VERSION, bankFingerprint,
     readinessBand, strongAndRiskTopics, recommendedToday,
-    MIN_BUCKET_N, CALIBRATION_BUCKETS, mockStability, bankCoverage, confidenceCalibration,
-    calibrationCurve, calibrationRowFor, readinessNarrative,
+    MIN_BUCKET_N, MAX_INTERVAL_WIDTH, CALIBRATION_BUCKETS, mockStability, bankCoverage,
+    wilsonInterval, bucketFor, calibrationCurve, calibrationRowFor, readinessNarrative, confidenceCalibration,
     exportBundle, parseImport,
   };
 
