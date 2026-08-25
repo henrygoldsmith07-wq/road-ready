@@ -308,7 +308,34 @@ export function runChecks(data, opts = {}) {
     warn("diversity", `bank is ${(textualShare * 100).toFixed(0)}% plain-text — grow diagram/scene/sign-combo/lane-choice forms before raw quantity`, { review: true });
   }
 
-  /* ---------- 6. sign-data validation ---------- */
+  /* ---------- 5c. universality & authority audit (factual QA) ---------- */
+  // A universal question may not assert numbers that states define differently
+  // (they belong in jurisdiction packs), and no one may outrank the police.
+  const VARIANCE_RULES = [
+    { name: "cyclist-passing-distance", num: /\b([1-9]|1[0-5])\s*(feet|ft)\b/i, domain: /bicycl|cyclist|bike lane/i },
+    { name: "school-bus-stop-distance", num: /\b\d+\s*(feet|ft)\b/i, domain: /school bus/i },
+  ];
+  for (const q of QUESTIONS.filter((x) => !Array.isArray(x.jurisdiction) || !x.jurisdiction.length)) {
+    const t = [q.q].concat(Array.isArray(q.choices) ? q.choices : []).concat([q.why || ""]).join(" ");
+    for (const rule of VARIANCE_RULES) {
+      if (rule.domain.test(t) && rule.num.test(t)) {
+        err("universality", `[${q.id}] universal question asserts a state-variable number (${rule.name}) — restrict via jurisdiction tags or remove the figure`);
+      }
+    }
+  }
+  for (const q of QUESTIONS) {
+    // Judge only what we TEACH as correct: chosen answer + explanation.
+    // A wrong distractor quoting the myth ("even police directions") is fine —
+    // that's how distractors expose the misconception.
+    const taught = [Number.isInteger(q.a) && Array.isArray(q.choices) ? String(q.choices[q.a] ?? "") : "", q.why || ""].join(" ");
+    const mentionsFlagger = /flagger/i.test([q.q || "", q.choices?.join(" ") || "", taught].join(" "));
+    if (!mentionsFlagger) continue;
+    if (/even police|including police|outranks? (the )?police/i.test(taught)) {
+      err("authority-hierarchy", `[${q.id}] teaches that a flagger outranks police — officer directions always take precedence`);
+    }
+  }
+
+/* ---------- 6. sign-data validation ---------- */
   const referenced = new Set(QUESTIONS.filter((q) => q.signId).map((q) => q.signId));
   for (const [id, s] of Object.entries(SIGNS)) {
     if (!s.name || typeof s.name !== "string") err("sign-data", `[sign:${id}] missing name`);

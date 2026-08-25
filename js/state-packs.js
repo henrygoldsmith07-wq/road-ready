@@ -78,6 +78,7 @@ const CONCEPT_FACT_KEYS = {
   "phone-use":          ["handsFree", "handheldPhone", "distractedDriving", "textingBan"],
   "distracted-driving": ["distractedDriving", "handsFree", "handheldPhone"],
   "move-over":          ["moveOver"],
+  "bike-passing-distance": ["bikePassing"],
   "work-zones":         ["workZone"],
 };
 
@@ -106,6 +107,7 @@ const STATE_PACKS = {
       rightOnRed: "Allowed after a complete stop unless a sign prohibits it",
       schoolBus: "Stop in both directions on undivided roads when red lights flash",
       speedResidential: "25 mph",
+        bikePassing: "At least 3 feet when passing a bicycle",
       handsFree: "No handheld phone use at all for drivers 18+; under-18 drivers may not use a phone even hands-free",
     },
     questions: [
@@ -145,6 +147,12 @@ const STATE_PACKS = {
         a: 1,
         why: "Right on red is legal in California unless a sign prohibits it — but only after a COMPLETE stop and yielding to pedestrians and cross traffic. A rolling 'California stop' is still a violation.",
         sourceId: "ca-dmv-driver-handbook", sourceSection: "Right of Way" },
+        { id: "ca-007", cat: "vulnerable", jurisdiction: ["CA"], concept: "bike-passing-distance",
+          q: "Under California law, when you pass a bicycle you must leave at least:",
+          choices: ["1 foot of clearance", "2 feet of clearance", "3 feet of clearance", "A car's length"],
+          a: 2,
+          why: "California requires AT LEAST THREE FEET between your vehicle and a bicycle when passing — and to slow further if you cannot get that far over.",
+          sourceId: "ca-dmv-driver-handbook", sourceSection: "Sharing the Road" },
     ],
   },
   TX: {
@@ -363,6 +371,7 @@ const STATE_PACKS = {
       rightOnRed: "Allowed after a complete stop unless posted otherwise (Philadelphia restrictions apply)",
       schoolBus: "Stop at least 10 feet away; both directions on non-divided roads",
       workZone: "Work-zone violations carry doubled fines and mandatory penalties",
+        bikePassing: "At least 4 feet when overtaking a bicycle",
     },
     questions: [
       { id: "pa-001", cat: "laws", jurisdiction: ["PA"], concept: "work-zones",
@@ -387,7 +396,7 @@ const STATE_PACKS = {
         q: "Pennsylvania's zero-tolerance BAC threshold for drivers under 21 is:",
         choices: ["0.02% or more", "0.05% or more", "0.08% or more", "Any trace at all"],
         a: 0,
-        why: "Pennsylvania suspends under-21 drivers at 0.02% BAC or higher under its zero-tolerance provision.",
+        why: "Pennsylvania suspends under-21 drivers at 0.02% BAC OR MORE under its zero-tolerance provision — the answer, restated: 0.02% or more.",
         sourceId: "pa-penndot-driver-manual", sourceSection: "Young Drivers" },
       { id: "pa-005", cat: "safety", jurisdiction: ["PA"], concept: "following-distance",
         q: "Pennsylvania recommends increasing your normal following distance to about four seconds when:",
@@ -401,6 +410,12 @@ const STATE_PACKS = {
         a: 1,
         why: "While Pennsylvania generally allows right on red after a complete stop, Philadelphia applies citywide restrictions where turns on red are barred unless signed otherwise.",
         sourceId: "pa-penndot-driver-manual", sourceSection: "Traffic Signals" },
+        { id: "pa-007", cat: "vulnerable", jurisdiction: ["PA"], concept: "bike-passing-distance",
+          q: "In Pennsylvania, the minimum distance to allow when overtaking a bicycle is:",
+          choices: ["2 feet", "3 feet", "4 feet", "No minimum — just don't hit them"],
+          a: 2,
+          why: "Pennsylvania requires AT LEAST FOUR FEET of clearance when overtaking a bicycle — one foot more than most states. If you cannot pass with four feet, wait until you can.",
+          sourceId: "pa-penndot-driver-manual", sourceSection: "Sharing the Road" },
     ],
   },
 };
