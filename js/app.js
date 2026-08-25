@@ -203,6 +203,7 @@ function showView(name) {
 
 
 /* ---------------- readiness panel (home) ---------------- */
+let rpCalNarrative = null;
 function renderReadinessPanel() {
   const host = $("readinessPanel");
   if (!host) return;
@@ -223,6 +224,10 @@ function renderReadinessPanel() {
     };
   });
   const { strong, risk } = Core.strongAndRiskTopics(topics);
+  // calibrated sentence (only speaks once pooled outcomes exist)
+  const samples = (state.outcomes || []).map((o) => ({ readinessPct: o.progressPct, result: o.result }));
+  const spreadPts = (() => { const sp = Core.mockStability(state.exams, 3); return sp == null ? null : Math.round(sp * 100); })();
+  rpCalNarrative = Core.readinessNarrative({ readinessPct: theoryPct, curve: Core.calibrationCurve(samples), riskTopics: risk.map((t) => t.name), stabilitySpread: spreadPts });
 
   // unmastered count + days until test date (if set)
   const unmastered = topics.reduce((t, tp) => {
@@ -236,6 +241,11 @@ function renderReadinessPanel() {
   }
   const rec = Core.recommendedToday({ unmasteredQuestions: unmastered, daysUntilTest: daysLeft, dailyGoal: Core.DAILY_GOAL, riskCount: risk.length });
 
+  const calEl = $("rpCalLine");
+  if (calEl) {
+    calEl.hidden = rpCalNarrative.mode !== "calibrated";
+    if (!calEl.hidden) calEl.textContent = rpCalNarrative.text;
+  }
   $("rpBand").textContent = pct <= 0 && !topics.some((t) => t.seen) ? "Not Started" : Core.readinessBand(pct).label;
 
   const items = [];

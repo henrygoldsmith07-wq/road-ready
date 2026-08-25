@@ -51,6 +51,17 @@ describe("readinessNarrative honesty branches", () => {
     expect(n.disclaimer).toContain("practical driving");
   });
 
+  it("adds a provisional clause when recent mocks are unstable", () => {
+    const pairs = Array.from({ length: 10 }, (_, i) => [84, i < 9 ? "pass" : "fail"]);
+    const n = Core.readinessNarrative({
+      readinessPct: 84,
+      curve: Core.calibrationCurve(samples(pairs)),
+      stabilitySpread: 22, // points scale
+    });
+    expect(n.text).toContain("unstable (varying by 22 points)");
+    expect(n.text).toContain("provisional");
+  });
+
   it("never claims readiness for independent practical driving", () => {
     const pairs = Array.from({ length: 10 }, () => [92, "pass"]);
     const n = Core.readinessNarrative({

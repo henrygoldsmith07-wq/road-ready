@@ -1038,7 +1038,11 @@ function assembleExam(opts) {
    * (high-spread) recent mocks; it NEVER implies practical-driving readiness.
    */
   function readinessNarrative(opts) {
-    const { readinessPct, curve, riskTopics, stabilitySpread } = opts || {};
+    const { readinessPct, curve, riskTopics } = opts || {};
+    const spread = Number.isFinite(opts && opts.stabilitySpread) ? opts.stabilitySpread : null;
+    const stabilityLine = spread != null && spread > 15
+      ? ` Recent representative mock scores are unstable (varying by ${Math.round(spread)} points), so treat this as provisional.`
+      : "";
     const DISCLAIMER = "Theory-test readiness is not a claim that you are safe or ready for independent practical driving.";
     const band = readinessBand(readinessPct);
     const builtCurve = Array.isArray(curve) && curve.length && curve[0].bucket
@@ -1051,14 +1055,15 @@ function assembleExam(opts) {
     if (!curve || !row || row.n < ((opts && opts.minN) ?? MIN_BUCKET_N)) {
       return {
         mode: "insufficient",
-        text: `Your study-progress score is ${Math.round(readinessPct)}% (${band.label}). Not enough learner outcomes exist yet to convert this into a pass probability.`,
+        text: `Your study-progress score is ${Math.round(readinessPct)}% (${band.label}). Not enough learner outcomes exist yet to convert this into a pass probability.${riskLine}${stabilityLine}`,
+        disclaimer: DISCLAIMER,
         disclaimer: DISCLAIMER,
       };
     }
     return {
       mode: "calibrated",
       calibratedPassRate: row.passRate,
-      text: `Learners scoring ${row.bucket} with comparable recent performance historically passed about ${Math.round(row.passRate * 100)}% of official theory exams.${riskLine}`,
+      text: `Learners scoring ${row.bucket} with comparable recent performance historically passed about ${Math.round(row.passRate * 100)}% of official theory exams.${riskLine}${stabilityLine}`,
       disclaimer: DISCLAIMER,
     };
   }

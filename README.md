@@ -37,9 +37,14 @@ Two honest scoping calls that follow from this:
 | Progress | Study-progress score, per-topic mastery, accuracy, day streak, daily goal, study time, exam history |
 | Drive Log *(new)* | Log supervised sessions (duration, conditions, road types, ✓/△/✗ per skill, instructor notes); skills roll up into 7 competencies (Observation, Vehicle control, Junctions, Roundabouts, Lane discipline, Parking, Independent driving) with a next-lesson-focus recommendation |
 | Driving Readiness | Theory progress + practical competency blend into one heuristic score — clearly labeled as uncalibrated until real outcome data exists |
-| Outcome Journal *(beta)* | The progress % is an **uncalibrated heuristic**, not a predicted pass probability. Log your real test result (opt-in, on-device only) — progress %, mock average, questions seen and study time are snapshotted with the outcome to ground a future P(pass) model |
+| Outcome Journal *(beta)* | The progress % is an **uncalibrated heuristic**, not a predicted pass probability. Log your real test result (opt-in, on-device only) — progress %, mock average, **coverage**, **stability**, questions seen and study time are snapshotted with the outcome to ground a future P(pass) model |
+| Calibration | Pooled outcome exports feed a **calibration curve** (progress bucket → observed pass rate). Buckets with fewer than 8 outcomes report "insufficient" — the app never states a probability it hasn't measured, and never implies theory readiness means safe independent practical driving |
 | Test Day Plan | Save your knowledge-test date and get an adaptive daily question target plus the best next action; private and fully offline |
 | Official Sources | State-rule explanations and Study Guide facts link directly to the issuing DMV/DPS/DOL handbook; dedicated State Rules drills keep the cited material together |
+
+## Study protocol (frozen)
+
+Exports carry `protocol: { protocolVersion: "rr-study-1.0", contentVersion, scoringVersion, masteryVersion, jurisdiction, appVersion }`. `contentVersion` fingerprints the question bank (size + id checksum), so any mid-study content or scoring change is detectable and cohorts stay comparable. Changing the bank, grading or mastery algorithm mid-study requires bumping `PROTOCOL_VERSION` in `js/core.js`; `scripts/study-report.mjs` warns when a cohort mixes versions and prints the pooled calibration curve.
 | Settings | Pass mark (75/80/85%), exam length, instant-feedback toggle, full progress reset |
 
 Everything is stored locally in your browser (localStorage) — nothing leaves your machine.
