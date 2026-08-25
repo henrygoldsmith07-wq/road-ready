@@ -6,7 +6,7 @@
   "type": "commonjs",
   "scripts": {
     "serve": "node serve.js",
-    "test": "npm run test:unit && npm run validate",
+    "test": "npm run test:unit && npm run validate && npm run hygiene",
     "test:unit": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
@@ -14,7 +14,8 @@
     "provenance:update": "node scripts/validate-content.mjs --update-manifest",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "audit": "npm audit --omit=dev --audit-level=high"
+    "audit": "npm audit --omit=dev --audit-level=high",
+    "hygiene": "node scripts/check-hygiene.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

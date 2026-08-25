@@ -34,7 +34,7 @@ Two honest scoping calls that follow from this:
 | Read Aloud | Text-to-speech for questions, choices, and explanations — great for commutes and accessibility |
 | XP & Achievements | Earn XP for every answer, climb levels, and unlock 12 achievements from First Steps to Hawk Eye |
 | Review Missed | Every question you've ever missed, with the correct answer and why — plus one-tap drills |
-| Progress | Study-progress score, per-topic mastery, **7-dimension argument skill profile** (Evidence, Rebuttal, Logic, Clarity, Impact, Steelmanning, Structure — scored from concept mastery with training focus), accuracy, day streak, daily goal, study time, exam history |
+| Progress | Study-progress score, per-topic mastery, accuracy, day streak, daily goal, study time, exam history |
 | Drive Log *(new)* | Log supervised sessions (duration, conditions, road types, ✓/△/✗ per skill, instructor notes); skills roll up into 7 competencies (Observation, Vehicle control, Junctions, Roundabouts, Lane discipline, Parking, Independent driving) with a next-lesson-focus recommendation |
 | Driving Readiness | Theory progress + practical competency blend into one heuristic score — clearly labeled as uncalibrated until real outcome data exists |
 | Outcome Journal *(beta)* | The progress % is an **uncalibrated heuristic**, not a predicted pass probability. Log your real test result (opt-in, on-device only) — progress %, mock average, questions seen and study time are snapshotted with the outcome to ground a future P(pass) model |

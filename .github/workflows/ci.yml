@@ -35,6 +35,7 @@ jobs:
       - run: npm ci
       - run: npm run test:unit
       - run: npm run validate   # strict content QA incl. provenance + freshness + blueprints + jurisdiction contract
+      - run: npm run hygiene    # cross-project contamination guard
 
   e2e:
     runs-on: ubuntu-latest

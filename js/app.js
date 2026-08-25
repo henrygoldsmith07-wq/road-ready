@@ -743,66 +743,6 @@ function fcMark(known) {
 
 /* ---------------- STATS ---------------- */
 
-/* Argument Skill Profile — 7 dimensions scored from concept mastery.
- * Maps topic categories + concepts into the 7-dimension coach model. */
-const SKILL_DIMENSIONS = [
-  { key: "evidence",       label: "Evidence",       topics: ["signs"],           concepts: [] },
-  { key: "rebuttal",       label: "Rebuttal",       topics: ["row", "vulnerable"], concepts: ["junction-priority", "roundabout-priority", "merge-priority"] },
-  { key: "logic",          label: "Logic",          topics: ["laws"],            concepts: ["emergency-vehicles", "work-zones"] },
-  { key: "clarity",        label: "Clarity",        topics: ["speed"],           concepts: ["low-visibility", "hydroplaning", "skid-recovery"] },
-  { key: "impact",         label: "Impact",         topics: ["alcohol"],         concepts: ["zero-tolerance", "bac-limits"] },
-  { key: "steelmanning",   label: "Steelmanning",   topics: ["safety"],          concepts: ["following-distance", "brake-failure", "tire-blowout"] },
-  { key: "structure",      label: "Structure",      topics: ["parking", "vehicle", "markings"], concepts: ["lane-selection", "pedestrian-priority", "curb-distance"] },
-];
-
-function skillProfile() {
-  return SKILL_DIMENSIONS.map(dim => {
-    // Collect all questions belonging to this dimension
-    const qs = bank.filter(q => {
-      if (dim.concepts.length && q.concept && dim.concepts.includes(q.concept)) return true;
-      if (!q.concept || !dim.concepts.length) {
-        if (dim.topics.includes(q.cat)) {
-          // Only match via topic if the question doesn't belong to a different dimension's concept
-          const otherDim = SKILL_DIMENSIONS.find(d =>
-            d.key !== dim.key && d.concepts.length && q.concept && d.concepts.includes(q.concept));
-          if (!otherDim) return true;
-        }
-      }
-      return false;
-    });
-    if (!qs.length) return { ...dim, score: null, n: 0 };
-    const m = Core.topicMastery(qs, state.qstats);
-    const acc = catAccuracy(qs[0].cat); // approximate
-    return { ...dim, score: Math.round(m * 100), n: qs.length };
-  });
-}
-
-function renderSkillProfile() {
-  const host = $("skillProfileBars");
-  if (!host) return;
-  const dims = skillProfile();
-  let worst = null, worstScore = 101;
-  host.innerHTML = "";
-  for (const d of dims) {
-    if (d.score === null) continue;
-    const filled = Math.round(d.score / 10);
-    const blocks = "\u2588".repeat(filled) + "\u2591".repeat(10 - filled);
-    const row = document.createElement("div");
-    row.className = "skill-bar-row";
-    row.innerHTML = `<span class="skill-label">${d.label}</span>` +
-      `<span class="skill-blocks tabular">${blocks}</span>` +
-      `<span class="skill-score tabular">${d.score}</span>`;
-    host.appendChild(row);
-    if (d.score < worstScore) { worstScore = d.score; worst = d; }
-  }
-  const focusEl = $("trainingFocus");
-  if (focusEl && worst) {
-    focusEl.innerHTML = worst.score < 82
-      ? `<b>Today\u2019s training focus:</b> ${worst.label} (${worst.score}/100) \u2014 practice ${worst.label.toLowerCase()} questions to raise this score.`
-      : `<b>All dimensions strong.</b> Take a mock exam to confirm readiness.`;
-  }
-}
-
 function renderStats() {
   const acc = state.answered ? Math.round(100 * state.correctCount / state.answered) : null;
   $("ssAnswered").textContent = state.answered;
@@ -840,7 +780,6 @@ function renderStats() {
       <span class="m-val">${m}%${accC !== null ? ` <small>(${Math.round(accC * 100)}% acc)</small>` : ""}</span></div>`;
   });
 
-  renderSkillProfile();
   const hl = $("historyList");
   hl.innerHTML = state.exams.length
     ? state.exams.slice().reverse().map(e => {
