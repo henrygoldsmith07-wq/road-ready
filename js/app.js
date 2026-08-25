@@ -273,8 +273,7 @@ function renderHome() {
   grid.innerHTML = "";
   Object.entries(CATEGORIES).forEach(([id, c]) => {
     const qs = catQ(id);
-    let m = Core.topicMastery(qs, state.qstats);
-    m = Math.round(100 * m / qs.length);
+    const m = Math.round(100 * Core.topicMastery(qs, state.qstats));
     const seenCount = qs.filter(q => state.qstats[q.id]).length;
     const b = document.createElement("button");
     b.className = "card topic-card";
@@ -771,8 +770,7 @@ function renderStats() {
   ml.innerHTML = "";
   Object.entries(CATEGORIES).forEach(([id, c]) => {
     const qs = catQ(id);
-    let m = Core.topicMastery(qs, state.qstats);
-    m = Math.round(100 * m / qs.length);
+    const m = Math.round(100 * Core.topicMastery(qs, state.qstats));
     const accC = catAccuracy(id);
     ml.innerHTML += `<div class="mastery-row">
       <span class="m-name">${icon(c.icon, 15)} ${c.name}</span>
