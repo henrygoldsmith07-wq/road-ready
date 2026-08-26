@@ -3,6 +3,8 @@
 // (icon, QUESTIONS, SIGNS, …) are declared as globals instead of imports.
 import js from "@eslint/js";
 
+const ignores = { ignores: ["test-results/**", "node_modules/**"] };
+
 const browserGlobals = {
   window: "readonly", document: "readonly", localStorage: "readonly", navigator: "readonly",
   location: "readonly", fetch: "readonly", URL: "readonly",
@@ -24,6 +26,7 @@ const sharedScriptGlobals = {
 };
 
 export default [
+  ignores,
   js.configs.recommended,
   {
     files: ["js/**/*.js"],

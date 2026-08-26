@@ -1164,6 +1164,62 @@ function assembleExam(opts) {
       .filter(Boolean);
   }
 
+  /* ---------------- official-test predictions (prospective, immutable) ---------------- */
+  // A prediction is FROZEN at creation from the learner's then-current state.
+  // Attaching an outcome NEVER calls readiness() and never mutates prediction
+  // fields. Retrospective journal entries stay in state.outcomes — these are
+  // a separate prospective record used for primary calibration.
+
+  function nextAttemptNumber(predictions, participantId) {
+    return (predictions || []).filter((p) => p.participantId === participantId).length + 1;
+  }
+
+  /** Freeze the current state into an immutable prediction. Pure. */
+  function freezePrediction(predictions, participantId, jurisdiction, snapshot, opts) {
+    const o = opts || {};
+    const intendedTestDate = typeof o.intendedTestDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(o.intendedTestDate)
+      ? o.intendedTestDate : null;
+    const coveragePct = num(snapshot.coveragePct, 0, 0, 100);
+    const skillsRated = Object.keys(snapshot.skillsRated || {}).length;
+    const evidenceClass = coveragePct >= 80 && skillsRated >= 3 ? "strong"
+      : coveragePct >= 50 ? "moderate" : "weak";
+    return {
+      id: "pred-" + Math.random().toString(16).slice(2, 10),
+      participantId,
+      jurisdiction: jurisdiction || "generic",
+      intendedTestDate,
+      attemptNumber: nextAttemptNumber(predictions, participantId),
+      predictionCreatedAt: typeof o.nowMs === "number" ? o.nowMs : Date.now(),
+      readinessPct: num(snapshot.readinessPct, 0, 0, 100),
+      mockAvgPct: num(snapshot.mockAvgPct, 0, 0, 100),
+      diagnosticPct: num(snapshot.diagnosticPct, 0, 0, 100) || null,
+      coveragePct,
+      stabilitySpread: num(snapshot.stabilitySpread, 0, 0, 100) || null,
+      questionsSeen: num(snapshot.questionsSeen, 0, 0, 1e6),
+      studyMinutes: num(snapshot.studyMinutes, 0, 0, 1e6),
+      skillsRated: Object.assign({}, snapshot.skillsRated || {}),
+      readinessEngineVersion: MASTERY_VERSION,
+      scoringVersion: SCORING_VERSION,
+      protocolVersion: PROTOCOL_VERSION,
+      contentVersion: bankFingerprint(snapshot.bank || []),
+      evidenceClass,
+      outcome: null, // attached exactly once via attachOutcome()
+    };
+  }
+
+  /**
+   * Attach the official result to an EXISTING prediction.
+   * Never calls readiness(); never mutates the input; one outcome per attempt.
+   * Corrections re-attach to the SAME prediction (audited replacement).
+   */
+  function attachOutcome(prediction, result, officialTestDate, recordedAtMs) {
+    if (!prediction || prediction.outcome) return prediction;
+    if (!["pass", "fail"].includes(result)) return prediction;
+    const out = { result, officialTestDate: officialTestDate || null, recordedAt: nowMs(recordedAtMs) };
+    return Object.assign({}, prediction, { outcome: out });
+  }
+  function nowMs(ms) { return typeof ms === "number" && isFinite(ms) ? ms : Date.now(); }
+
   /* ---------------- import / export ---------------- */  /* ---------------- import / export ---------------- */
   const EXPORT_APP_ID = "road-ready";
 
@@ -1215,6 +1271,7 @@ function assembleExam(opts) {
     PROTOCOL_VERSION, SCORING_VERSION, MASTERY_VERSION, bankFingerprint,
     readinessBand, strongAndRiskTopics, recommendedToday,
     MIN_BUCKET_N, MAX_INTERVAL_WIDTH, CALIBRATION_BUCKETS, mockStability, bankCoverage,
+    freezePrediction, attachOutcome,
     wilsonInterval, bucketFor, calibrationCurve, calibrationRowFor, readinessNarrative, confidenceCalibration,
     exportBundle, parseImport,
   };
