@@ -1,6 +1,6 @@
 # Road Ready — Pass Your Driving Test
 
-A self-contained driving-theory study app. No build step, no dependencies, no internet needed — just open `index.html` in any browser.
+A self-contained driving-theory study app. No build step, no dependencies, no internet needed — just open `index.html` in any browser. Optional Google sign-in adds cross-device sync where a deployment configures it; without it nothing changes.
 
 ## What Road Ready is (product decision)
 
@@ -134,3 +134,28 @@ questions apply to every pack. Add a pack by appending an entry to
 provenance fields. `SOURCE_REGISTRY` maps every jurisdiction pack to a verified
 HTTPS resource on its issuing agency's official domain; broken, missing, or
 third-party source records fail validation.
+
+
+## Accounts & sync (optional)
+
+Road Ready is still a self-contained app. Opening `index.html` from disk, or
+serving it statically, hits no API at all and the account panel never appears —
+the offline story in this README is unchanged.
+
+Where it *is* deployed to a host that runs the serverless functions in `api/`
+(and `DATABASE_URL`, `AUTH_SECRET`, `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET`
+are set), **Settings → Account & sync** offers Google sign-in so your progress
+follows you between devices.
+
+Sync carries exactly the backup bundle Export/Import already produces. A copy
+downloaded from your account goes through the same `Core.parseImport`
+validation — including the version warnings — as a file you picked yourself, so
+there is one format and one restore path to keep correct rather than two that
+can drift.
+
+Nothing is saved automatically. If another device saved since this one last
+looked, the push is refused and you are asked rather than silently overwriting.
+
+Apply `database/migrations/001_accounts_and_sync.sql` before first use, and use
+`vercel dev` to exercise sign-in locally (`node serve.js` serves the static app
+only, without `api/`).

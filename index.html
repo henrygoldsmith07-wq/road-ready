@@ -529,6 +529,16 @@
             <input type="file" id="fileImport" accept="application/json,.json" hidden aria-label="Import progress backup file">
           </span>
         </div>
+        <!-- Hidden unless the deployment configures accounts; opening
+             index.html from disk never reveals it. -->
+        <div id="accountPanel" hidden>
+          <div class="setting-row data-row">
+            <span>Account &amp; sync</span>
+            <span class="data-actions" id="accountActions"></span>
+          </div>
+          <p class="setting-note" id="accountNote"></p>
+        </div>
+
         <div class="danger-zone">
           <button class="btn ghost" id="btnResetAll">Reset all progress</button>
         </div>
@@ -602,6 +612,7 @@
 <script src="js/icons.js"></script>
 <script src="js/questions.js"></script>
 <script src="js/core.js"></script>
+<script src="js/account.js"></script>
 <script src="js/jurisdictions.js"></script>
 <script src="js/state-packs.js"></script>
 <script src="js/exam-blueprints.js"></script>
