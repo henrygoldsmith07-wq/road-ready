@@ -494,6 +494,9 @@ function renderTimer() {
 function renderQuiz() {
   const q = session.questions[session.i];
   const total = session.questions.length;
+  // When this question became answerable. The gap to the answer is the only
+  // evidence we have of whether it was recalled or worked out.
+  session.shownAt = Date.now();
   $("qprogBar").style.width = (100 * session.i / total) + "%";
   $("qCounter").textContent = `Q ${session.i + 1}/${total}`;
   $("qCategory").textContent = CATEGORIES[q.cat].name;
@@ -621,6 +624,13 @@ function recordAnswer(q, right) {
   s.lastSeen = now;
   if (!right) s.lastWrong = now;
   s.sched = Core.reviewSched(s.sched, right, now);   // weak-topic resurfacing
+  // Answer fluency: classify against the learner's own response-time
+  // distribution, then fold the label into this question's counters. The
+  // sample is pushed first so the very first answers still build the window.
+  const elapsed = session.shownAt ? now - session.shownAt : null;
+  state.rtSamples = Core.pushRtSample(state.rtSamples, elapsed);
+  Core.applyFluency(s, Core.classifyResponse(elapsed, right, Core.rtPercentiles(state.rtSamples)));
+  session.shownAt = 0;
   state.answered++; if (right) state.correctCount++;
   state.daily = Core.bumpDaily(state.daily, todayStr());
   touchStreak();
@@ -807,6 +817,41 @@ function fcMark(known) {
 
 /* ---------------- STATS ---------------- */
 
+/**
+ * Answer fluency: what the clock says that right/wrong does not.
+ *
+ * Deliberately withholds every judgement until the learner has answered
+ * enough questions for their own percentiles to mean anything — the whole
+ * point is that "fast" is personal, so an early verdict would be noise.
+ */
+function renderFluency() {
+  const f = Core.answerFluency(bank, state.qstats, state.rtSamples);
+  const body = $("fluencyBody");
+  if (!f.ready) {
+    body.innerHTML = `<p class="muted">How quickly you answer says something the right/wrong count cannot:
+      a fast wrong answer is a misconception, a slow right one is knowledge that is not automatic yet.
+      Answer ${f.needed} more question${f.needed === 1 ? "" : "s"} and this fills in — the thresholds are
+      your own typical speed, not a fixed stopwatch.</p>`;
+    return;
+  }
+  const secs = (ms) => (ms / 1000).toFixed(1) + "s";
+  const list = (items, empty) => items.length
+    ? `<ul class="fluency-list">${items.slice(0, 5).map(x =>
+        `<li><span>${escapeHTML(x.q.q)}</span><b>&times;${x.count}</b></li>`).join("")}</ul>`
+    : `<p class="muted">${empty}</p>`;
+  body.innerHTML = `
+    <p class="muted">Measured against your own pace: about ${secs(f.medianMs)} is typical,
+      over ${secs(f.slowMs)} is slow for you. Based on your last ${f.samples} answers.</p>
+    <h3 class="fluency-head">Answered fast and wrong &mdash; ${f.misconceptions.length}</h3>
+    <p class="muted">You were sure and you were wrong. These are the ones you cannot catch yourself on,
+      so practice surfaces them first.</p>
+    ${list(f.misconceptions, "None — nothing you got wrong came quickly.")}
+    <h3 class="fluency-head">Answered slow and right &mdash; ${f.fragile.length}</h3>
+    <p class="muted">You worked these out rather than knowing them. That holds up in practice and
+      slips under exam time pressure.</p>
+    ${list(f.fragile, "None — the ones you get right, you get right quickly.")}`;
+}
+
 function renderStats() {
   const acc = state.answered ? Math.round(100 * state.correctCount / state.answered) : null;
   $("ssAnswered").textContent = state.answered;
@@ -830,6 +875,8 @@ function renderStats() {
     d.innerHTML = `${icon("award", 20)}<div><b>${a.name}</b><small>${a.desc}</small></div>`;
     ag.appendChild(d);
   });
+
+  renderFluency();
 
   const ml = $("masteryList");
   ml.innerHTML = "";

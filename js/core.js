@@ -28,7 +28,7 @@
   function defaultState() {
     return {
       v: SCHEMA_VERSION,
-      qstats: {},        // qid -> {seen, correct, wrong, lastSeen, lastWrong, sched:{due, ef, interval, reps}}
+      qstats: {},        // qid -> {seen, correct, wrong, lastSeen, lastWrong, fastWrong, slowRight, sched:{due, ef, interval, reps}}
       flagged: {},       // qid -> true
       exams: [],         // {date, label, pct, correct, total, pass, durationSec}
       answered: 0,
@@ -44,6 +44,8 @@
       outcomes: [],      // opt-in real-test outcome journal: {date, progressPct, mockAvgPct, questionsSeen, studyMinutes, result}
       practical: { log: [] }, // driving-log sessions: {date, minutes, conditions[], roadTypes[], skills{skillId:rating}, notes}
       study: { enrolledAt: undefined, participantId: "", confidence: [], retentionLog: [] },
+      rtSamples: [],     // recent answer response times (ms), newest last — the
+                         // learner's own distribution, used to judge fast vs slow
       settings: defaultSettings(),
     };
   }
@@ -85,6 +87,11 @@ function sanitizeState(s, opts) {
       st.wrong = num(st.wrong, 0, 0, 1e9);
       st.lastSeen = num(st.lastSeen, 0, 0, 8.64e15) || undefined;
       st.lastWrong = num(st.lastWrong, 0, 0, 8.64e15) || undefined;
+      // Answer-fluency counters. Absent in payloads written before response
+      // times were recorded, which is why they default to 0 rather than
+      // needing a migration: an old save simply has nothing to say yet.
+      st.fastWrong = num(st.fastWrong, 0, 0, 1e9);
+      st.slowRight = num(st.slowRight, 0, 0, 1e9);
       const sc = plainObject(st.sched);
       st.sched = {
         due: num(sc.due, 0, 0, 8.64e15) || undefined,
@@ -119,6 +126,10 @@ function sanitizeState(s, opts) {
     s.xp = num(s.xp, 0, 0, 1e9);
     s.timeStudied = num(s.timeStudied, 0, 0, 1e9);
     s.hazardBest = num(s.hazardBest, 0, 0, 30);
+    s.rtSamples = Array.isArray(s.rtSamples)
+      ? s.rtSamples.filter((x) => typeof x === "number" && isFinite(x) && x >= MIN_RT_MS && x <= MAX_RT_MS)
+          .slice(-MAX_RT_SAMPLES)
+      : [];
     const practical = plainObject(s.practical);
     practical.log = Array.isArray(practical.log)
       ? practical.log.filter((x) => x && typeof x === "object" && !Array.isArray(x))
@@ -415,6 +426,104 @@ function sanitizeState(s, opts) {
     return seen ? correct / seen : null;
   }
 
+  /* ---------------- answer fluency (response time) ---------------- */
+  /**
+   * How fast an answer came is evidence the right/wrong bit alone does not
+   * carry. A question answered quickly and *wrongly* is a misconception the
+   * learner does not know they hold — the most dangerous kind, and invisible
+   * to a plain wrong-count. A question answered slowly and *correctly* is
+   * knowledge that exists but is not yet automatic, which is exactly what
+   * fails under exam time pressure.
+   *
+   * Thresholds are the learner's OWN percentiles, never a global constant:
+   * read-aloud users, slower readers and phone-vs-desktop all shift the whole
+   * distribution, and a fixed "3 seconds is fast" would mislabel every one of
+   * them. Below MIN_RT_SAMPLES answers nothing is classified at all.
+   */
+  const MIN_RT_MS = 250;          // faster than this is a mis-tap, not an answer
+  const MAX_RT_MS = 120000;       // slower than this means they walked away
+  const MAX_RT_SAMPLES = 300;     // rolling window kept in the save file
+  const MIN_RT_SAMPLES = 20;      // below this, no answer is called fast or slow
+
+  /** Clamp one measurement, or null if it is not usable evidence. */
+  function normalizeRt(ms) {
+    const n = typeof ms === "number" && isFinite(ms) ? ms : NaN;
+    if (!isFinite(n) || n < MIN_RT_MS || n > MAX_RT_MS) return null;
+    return Math.round(n);
+  }
+
+  /** Append a measurement to the rolling window. Returns a new array. */
+  function pushRtSample(samples, ms) {
+    const v = normalizeRt(ms);
+    const base = Array.isArray(samples) ? samples : [];
+    if (v == null) return base.slice(-MAX_RT_SAMPLES);
+    return base.concat(v).slice(-MAX_RT_SAMPLES);
+  }
+
+  /** The learner's own median and upper quartile, or null below the floor. */
+  function rtPercentiles(samples) {
+    const xs = (Array.isArray(samples) ? samples : [])
+      .filter((x) => typeof x === "number" && isFinite(x)).slice().sort((a, b) => a - b);
+    if (xs.length < MIN_RT_SAMPLES) return null;
+    const at = (p) => xs[Math.min(xs.length - 1, Math.max(0, Math.round((xs.length - 1) * p)))];
+    return { n: xs.length, p50: at(0.5), p75: at(0.75) };
+  }
+
+  /**
+   * Label one answer against the learner's distribution.
+   *   fluent            right and quick — secure
+   *   effortful-correct right but slow — fragile under time pressure
+   *   confident-error   wrong and quick — a misconception, not a gap
+   *   known-gap         wrong and slow — uncertainty they can already feel
+   * Returns "unclassified" when there is not enough evidence to judge.
+   */
+  function classifyResponse(rtMs, right, pct) {
+    const v = normalizeRt(rtMs);
+    if (v == null || !pct) return "unclassified";
+    if (right) return v > pct.p75 ? "effortful-correct" : "fluent";
+    return v <= pct.p50 ? "confident-error" : "known-gap";
+  }
+
+  /**
+   * Fold one classified answer into a question's counters. Mutates and
+   * returns the stat, matching how reviewSched is used at the call site.
+   */
+  function applyFluency(stat, label) {
+    const st = stat || {};
+    if (label === "confident-error") st.fastWrong = (st.fastWrong || 0) + 1;
+    if (label === "effortful-correct") st.slowRight = (st.slowRight || 0) + 1;
+    return st;
+  }
+
+  /**
+   * Summary across a bank. `ready` is false until the learner has answered
+   * enough questions for their own percentiles to mean anything; the counts
+   * are still returned, because a count is a count.
+   */
+  function answerFluency(questions, qstats, samples) {
+    const pct = rtPercentiles(samples);
+    const stats = plainObject(qstats);
+    const misconceptions = [];
+    const fragile = [];
+    (questions || []).forEach((q) => {
+      const st = stats[q.id];
+      if (!st) return;
+      if (st.fastWrong > 0) misconceptions.push({ q, count: st.fastWrong });
+      else if (st.slowRight > 0) fragile.push({ q, count: st.slowRight });
+    });
+    misconceptions.sort((a, b) => b.count - a.count);
+    fragile.sort((a, b) => b.count - a.count);
+    return {
+      ready: !!pct,
+      samples: pct ? pct.n : (Array.isArray(samples) ? samples.length : 0),
+      needed: pct ? 0 : Math.max(0, MIN_RT_SAMPLES - (Array.isArray(samples) ? samples.length : 0)),
+      medianMs: pct ? pct.p50 : null,
+      slowMs: pct ? pct.p75 : null,
+      misconceptions,
+      fragile,
+    };
+  }
+
   /* ---------------- adaptive selection ---------------- */
   /**
    * Adaptive weight: unseen & previously-missed questions surface more often;
@@ -423,6 +532,9 @@ function sanitizeState(s, opts) {
   function adaptiveWeights(question, stat, flags, nowMs) {
     const st = stat || { seen: 0, wrong: 0 };
     let w = 1 + st.wrong * 2.5 - qMastery(st) * 0.9;
+    // A fast wrong answer is a misconception rather than a gap: it resurfaces
+    // ahead of an ordinary miss, because the learner has no idea it is there.
+    w += (st.fastWrong || 0) * 1.5;
     if (!st.seen) w += 1.2;
     if (flags && flags[question.id]) w += 1.5;
     const due = schedDue(st, nowMs == null ? Date.now() : nowMs);
@@ -454,11 +566,16 @@ function sanitizeState(s, opts) {
     return out;
   }
 
-  /** Questions previously answered wrong, worst-first. */
+  /**
+   * Questions previously answered wrong, worst-first — with misconceptions
+   * (answered fast and wrong) ahead of ordinary misses at the same wrong
+   * count, since the learner cannot feel those on their own.
+   */
   function missedQuestions(questions, qstats) {
     return questions
       .filter((q) => qstats[q.id] && qstats[q.id].wrong > 0)
-      .sort((a, b) => (qstats[b.id].wrong - qstats[a.id].wrong)
+      .sort((a, b) => ((qstats[b.id].fastWrong || 0) - (qstats[a.id].fastWrong || 0))
+        || (qstats[b.id].wrong - qstats[a.id].wrong)
         || ((qstats[b.id].lastWrong || 0) - (qstats[a.id].lastWrong || 0)));
   }
 
@@ -1273,6 +1390,8 @@ function assembleExam(opts) {
     MIN_BUCKET_N, MAX_INTERVAL_WIDTH, CALIBRATION_BUCKETS, mockStability, bankCoverage,
     freezePrediction, attachOutcome,
     wilsonInterval, bucketFor, calibrationCurve, calibrationRowFor, readinessNarrative, confidenceCalibration,
+    MIN_RT_SAMPLES, MAX_RT_SAMPLES, MIN_RT_MS, MAX_RT_MS,
+    normalizeRt, pushRtSample, rtPercentiles, classifyResponse, applyFluency, answerFluency,
     exportBundle, parseImport,
   };
 
