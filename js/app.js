@@ -243,10 +243,14 @@ function renderReadinessPanel() {
 
   const calEl = $("rpCalLine");
   if (calEl) {
-    calEl.hidden = rpCalNarrative.mode !== "calibrated";
-    if (!calEl.hidden) calEl.textContent = rpCalNarrative.text;
+    // Readiness stays labelled uncalibrated until real results exist.
+    calEl.hidden = false;
+    calEl.textContent = rpCalNarrative.mode === "calibrated"
+      ? rpCalNarrative.text
+      : `Uncalibrated estimate — ${rpCalNarrative.text}`;
   }
-  $("rpBand").textContent = pct <= 0 && !topics.some((t) => t.seen) ? "Not Started" : Core.readinessBand(pct).label;
+  const band = pct <= 0 && !topics.some((t) => t.seen) ? "Not Started" : Core.readinessBand(pct).label;
+  $("rpBand").textContent = state.outcomes && state.outcomes.length ? band : `${band} · uncalibrated`;
 
   const items = [];
   strong.forEach((t) => items.push(`<li class="rp-strong"><span class="rp-glyph">✓</span> Strong: ${t.name.toLowerCase()}</li>`));
@@ -371,10 +375,20 @@ function startSetup(mode, focusCat) {
   const list = $("setupList");
   list.innerHTML = "";
   if (mode === "practice") {
+    // Daily set is sized to the test date — never an open-bank dump.
+    const unmasteredCount = bank.filter((q) => !state.qstats[q.id] || Core.qMastery(state.qstats[q.id]) < 0.8).length;
+    let daysLeftPractice = null;
+    if (state.settings.testDate) {
+      const diffPractice = Math.ceil((Date.parse(state.settings.testDate + "T12:00:00Z") - Date.now()) / Core.DAY_MS);
+      if (diffPractice > 0) daysLeftPractice = diffPractice;
+    }
+    const todaySize = Math.max(5, Math.min(
+      Core.recommendedToday({ unmasteredQuestions: Math.max(1, unmasteredCount), daysUntilTest: daysLeftPractice, dailyGoal: Core.DAILY_GOAL, riskCount: 0 }) || Core.DAILY_GOAL,
+      bank.length
+    ));
     const items = [
-      { id: "adaptive", icon: "sparkles", name: "Adaptive Mix", desc: `Prioritizes your weak spots across all ${bank.length} questions`, action: () => startPractice(pickWeighted(adaptivePool(), 10), "Adaptive Mix", "home") },
-      { id: "marathon", icon: "infinity", name: "Marathon — Full Bank", desc: `All ${bank.length} questions in one run — anything you miss comes back. Quit anytime`, action: () => startPractice(shuffle(bank).slice(), "Marathon", "home", true) },
-      { id: "missed", icon: "target", name: "Missed Questions", desc: missedQuestions().length ? `Re-drill the ${Math.min(10, missedQuestions().length)} you've gotten wrong` : "Nothing missed yet — nice!", action: () => { const m = missedQuestions(); if (m.length) startPractice(pickWeighted(m.map(q => ({ q, w: 1 })), Math.min(10, m.length)), "Missed Questions", "home"); } },
+      { id: "today", icon: "sparkles", name: "Today's Set", desc: `${todaySize} questions sized to your test date${daysLeftPractice ? ` — test in ${daysLeftPractice} day${daysLeftPractice === 1 ? "" : "s"}` : " — set a test date for a dated plan"} · weak spots first`, action: () => startPractice(pickWeighted(adaptivePool(), todaySize), "Today's Set", "home") },
+      { id: "missed", icon: "target", name: "Missed Questions", desc: missedQuestions().length ? `Re-drill the ${Math.min(todaySize, missedQuestions().length)} you've gotten wrong` : "Nothing missed yet — nice!", action: () => { const m = missedQuestions(); if (m.length) startPractice(pickWeighted(m.map(q => ({ q, w: 1 })), Math.min(todaySize, m.length)), "Missed Questions", "home"); } },
       { id: "flagged", icon: "flag", name: "Flagged Questions", desc: Object.keys(state.flagged).length ? `${Object.keys(state.flagged).length} flagged for review` : "Flag questions during practice to build this set", action: () => { const f = Object.keys(state.flagged).map(id => byId[id]).filter(Boolean); if (f.length) startPractice(shuffle(f).slice(0, 15), "Flagged Questions", "home"); } },
     ];
     const stateQuestions = bank.filter(q => Array.isArray(q.jurisdiction) && q.jurisdiction.includes(state.settings.statePack));
@@ -395,27 +409,26 @@ function startSetup(mode, focusCat) {
     items.forEach(it => list.appendChild(setupRow(it)));
   } else {
     const items = [];
-    // Official Simulation: locked to the selected jurisdiction's real exam
+    // Official Simulation first: the mock that looks like the real test —
+    // same count, same time limit, same pass mark. Generic lengths are extras.
     const packId = Packs.PACK_IDS.includes(state.settings.statePack) ? state.settings.statePack : "generic";
     const bp = BLUEPRINTS[packId];
     if (bp) {
       items.push({
         id: "official", icon: "grad", name: bp.label,
-        desc: `${bp.questionCount} questions · pass ${bp.minCorrect}/${bp.questionCount} (official threshold) · ${bp.timeLimitMin ? bp.timeLimitMin + "-min limit" : "standard pacing"} · feedback at end`,
+        desc: `${bp.questionCount} questions · pass ${bp.minCorrect}/${bp.questionCount} (official threshold) · ${bp.timeLimitMin ? bp.timeLimitMin + "-min limit" : `${Core.timeLimitSecs(bp.questionCount) / 60}-min pacing`} · feedback at end`,
         action: () => startOfficialExam(packId),
       });
     }
     items.push(
-      { id: "std", icon: "clipboard", name: `Standard Exam — ${state.settings.examLen} questions`, desc: `Pass mark ${Math.round(state.settings.passMark * 100)}% · ${state.settings.examLen} min time limit`, action: () => startExam(state.settings.examLen) },
-      { id: "quick", icon: "zap", name: "Quick Check — 10 questions", desc: "5-minute diagnostic across all topics", action: () => startExam(10) },
-      { id: "full", icon: "grad", name: "Full Test — 46 questions", desc: "Simulates many states' full knowledge test · 46 min", action: () => startExam(46) },
-      { id: "weak", icon: "target", name: "Weak Topics Exam", desc: "20 questions weighted toward your lowest categories", action: () => startExam(20, true) },
+      { id: "weak", icon: "target", name: "Weak Topics Exam", desc: "20 questions weighted toward your lowest categories (extra practice)", action: () => startExam(20, true) },
+      { id: "quick", icon: "zap", name: "Quick Check — 10 questions", desc: "5-minute diagnostic across your state's pool (extra practice)", action: () => startExam(10) },
     );
     items.forEach(it => list.appendChild(setupRow(it)));
     if (!bp) {
       const note = document.createElement("p");
       note.className = "setting-note";
-      note.textContent = "Pick your state in Settings → \"Your state's rules\" to unlock the Official Simulation of that state's real knowledge exam.";
+      note.textContent = "Pick your state first (Settings → \"Your state's rules\") — the mock exam then matches that state's real count, time and pass mark.";
       list.appendChild(note);
     } else {
       const notes = document.createElement("p");
@@ -911,28 +924,15 @@ function renderPractical() {
   $("drTheory").textContent = theoryPct + "%";
   $("drPractical").textContent = dr.practical === null ? "no sessions yet" : Math.round(dr.practical * 100) + "%";
 
-  // competencies + focus
-  const scores = Core.competencyScores(log);
-  const list = $("competencyList");
-  list.innerHTML = "";
-  for (const c of scores) {
-    const pct = c.score === null ? null : Math.round(c.score * 100);
-    const row = document.createElement("div");
-    row.className = "mastery-row";
-    row.innerHTML = `<span class="m-name">${c.name}</span>
-      <div class="bar"><div class="bar-fill" style="width:${pct ?? 0}%"></div></div>
-      <span class="m-val">${pct === null ? '<small>no data</small>' : pct + "%"}</span>`;
-    list.appendChild(row);
-    const meta = document.createElement("div");
-    meta.className = "outcome-meta";
-    meta.style.margin = "-4px 0 8px";
-    meta.textContent = `${c.skillsPracticed}/${c.skillsTotal} skills practiced`;
-    list.appendChild(meta);
-  }
-  const focus = Core.nextLessonFocus(log);
-  $("nextFocus").innerHTML = focus.score === null
-    ? `<b>${focus.name}</b> — ${focus.reason}.`
-    : `<b>${focus.name}</b> (${Math.round(focus.score * 100)}%) — ${focus.reason}.`;
+  // One next practice skill — not seven competency charts.
+  const focus = Core.nextPracticeSkill
+    ? Core.nextPracticeSkill(log)
+    : Core.nextLessonFocus(log);
+  const focusName = focus.skillName || focus.name;
+  const focusExtra = focus.score === null || focus.score === undefined
+    ? `<b>${focusName}</b> — ${focus.reason}.`
+    : `<b>${focusName}</b> (${Math.round(focus.score * 100)}%) — ${focus.reason}${focus.competencyName ? ` · ${focus.competencyName}` : ""}.`;
+  $("nextFocus").innerHTML = focusExtra;
 
   // history
   const hist = $("sessionList");
@@ -955,7 +955,6 @@ function renderPractical() {
         </li>`;
       }).join("")
     : `<li class="muted">No sessions logged yet.</li>`;
-  list.querySelectorAll && null;
   hist.querySelectorAll(".pl-del").forEach(b => on(b, "click", () => {
     state.practical.log.splice(Number(b.dataset.i), 1);
     save(); renderPractical();
@@ -1042,7 +1041,7 @@ function savePracticalSession() {
   buildPracticalForm();
   $("plNotes").value = "";
   renderPractical();
-  toast("Session logged", "Competencies updated.", "car");
+  toast("Session logged", "Next practice skill updated.", "car");
 }
 
 /* ---------------- learner study (research) ---------------- */
@@ -1322,11 +1321,49 @@ function hzResults() {
 
 /* ---------------- ONBOARDING ---------------- */
 let obStep = 0;
+function initObStatePack() {
+  const sel = $("obStatePack");
+  if (!sel || sel.options.length) return;
+  const generic = document.createElement("option");
+  generic.value = "generic";
+  generic.textContent = "General U.S. rules (no state yet)";
+  sel.appendChild(generic);
+  Packs.PACK_IDS.filter((id) => id !== "generic").forEach((id) => {
+    const o = document.createElement("option");
+    o.value = id;
+    o.textContent = Packs.STATE_PACKS[id].name;
+    sel.appendChild(o);
+  });
+  sel.value = Packs.PACK_IDS.includes(state.settings.statePack) ? state.settings.statePack : "generic";
+  on(sel, "change", (e) => {
+    state.settings.statePack = e.target.value;
+    save();
+    bank = Packs.filterBankForPack(ALL_QUESTIONS, state.settings.statePack);
+    const main = $("selStatePack");
+    if (main) main.value = state.settings.statePack;
+    renderStateFacts();
+    renderHome();
+  });
+}
 function showOnboarding() {
   const ob = $("onboarding");
   ob.hidden = false;
   obStep = 0;
   hydrateIcons(ob);
+  initObStatePack();
+  const obSel = $("obStatePack");
+  if (obSel) obSel.value = Packs.PACK_IDS.includes(state.settings.statePack) ? state.settings.statePack : "generic";
+  const obDate = $("obTestDate");
+  if (obDate) {
+    obDate.value = state.settings.testDate || "";
+    on(obDate, "change", (e) => {
+      state.settings.testDate = Core.validIsoDate(e.target.value) ? e.target.value : "";
+      save();
+      const main = $("inpTestDate");
+      if (main) main.value = state.settings.testDate || "";
+      renderHome();
+    });
+  }
   obRender();
   on($("obSkip"), "click", finishOnboarding);
   on($("obNext"), "click", () => {
@@ -1350,10 +1387,19 @@ function obRender() {
 }
 function finishOnboarding() {
   state.onboarded = true;
+  const obDate = $("obTestDate");
+  if (obDate && Core.validIsoDate(obDate.value)) {
+    state.settings.testDate = obDate.value;
+    const main = $("inpTestDate");
+    if (main) main.value = state.settings.testDate;
+  }
   save();
+  bank = Packs.filterBankForPack(ALL_QUESTIONS, state.settings.statePack);
   $("onboarding").hidden = true;
+  renderStateFacts();
   renderHome();
-  toast("Welcome aboard", "Start with Adaptive Practice — 10 questions.", "car");
+  const pack = Packs.STATE_PACKS[state.settings.statePack] || Packs.STATE_PACKS.generic;
+  toast("Welcome aboard", `Studying ${pack.name} rules + universal rules. Start with Today's Set.`, "car");
 }
 
 /* ---------------- wire up ---------------- */
@@ -1404,8 +1450,12 @@ function init() {
   });
   on($("btnFlag"), "click", toggleFlag);
   on($("btnAgain"), "click", () => {
+    if (session && session.official && session.blueprint) {
+      const packId = Packs.PACK_IDS.includes(state.settings.statePack) ? state.settings.statePack : null;
+      if (packId && BLUEPRINTS[packId]) { startOfficialExam(packId); return; }
+    }
     if (session && session.mode === "exam") startExam(session.questions.length);
-    else startPractice(pickWeighted(adaptivePool(), session ? session.questions.length : 10), "Adaptive Mix", "home");
+    else startPractice(pickWeighted(adaptivePool(), session ? session.questions.length : 10), "Today's Set", "home");
   });
   on($("btnReviewMissed"), "click", () => showView("review"));
   on($("btnHomeR"), "click", () => { renderHome(); showView("home"); });
@@ -1446,7 +1496,11 @@ function init() {
       setTimeout(() => { $("inpTestDate").scrollIntoView({ block: "center" }); $("inpTestDate").focus(); }, 0);
       return;
     }
-    if (action === "exam") { startSetup("exam"); return; }
+    if (action === "exam") {
+      const packId = Packs.PACK_IDS.includes(state.settings.statePack) ? state.settings.statePack : null;
+      if (packId && BLUEPRINTS[packId]) { startOfficialExam(packId); return; }
+      startSetup("exam"); return;
+    }
     if (action === "review") {
       const missed = missedQuestions();
       if (missed.length) {

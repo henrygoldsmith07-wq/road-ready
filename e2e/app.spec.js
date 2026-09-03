@@ -277,14 +277,14 @@ test.describe("outcome journal (calibration beta)", () => {
 });
 
 test.describe("practical drive log", () => {
-  test("log a session → competencies + readiness appear → persist reload", async ({ page }) => {
+  test("log a session → one next skill + readiness appear → persist reload", async ({ page }) => {
     await freshApp(page);
     if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
     await page.locator("#qaPractical").click();
     await expect(page.locator("#view-practical")).toHaveClass(/active/);
     await expect(page.locator("#drValue")).toHaveText("–"); // nothing logged yet
 
-    // fill the form: rate three skills across two competencies
+    // fill the form: rate three skills; the poorest one becomes the single next skill
     await page.locator('.pl-skill-row', { hasText: "mirrors" }).locator('button[aria-label*="good"]').click();
     await page.locator('.pl-skill-row', { hasText: "roundabout entry lane" }).locator('button[aria-label*="ok"]').click();
     await page.locator('.pl-skill-row', { hasText: "lane keeping" }).locator('button[aria-label*="poor"]').click();
@@ -293,9 +293,9 @@ test.describe("practical drive log", () => {
 
     // readiness now blends theory with the fresh practical data
     await expect(page.locator("#drValue")).not.toHaveText("–");
-    const competencyRows = page.locator("#competencyList .m-name");
-    await expect(competencyRows.filter({ hasText: "Roundabouts" })).toContainText("Roundabouts");
-    await expect(page.locator("#nextFocus")).toContainText("Lane discipline");
+    // single next-skill suggestion, not seven competency charts
+    await expect(page.locator("#competencyList")).toHaveCount(0);
+    await expect(page.locator("#nextFocus")).toContainText("lane keeping");
 
     // persisted
     const log = await page.evaluate(() => JSON.parse(localStorage.getItem("roadready.v1")).practical.log);

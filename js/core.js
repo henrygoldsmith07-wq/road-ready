@@ -805,6 +805,49 @@ function assembleExam(opts) {
     };
   }
 
+  /**
+   * Next PRACTICE SKILL: one single skill to drill next — not seven charts.
+   * Aggregates every logged skill rating (mean per skill), returns the
+   * lowest-scored practiced skill; with no data, the first unpracticed skill;
+   * with nothing logged at all, a starter skill. Pure.
+   */
+  function nextPracticeSkill(log) {
+    const tally = {}; // skillId -> {sum, n}
+    for (const session of log || []) {
+      for (const [skillId, rating] of Object.entries(session.skills || {})) {
+        if (!(skillId in tally)) tally[skillId] = { sum: 0, n: 0 };
+        tally[skillId].sum += RATING_VALUE[rating] ?? 0;
+        tally[skillId].n++;
+      }
+    }
+    const scored = Object.entries(tally).map(([skillId, t]) => {
+      const comp = COMPETENCIES.find((c) => c.skills.includes(skillId));
+      return {
+        skillId,
+        skillName: skillId.replace(/-/g, " "),
+        competencyId: comp ? comp.id : "",
+        competencyName: comp ? comp.name : "",
+        score: t.n ? t.sum / t.n : null,
+        practices: t.n,
+      };
+    });
+    if (scored.length) {
+      scored.sort((a, b) => (a.score - b.score) || (b.practices - a.practices));
+      const worst = scored[0];
+      const label = worst.score === null ? "not yet rated" : `${Math.round(worst.score * 100)}%`;
+      return { ...worst, reason: `lowest-rated skill at ${label} — drill this one next` };
+    }
+    return {
+      skillId: "mirrors",
+      skillName: "mirrors",
+      competencyId: "observation",
+      competencyName: "Observation",
+      score: null,
+      practices: 0,
+      reason: "no sessions logged yet — start with mirrors",
+    };
+  }
+
   /* ---------------- learner study (research instrumentation) ---------------- */
   // Anonymous, opt-in. Everything stays on-device until the user exports.
   // Free-text fields (notes) are deliberately EXCLUDED from study exports.
@@ -1265,7 +1308,7 @@ function assembleExam(opts) {
     OUTCOME_RESULT_VALUES, appendOutcome, mockAverage, progressBucket,
     PRACTICAL_RATINGS, RATING_VALUE, COMPETENCIES, CONDITIONS, ROAD_TYPES,
     skillIds, competencyName, appendPracticalSession, competencyScores,
-    practicalScore, drivingReadiness, nextLessonFocus,
+    practicalScore, drivingReadiness, nextLessonFocus, nextPracticeSkill,
     RETENTION_DELAY_DAYS, RETENTION_PROBE_SIZE, createEnrollment,
     retentionProbePool, studyMetrics, buildStudyExport,
     PROTOCOL_VERSION, SCORING_VERSION, MASTERY_VERSION, bankFingerprint,
