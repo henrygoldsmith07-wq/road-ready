@@ -38,10 +38,26 @@ const JURISDICTIONS = {
       positioning: "bonus training",
     },
   },
-  // Future modules ship as data + a new entry here:
-  // uk: { id:"uk", regions:["ENG","WLS","SCT"], terminology:{ agencyShort:"DVSA",
-  //      examName:"theory test", learnerPermit:"provisional licence" },
-  //      hazardPerception:{ includedInExam:true, positioning:"core section" } },
+  // Second shipped module: United Kingdom (car theory test). Added only
+  // because a learner here will sit that test — never as a tease.
+  uk: {
+    id: "uk",
+    name: "United Kingdom",
+    active: true,
+    regions: ["UK"],
+    defaultRegion: null, // users pick the UK car pack; universal US bank never mixes in
+    terminology: {
+      agencyShort: "DVSA",          // Driver and Vehicle Standards Agency (GB car theory)
+      examName: "theory test",
+      examShort: "theory test",
+      learnerPermit: "provisional licence",
+    },
+    hazardPerception: {
+      // core section of the UK theory test: 14 clips, 15 hazards, 44/75 to pass
+      includedInExam: true,
+      positioning: "core section",
+    },
+  },
 };
 
 const ACTIVE_COUNTRY = "us";

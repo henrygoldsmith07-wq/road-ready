@@ -9,6 +9,7 @@ export const QUESTION_FORMS = ["recall", "scenario", "diagram", "sign-combo", "l
 const VERIFIED_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const OFFICIAL_SOURCE_HOSTS = new Set([
   "www.dmv.ca.gov", "www.dps.texas.gov", "dmv.ny.gov", "www.flhsmv.gov", "dol.wa.gov", "www.pa.gov",
+  "www.gov.uk",
 ]);
 
 export const norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
@@ -427,32 +428,42 @@ export function runChecks(data, opts = {}) {
 
   /* ---------- 9. jurisdiction-module contract ---------- */
   // The pluggable architecture is only real if the registry, packs and
-  // blueprints agree. Drift in any direction fails CI.
+  // blueprints agree. Drift in any direction fails CI. Every non-generic pack
+  // must be claimed by exactly one ACTIVE country; every region listed by an
+  // active country must resolve to a pack with a blueprint.
   const JURISDICTIONS = data.JURISDICTIONS || {};
-  const country = JURISDICTIONS[data.ACTIVE_COUNTRY];
-  if (!country) {
-    if (data.ACTIVE_COUNTRY) err("jurisdictions", `active country "${data.ACTIVE_COUNTRY}" is not registered`);
-  } else {
-    const regions = new Set(country.regions || []);
-    for (const packId of jurisdictionalPacks) {
-      if (!regions.has(packId)) {
-        err("jurisdictions", `region pack "${packId}" is not listed in ${country.id}.regions — register it or remove the pack`);
-      }
-    }
-    for (const regionId of regions) {
+  const activeCountries = Object.values(JURISDICTIONS).filter((c) => c && c.active);
+  const claimed = new Map(); // packId -> countryId
+  for (const c of activeCountries) {
+    for (const regionId of c.regions || []) {
       if (!(regionId in STATE_PACKS)) {
-        err("jurisdictions", `${country.id}.regions lists "${regionId}" but no region pack exists`);
+        err("jurisdictions", `${c.id}.regions lists "${regionId}" but no region pack exists`);
       } else if (!(regionId in (data.EXAM_BLUEPRINTS || {}))) {
         err("jurisdictions", `registered region "${regionId}" has no exam blueprint`);
       }
+      if (claimed.has(regionId)) {
+        err("jurisdictions", `region "${regionId}" is claimed by two active countries (${claimed.get(regionId)}, ${c.id})`);
+      } else {
+        claimed.set(regionId, c.id);
+      }
     }
-    const terms = country.terminology || {};
+    const terms = c.terminology || {};
     for (const key of ["agencyShort", "examName", "learnerPermit"]) {
       if (typeof terms[key] !== "string" || !terms[key].trim())
-        err("jurisdictions", `active country "${country.id}" is missing terminology.${key}`);
+        err("jurisdictions", `active country "${c.id}" is missing terminology.${key}`);
     }
-    if (!Array.isArray(country.regions) || !country.regions.length)
-      err("jurisdictions", `active country "${country.id}" declares no regions`);
+    if (!Array.isArray(c.regions) || !c.regions.length)
+      err("jurisdictions", `active country "${c.id}" declares no regions`);
+    if (typeof (c.hazardPerception || {}).includedInExam !== "boolean")
+      err("jurisdictions", `active country "${c.id}" is missing hazardPerception.includedInExam`);
+  }
+  for (const packId of jurisdictionalPacks) {
+    if (!claimed.has(packId)) {
+      err("jurisdictions", `region pack "${packId}" is not listed in any active country's regions — register it or remove the pack`);
+    }
+  }
+  if (data.ACTIVE_COUNTRY && !JURISDICTIONS[data.ACTIVE_COUNTRY]) {
+    err("jurisdictions", `active country "${data.ACTIVE_COUNTRY}" is not registered`);
   }
 
   return {

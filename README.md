@@ -4,9 +4,10 @@ A self-contained driving-theory study app. No build step, no dependencies, no in
 
 ## What Road Ready is (product decision)
 
-**Jurisdiction-pluggable driving-theory trainer. Launching with one jurisdiction done extremely well: the United States** (universal bank + CA, TX, NY, FL, WA, PA region packs with official exam simulations).
+**Jurisdiction-pluggable driving-theory trainer. Shipped with two jurisdiction modules: the United States** (universal bank + CA, TX, NY, FL, WA, PA region packs with official exam simulations) **and the United Kingdom** (Highway Code car-theory pack with the DVSA 50/43-in-57-minutes official simulation; hazard perception is a core section there).
 
-The architecture is built for expansion to other countries: concepts, terminology, signs, scoring and test formats are jurisdiction modules (`js/jurisdictions.js` defines the contract; `js/state-packs.js`, `js/exam-blueprints.js` and the source registry are the U.S. module's data). The content QA system enforces the contract — packs and blueprints must be registered regions or CI fails.
+The architecture grows by adding jurisdiction modules, not by
+special-casing content: concepts, terminology, signs, scoring and test formats are jurisdiction modules (`js/jurisdictions.js` defines the contract; `js/state-packs.js`, `js/exam-blueprints.js` and the source registry are each module's data). The content QA system enforces the contract — packs and blueprints must be registered regions or CI fails. Country packs are strictly scoped: the UK bank contains only UK-tagged Highway Code questions, so US rules (right-on-red, US BAC limits) never leak into UK study.
 
 Two honest scoping calls that follow from this:
 - **Hazard Perception is labeled bonus training**, not "the real test" — most U.S. knowledge exams don't include it (it's a UK-style section). The trainer stays because early hazard spotting is universally valuable; when a jurisdiction module includes it in its exam (e.g., UK), its module declares `hazardPerception.includedInExam: true` and the UI copy updates itself.
@@ -27,8 +28,8 @@ Two honest scoping calls that follow from this:
 | Adaptive Practice | 267 questions across 10 topics and 34 concepts, spanning 9 **question forms** — junction-priority road-layout diagrams, lane-selection scenarios, sign combinations, what-happens-next chains, prioritisation drills, multi-step ordering, photo-described scenes, deliberately similar alternatives, same-concept rewording variants, and classic recall; mastery aggregates per concept (coverage Ã depth), then topic, then overall score |
 | Marathon Mode | The full 267-question bank in one run — anything you miss comes back until you've seen it through |
 | Mock Exams | Quick Check (10), Standard (20), Full (46), or a Weak-Topics exam — timed at 1 min/question, DMV-style pass mark, no feedback until you submit |
-| Official Simulations | Pick your state and the exam locks to its real spec — CA 46/38, TX 30/21, NY 20/14, FL 50/40 in 60 min, WA 40/32, PA 18/15. Jurisdiction pool only, official pass bar, feedback at the end (`js/exam-blueprints.js`, source-cited) |
-| Hazard Perception | Interactive trainer with 6 animated scenarios (children, doors, deer, cyclists…) — honestly labeled bonus training (most U.S. exams don't include it); jurisdiction modules declare whether their exam does |
+| Official Simulations | Pick your state or the UK pack and the exam locks to its real spec — CA 46/38, TX 30/21, NY 20/14, FL 50/40 in 60 min, WA 40/32, PA 18/15, UK 50/43 in 57 min. Jurisdiction pool only, official pass bar, feedback at the end (`js/exam-blueprints.js`, source-cited) |
+| Hazard Perception | Interactive trainer with 6 animated scenarios (children, doors, deer, cyclists…) — labeled bonus training where exams don't include it (most U.S. states) and a core section where they do (UK: real test is 14 clips, 44/75); jurisdiction modules declare this via `hazardPerception.includedInExam` |
 | Sign Flashcards | 31 hand-drawn SVG road signs with flip animation and known/still-learning tracking |
 | Study Guide | Cheat sheets (sign system, markings, right-of-way, emergencies, hill parking, key numbers) plus a full behind-the-wheel road test guide |
 | Read Aloud | Text-to-speech for questions, choices, and explanations — great for commutes and accessibility |

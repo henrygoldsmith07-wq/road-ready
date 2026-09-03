@@ -7,20 +7,37 @@ const data = loadContent();
 
 describe("jurisdiction module contract", () => {
   const country = data.JURISDICTIONS[data.ACTIVE_COUNTRY];
+  const activeCountries = Object.values(data.JURISDICTIONS).filter((c) => c && c.active);
 
-  it("active country is registered and declares its regions", () => {
+  it("active countries are registered and declare their regions", () => {
     expect(country).toBeTruthy();
     expect(country.regions.length).toBeGreaterThanOrEqual(6);
-    for (const key of ["agencyShort", "examName", "learnerPermit"]) {
-      expect(typeof country.terminology[key]).toBe("string");
+    for (const c of activeCountries) {
+      for (const key of ["agencyShort", "examName", "learnerPermit"]) {
+        expect(typeof c.terminology[key]).toBe("string");
+      }
+      expect(typeof c.hazardPerception.includedInExam).toBe("boolean");
     }
-    expect(typeof country.hazardPerception.includedInExam).toBe("boolean");
+  });
+
+  it("US regions carry the DVSA-style counterpart: UK ships its own region", () => {
+    expect(data.JURISDICTIONS.uk).toBeTruthy();
+    expect(data.JURISDICTIONS.uk.regions).toEqual(["UK"]);
+    expect(data.JURISDICTIONS.uk.terminology.agencyShort).toBe("DVSA");
+    expect(data.JURISDICTIONS.uk.hazardPerception.includedInExam).toBe(true);
   });
 
   it("registry regions, packs and blueprints agree exactly", () => {
     const jurisdictionalPacks = Object.keys(data.STATE_PACKS).filter((k) => k !== "generic");
-    expect(jurisdictionalPacks.sort()).toEqual([...country.regions].sort());
-    for (const r of country.regions) expect(data.EXAM_BLUEPRINTS[r], r).toBeTruthy();
+    const claimed = activeCountries.flatMap((c) => c.regions);
+    expect(jurisdictionalPacks.sort()).toEqual([...claimed].sort());
+    for (const r of claimed) expect(data.EXAM_BLUEPRINTS[r], r).toBeTruthy();
+  });
+
+  it("UK blueprint matches the real DVSA car spec", () => {
+    expect(data.EXAM_BLUEPRINTS.UK.questionCount).toBe(50);
+    expect(data.EXAM_BLUEPRINTS.UK.minCorrect).toBe(43);
+    expect(data.EXAM_BLUEPRINTS.UK.timeLimitMin).toBe(57);
   });
 
   it("unregistered region packs FAIL the build", () => {

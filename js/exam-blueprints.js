@@ -72,6 +72,15 @@ const EXAM_BLUEPRINTS = {
     topicWeights: null,
     notes: "15 of 18 (83%) to pass.",
   },
+  UK: {
+    label: "UK Official Simulation",
+    sourceId: "uk-highway-code",
+    questionCount: 50,
+    minCorrect: 43,
+    timeLimitMin: 57,
+    topicWeights: null,
+    notes: "Car theory: 43 of 50 (86%) in 57 minutes. Hazard perception (14 clips, 44/75) is a separate same-day section — train it as a core section, not a bonus.",
+  },
 };
 
 const RoadReadyBlueprints = { EXAM_BLUEPRINTS };

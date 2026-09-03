@@ -244,6 +244,30 @@ test.describe("official simulation", () => {
     await page.locator('#bottomNav button[data-nav="stats"]').click();
     await expect(page.locator("#historyList")).toContainText("California Official Simulation");
   });
+
+  test("UK selection offers the DVSA blueprint and grades on the 43/50 bar", async ({ page }) => {
+    await freshApp(page);
+    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    await page.locator('#bottomNav button[data-nav="stats"]').click();
+    await page.locator("#selStatePack").selectOption("UK");
+    await page.locator('#bottomNav button[data-nav="exam"]').click();
+
+    const official = page.locator("#setupList .setup-row", { hasText: "UK Official Simulation" });
+    await expect(official).toContainText("43/50");
+    await expect(official).toContainText("feedback at end");
+
+    await official.click();
+    await expect(page.locator("#view-quiz")).toHaveClass(/active/);
+    await expect(page.locator("#qTimer")).toBeVisible();
+    await expect(page.locator("#qTimer")).toContainText("57:00");
+
+    // submit immediately: unanswered questions count wrong → fails the official bar
+    page.once("dialog", (d) => d.accept());
+    await page.locator("#btnQuit").click();
+    await expect(page.locator("#view-results")).toHaveClass(/active/);
+    await expect(page.locator("#resultTitle")).toHaveText("Not yet");
+    await expect(page.locator("#resultSub")).toContainText("requires 43 of 50");
+  });
 });
 
 test.describe("outcome journal (calibration beta)", () => {

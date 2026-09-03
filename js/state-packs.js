@@ -39,6 +39,14 @@ const SOURCE_REGISTRY = {
     jurisdiction: "PA", agency: "PennDOT", title: "Pennsylvania Driver's Manual",
     url: "https://www.pa.gov/agencies/dmv/driver-services/pennsylvania-drivers-manual", verified: "2026-08-23",
   },
+  "uk-highway-code": {
+    jurisdiction: "UK", agency: "DVSA", title: "The Highway Code",
+    url: "https://www.gov.uk/guidance/the-highway-code", verified: "2026-08-23",
+  },
+  "uk-know-your-traffic-signs": {
+    jurisdiction: "UK", agency: "DVSA", title: "Know Your Traffic Signs",
+    url: "https://www.gov.uk/government/publications/know-your-traffic-signs", verified: "2026-08-23",
+  },
   "us-dmv-handbooks-composite": {
     jurisdiction: "*", agency: "Multiple state DMVs (composite)",
     title: "U.S. state driver handbooks — commonly taught rules",
@@ -418,6 +426,97 @@ const STATE_PACKS = {
           sourceId: "pa-penndot-driver-manual", sourceSection: "Sharing the Road" },
     ],
   },
+  UK: {
+    id: "UK",
+    name: "United Kingdom (DVSA car)",
+    sourceId: "uk-highway-code",
+    facts: {
+      bacAdult: "35 microgrammes alcohol per 100ml breath (England and Wales)",
+      bacUnder21: "Same 35-microgramme breath limit applies to under-21s (no separate zero-tolerance band)",
+      rightOnRed: "Not applicable — drive on the left; never pass a red light",
+      followDistance: "2-second rule in dry conditions (at least 4 seconds in the wet)",
+      speedResidential: "30 mph in built-up areas with street lighting",
+      speedUrban: "60 mph single carriageway / 70 mph dual carriageway and motorway (cars)",
+      bikePassing: "At least 1.5 metres when overtaking cyclists at up to 30 mph (more at higher speeds)",
+      handsFree: "Hand-held phone ban — 6 points and £200 fine",
+      theoryFormat: "50 questions in 57 minutes, 43 to pass",
+      hazardFormat: "14 clips, 15 hazards, 44 out of 75 to pass",
+    },
+    questions: [
+      { id: "uk-001", cat: "signs", jurisdiction: ["UK"], concept: "national-speed-limit-sign",
+        q: "You see a white circular sign with a single black diagonal bar. What does it mean?",
+        choices: ["End of motorway", "National speed limit applies", "No overtaking", "Minimum speed limit"],
+        a: 1,
+        why: "The white circle with a black diagonal is the national-speed-limit sign: the default maximum for that road class applies. On lit built-up roads that still means 30 mph unless signs say otherwise.",
+        sourceId: "uk-know-your-traffic-signs", sourceSection: "Speed limit signs" },
+      { id: "uk-002", cat: "signs", jurisdiction: ["UK"], concept: "warning-vs-order-signs",
+        q: "In the UK sign system, what is the difference between a red triangle and a red circle?",
+        choices: ["Triangles give orders, circles warn", "Triangles warn of hazards ahead; circles give orders you must obey", "Circles are advisory only", "There is no difference"],
+        a: 1,
+        why: "Shape carries the meaning: red triangles warn of hazards ahead, while red circles give prohibitive orders. Learning the shape system lets you react before reading the symbol.",
+        sourceId: "uk-know-your-traffic-signs", sourceSection: "Sign shapes" },
+      { id: "uk-003", cat: "speed", jurisdiction: ["UK"], concept: "speed-limits",
+        q: "A car on a UK single carriageway with no other limit signed may travel at up to:",
+        choices: ["50 mph", "60 mph", "70 mph", "40 mph"],
+        a: 1,
+        why: "The national limit for cars on a single carriageway is 60 mph. Dual carriageways and motorways allow 70 mph for cars; built-up lit roads default to 30 mph.",
+        sourceId: "uk-highway-code", sourceSection: "Speed limits" },
+      { id: "uk-004", cat: "speed", jurisdiction: ["UK"], concept: "speed-limits",
+        q: "On a built-up road with street lighting and no other signs, the maximum for a car is:",
+        choices: ["20 mph", "30 mph", "40 mph", "60 mph"],
+        a: 1,
+        why: "Street lighting means a 30 mph limit applies unless signs show otherwise. Councils may sign 20 mph zones, but 30 mph is the built-up default to assume.",
+        sourceId: "uk-highway-code", sourceSection: "Speed limits" },
+      { id: "uk-005", cat: "row", jurisdiction: ["UK"], concept: "roundabout-priority",
+        q: "At a UK roundabout with no traffic lights, you must give way to:",
+        choices: ["Traffic from your left", "Traffic from your right", "Cyclists behind you only", "Nobody — first to enter wins"],
+        a: 1,
+        why: "Give way to traffic coming from your right, circulating on the roundabout. The Highway Code rule is explicit: priority goes to the right on UK roundabouts.",
+        sourceId: "uk-highway-code", sourceSection: "Roundabouts" },
+      { id: "uk-006", cat: "vulnerable", jurisdiction: ["UK"], concept: "zebra-crossing",
+        q: "A pedestrian steps onto a zebra crossing ahead of you. You must:",
+        choices: ["Wave them back and drive through", "Stop and let them cross", "Sound the horn and continue", "Overtake on the zig-zags if clear"],
+        a: 1,
+        why: "Zebra crossings give pedestrians priority once they step on: stop at the give-way line and wait. Overtaking and parking on the zig-zag lines is banned because it hides people crossing.",
+        sourceId: "uk-highway-code", sourceSection: "Pedestrian crossings" },
+      { id: "uk-007", cat: "vulnerable", jurisdiction: ["UK"], concept: "bike-passing-distance",
+        q: "Overtaking a cyclist at up to 30 mph, the Highway Code says leave at least:",
+        choices: ["0.5 metres", "1.5 metres", "3 metres", "Whatever feels close enough"],
+        a: 1,
+        why: "Leave AT LEAST 1.5 METRES when passing cyclists at up to 30 mph, and more space at higher speeds. Close passes are a leading cause of cyclist injuries.",
+        sourceId: "uk-highway-code", sourceSection: "Overtaking cyclists" },
+      { id: "uk-008", cat: "safety", jurisdiction: ["UK"], concept: "following-distance",
+        q: "In dry conditions on a UK road, the recommended gap to the vehicle ahead is:",
+        choices: ["A 1-second gap", "A 2-second gap", "A 5-second gap", "One car length at any speed"],
+        a: 1,
+        why: "Use the 2-SECOND rule in the dry: pick a fixed point and count two seconds after the vehicle ahead passes it. Double the gap to at least 4 seconds when wet.",
+        sourceId: "uk-highway-code", sourceSection: "Stopping distances" },
+      { id: "uk-009", cat: "laws", jurisdiction: ["UK"], concept: "phone-use",
+        q: "Caught using a hand-held phone while driving in the UK, you face:",
+        choices: ["A warning letter only", "6 penalty points and a £200 fine", "An instant driving ban in all cases", "No penalty if stationary at lights"],
+        a: 1,
+        why: "Hand-held use is banned even when stopped at lights or in queues: the penalty is 6 POINTS and a £200 FINE. New drivers can lose their licence on 6 points within two years of passing.",
+        sourceId: "uk-highway-code", sourceSection: "Mobile phones" },
+      { id: "uk-010", cat: "alcohol", jurisdiction: ["UK"], concept: "bac-limits",
+        q: "The drink-drive breath limit in England and Wales is:",
+        choices: ["15 microgrammes per 100ml", "25 microgrammes per 100ml", "35 microgrammes per 100ml", "80 microgrammes per 100ml"],
+        a: 2,
+        why: "England and Wales set the breath limit at 35 MICROGRAMMES of alcohol per 100ml of breath. Scotland is stricter at 22. Any amount impairs driving — the limit is a legal ceiling, not a safe target.",
+        sourceId: "uk-highway-code", sourceSection: "Drink and drugs" },
+      { id: "uk-011", cat: "markings", jurisdiction: ["UK"], concept: "motorway-lanes",
+        q: "On a UK motorway you should normally drive in:",
+        choices: ["The right-hand lane", "The left-hand lane, overtaking on the right", "The hard shoulder", "Whichever lane is emptiest, weaving as needed"],
+        a: 1,
+        why: "Keep left unless overtaking: the left-hand lane is the driving lane and you pass on the right. Middle-lane hogging can draw a careless-driving penalty.",
+        sourceId: "uk-highway-code", sourceSection: "Motorways" },
+      { id: "uk-012", cat: "laws", jurisdiction: ["UK"], concept: "theory-format",
+        q: "The UK car theory test multiple-choice section requires:",
+        choices: ["43 out of 50 in 57 minutes", "38 out of 46 with no time cap", "40 out of 50 in 60 minutes", "15 out of 18 with no time cap"],
+        a: 0,
+        why: "The car paper is 50 questions in 57 MINUTES with 43 needed to pass (86%). You must also clear hazard perception — 44 out of 75 — at the same sitting to earn the certificate.",
+        sourceId: "uk-highway-code", sourceSection: "Learning to drive" },
+    ],
+  },
 };
 
 const PACK_IDS = Object.keys(STATE_PACKS);
@@ -428,9 +527,12 @@ function allPackQuestions() {
 }
 
 /** Questions tagged with `jurisdiction:["CA",...]` belong to specific packs;
-    untagged questions are universal. */
+    untagged questions are universal to the US bank. The UK bank is
+    country-scoped: only UK-tagged questions apply (US universal rules such as
+    right-on-red and US BAC limits must never leak into UK study). */
 function filterBankForPack(questions, packId) {
   if (!packId || packId === "generic") return questions.filter((q) => !q.jurisdiction);
+  if (packId === "UK") return questions.filter((q) => Array.isArray(q.jurisdiction) && q.jurisdiction.includes("UK"));
   return questions.filter((q) => !q.jurisdiction || q.jurisdiction.includes(packId));
 }
 

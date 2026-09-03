@@ -21,6 +21,7 @@ describe("blueprint registry", () => {
     expect(EXAM_BLUEPRINTS.FL).toMatchObject({ questionCount: 50, minCorrect: 40, timeLimitMin: 60 });
     expect(EXAM_BLUEPRINTS.WA).toMatchObject({ questionCount: 40, minCorrect: 32 });
     expect(EXAM_BLUEPRINTS.PA).toMatchObject({ questionCount: 18, minCorrect: 15 });
+    expect(EXAM_BLUEPRINTS.UK).toMatchObject({ questionCount: 50, minCorrect: 43, timeLimitMin: 57 });
   });
 
   it("cites a registered source whose jurisdiction matches", () => {

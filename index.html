@@ -417,7 +417,7 @@
     <!-- ============ HAZARD PERCEPTION ============ -->
     <section class="view" id="view-hazard">
       <h1 class="view-title">Hazard Perception</h1>
-      <p class="view-sub">Tap <b>SLOW</b> (or press <b>Space</b>) the moment a hazard starts to develop — before you'd need to brake hard. Earlier = more points. Bonus training: most U.S. knowledge exams don't include this, but the skill saves lives.</p>
+      <p class="view-sub" id="hazardSub">Tap <b>SLOW</b> (or press <b>Space</b>) the moment a hazard starts to develop — before you'd need to brake hard. Earlier = more points.</p>
       <div class="hz-stage card" id="hzStage">
         <svg id="hzSvg" viewBox="0 0 360 420" preserveAspectRatio="xMidYMid meet"></svg>
         <div class="hz-flash" id="hzFlash" hidden></div>
@@ -510,10 +510,10 @@
           <input type="checkbox" id="chkFeedback" checked>
         </label>
         <label class="setting-row">
-          <span>Your state's rules</span>
+          <span>Your state / country pack</span>
           <select id="selStatePack" aria-describedby="statePackNote"></select>
         </label>
-        <p class="setting-note" id="statePackNote">State packs adjust state-specific numbers (BAC limits, right-on-red, school buses). Generic covers common U.S. rules.</p>
+        <p class="setting-note" id="statePackNote">Country packs adjust local rules (BAC/drink-drive limits, passing distances, speed limits). Generic covers common U.S. rules; UK uses only Highway Code questions.</p>
         <label class="setting-row">
           <span>Knowledge test date</span>
           <input type="date" id="inpTestDate" aria-describedby="testDateNote">
@@ -554,8 +554,8 @@
     <div class="ob-steps">
       <div class="ob-step" data-step="0">
         <span class="ob-ico" data-icon="car" data-size="40"></span>
-        <h1>Which state will you test in?</h1>
-        <p class="ob-lead">Road Ready studies only that state's rules + universal road rules. Pick now — you can change it later in Settings.</p>
+        <h1>Which state or country will you test in?</h1>
+        <p class="ob-lead">Road Ready studies only that test's rules. Pick now — you can change it later in Settings.</p>
         <div class="ob-choice">
           <span>Your state</span>
           <select id="obStatePack" aria-label="Your state"></select>

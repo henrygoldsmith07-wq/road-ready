@@ -5,10 +5,25 @@ const Core = window.RoadReadyCore;
 const Packs = window.RoadReadyPacks;
 const BLUEPRINTS = (window.RoadReadyBlueprints || {}).EXAM_BLUEPRINTS || {};
 const Jur = window.RoadReadyJurisdictions || {};
-const COUNTRY = Jur.JURISDICTIONS ? Jur.JURISDICTIONS[Jur.ACTIVE_COUNTRY] : null;
-const TERMS = (COUNTRY && COUNTRY.terminology) || { agencyShort: "DMV", examName: "knowledge test", learnerPermit: "learner's permit" };
+const FALLBACK_TERMS = { agencyShort: "DMV", examName: "knowledge test", examShort: "written test", learnerPermit: "learner's permit" };
+const FALLBACK_HAZARD = { includedInExam: false, positioning: "bonus training" };
+/* Country follows the chosen pack: UK pack → UK module, everything else → US.
+   Keeps terminology, hazard positioning and exam naming correct per learner. */
+function countryForPack(packId) {
+  const all = (Jur.JURISDICTIONS) || {};
+  if (packId === "UK" && all.uk) return all.uk;
+  if (Jur.ACTIVE_COUNTRY && all[Jur.ACTIVE_COUNTRY]) return all[Jur.ACTIVE_COUNTRY];
+  return Object.values(all).find((c) => c && c.active) || null;
+}
+function termsForPack(packId) {
+  const c = countryForPack(packId == null ? (typeof state !== "undefined" ? state.settings.statePack : null) : packId);
+  return (c && c.terminology) || FALLBACK_TERMS;
+}
+function hazardInfoForPack(packId) {
+  const c = countryForPack(packId == null ? (typeof state !== "undefined" ? state.settings.statePack : null) : packId);
+  return (c && c.hazardPerception) || FALLBACK_HAZARD;
+}
 const APP_VERSION = "1.1.0";
-const HAZARD_INFO = (COUNTRY && COUNTRY.hazardPerception) || { includedInExam: false, positioning: "bonus training" };
 const STORE_KEY = "roadready.v1";
 /** @returns {any} element by id — vanilla app, DOM types vary per caller */
 const $ = (id) => document.getElementById(id);
@@ -285,6 +300,7 @@ function renderHome() {
   $("stBest").textContent = best === null ? "–" : Math.round(best * 100) + "%";
 
   const passedMock = state.exams.some(e => e.pass);
+  const TERMS = termsForPack();
   $("heroSub").textContent = state.answered === 0
     ? `Study a little every day and walk into your ${TERMS.agencyShort} with confidence.`
     : passedMock
@@ -294,8 +310,9 @@ function renderHome() {
   // level chip + hazard best + achievement checks
   const lv = levelFor(state.xp);
   $("heroLvl").textContent = state.answered ? `Level ${lv.lvl} · ${state.xp} XP` : "";
+  const HAZARD_INFO = hazardInfoForPack();
   const hazardTag = HAZARD_INFO.includedInExam
-    ? "part of your exam"
+    ? "core section of your theory test (real test: 14 clips, 44/75)"
     : "bonus training — not part of most U.S. knowledge exams";
   $("hazardBestLabel").textContent = state.hazardBest
     ? `Best score: ${state.hazardBest}/30 — ${hazardTag}`
@@ -371,7 +388,8 @@ function renderHome() {
 function startSetup(mode, focusCat) {
   quizBackTarget = "home";
   $("setupTitle").textContent = mode === "practice" ? "Practice" : "Mock Exam";
-  $("setupSub").textContent = mode === "practice" ? "Pick a topic — or drill smart with adaptive mix." : `Timed ${TERMS.agencyShort}-style ${TERMS.examName} — real exam conditions, no feedback until the end.`;
+  const _setupTerms = termsForPack();
+  $("setupSub").textContent = mode === "practice" ? "Pick a topic — or drill smart with adaptive mix." : `Timed ${_setupTerms.agencyShort}-style ${_setupTerms.examName} — real exam conditions, no feedback until the end.`;
   const list = $("setupList");
   list.innerHTML = "";
   if (mode === "practice") {
@@ -414,9 +432,13 @@ function startSetup(mode, focusCat) {
     const packId = Packs.PACK_IDS.includes(state.settings.statePack) ? state.settings.statePack : "generic";
     const bp = BLUEPRINTS[packId];
     if (bp) {
+      const available = Math.min(bp.questionCount, bank.length);
+      const starter = available < bp.questionCount;
       items.push({
         id: "official", icon: "grad", name: bp.label,
-        desc: `${bp.questionCount} questions · pass ${bp.minCorrect}/${bp.questionCount} (official threshold) · ${bp.timeLimitMin ? bp.timeLimitMin + "-min limit" : `${Core.timeLimitSecs(bp.questionCount) / 60}-min pacing`} · feedback at end`,
+        desc: starter
+          ? `Starter bank: ${available} of ${bp.questionCount} questions · ${Math.round(100 * bp.minCorrect / bp.questionCount)}% official bar · growing to the full mock · feedback at end`
+          : `${bp.questionCount} questions · pass ${bp.minCorrect}/${bp.questionCount} (official threshold) · ${bp.timeLimitMin ? bp.timeLimitMin + "-min limit" : `${Core.timeLimitSecs(bp.questionCount) / 60}-min pacing`} · feedback at end`,
         action: () => startOfficialExam(packId),
       });
     }
@@ -428,7 +450,7 @@ function startSetup(mode, focusCat) {
     if (!bp) {
       const note = document.createElement("p");
       note.className = "setting-note";
-      note.textContent = "Pick your state first (Settings → \"Your state's rules\") — the mock exam then matches that state's real count, time and pass mark.";
+      note.textContent = "Pick your state / country pack first (Settings → \"Your state / country pack\") — the mock exam then matches that test's real count, time and pass mark.";
       list.appendChild(note);
     } else {
       const notes = document.createElement("p");
@@ -679,10 +701,14 @@ function finishSession(timedOut) {
       title: pass ? (bp ? "Passed — Official Standard" : "Passed") : "Not yet",
       sub: pass
         ? bp
-          ? `You met ${bp.label.replace(" Simulation", "")}'s real bar: ${bp.minCorrect} of ${bp.questionCount}. ${bp.notes}`
+          ? (total < bp.questionCount
+            ? `You cleared the ${Math.round(100 * bp.minCorrect / bp.questionCount)}% bar on this ${total}-question starter run. Real test: ${bp.minCorrect} of ${bp.questionCount}. ${bp.notes}`
+            : `You met ${bp.label.replace(" Simulation", "")}'s real bar: ${bp.minCorrect} of ${bp.questionCount}. ${bp.notes}`)
           : `You scored above the ${Math.round(state.settings.passMark * 100)}% pass mark. Take another exam to build consistency.`
         : bp
-          ? `The real ${bp.label.replace(" Simulation", "")} requires ${bp.minCorrect} of ${total}. Review your misses and try again.`
+          ? (total < bp.questionCount
+            ? `The real ${bp.label.replace(" Simulation", "")} requires ${bp.minCorrect} of ${bp.questionCount} — this starter run covered ${total}. Review your misses and try again.`
+            : `The real ${bp.label.replace(" Simulation", "")} requires ${bp.minCorrect} of ${bp.questionCount}. Review your misses and try again.`)
           : `You need ${g.needed} of ${total} to pass. Review your misses and try again — most people pass on a retake.`,
     });
   } else {
@@ -1231,6 +1257,12 @@ function hzShowOverlay(html) { $("hzOverlay").innerHTML = html; $("hzOverlay").c
 function hzHideOverlay() { $("hzOverlay").classList.remove("show"); }
 function hzStartGame() {
   hz = { i: 0, scores: [], press: null, t0: 0, timer: null, running: false, marked: false };
+  const sub = $("hazardSub");
+  if (sub) {
+    sub.innerHTML = state.settings.statePack === "UK"
+      ? "Tap <b>SLOW</b> (or press <b>Space</b>) the moment a hazard starts to develop — before you'd need to brake hard. Earlier = more points. Core section of your theory test (real test: 14 clips, 44/75) — this trainer builds the same early-spotting skill."
+      : "Tap <b>SLOW</b> (or press <b>Space</b>) the moment a hazard starts to develop — before you'd need to brake hard. Earlier = more points. Bonus training: most U.S. knowledge exams don't include this, but the skill saves lives.";
+  }
   showView("hazard");
   hzIntro();
 }
@@ -1324,16 +1356,32 @@ let obStep = 0;
 function initObStatePack() {
   const sel = $("obStatePack");
   if (!sel || sel.options.length) return;
-  const generic = document.createElement("option");
-  generic.value = "generic";
-  generic.textContent = "General U.S. rules (no state yet)";
-  sel.appendChild(generic);
-  Packs.PACK_IDS.filter((id) => id !== "generic").forEach((id) => {
+  const tree = (Jur.jurisdictionTree) ? Jur.jurisdictionTree({
+    STATE_PACKS: Packs.STATE_PACKS,
+    EXAM_BLUEPRINTS: BLUEPRINTS,
+    SOURCE_REGISTRY: Packs.SOURCE_REGISTRY || {},
+  }) : [];
+  const addOption = (host, value, text) => {
     const o = document.createElement("option");
-    o.value = id;
-    o.textContent = Packs.STATE_PACKS[id].name;
-    sel.appendChild(o);
-  });
+    o.value = value;
+    o.textContent = text;
+    host.appendChild(o);
+  };
+  if (tree.length) {
+    for (const c of tree) {
+      const g = document.createElement("optgroup");
+      const terms = (c.terminology) || {};
+      g.label = `${c.name} — ${terms.agencyShort || ""}`.trim();
+      if (c.id === "us") addOption(g, "generic", "General U.S. rules (no state yet)");
+      for (const r of c.regions || []) addOption(g, r.id, r.name);
+      sel.appendChild(g);
+    }
+  } else {
+    addOption(sel, "generic", "General U.S. rules (no state yet)");
+    Packs.PACK_IDS.filter((id) => id !== "generic").forEach((id) => {
+      addOption(sel, id, Packs.STATE_PACKS[id].name);
+    });
+  }
   sel.value = Packs.PACK_IDS.includes(state.settings.statePack) ? state.settings.statePack : "generic";
   on(sel, "change", (e) => {
     state.settings.statePack = e.target.value;
@@ -1399,7 +1447,10 @@ function finishOnboarding() {
   renderStateFacts();
   renderHome();
   const pack = Packs.STATE_PACKS[state.settings.statePack] || Packs.STATE_PACKS.generic;
-  toast("Welcome aboard", `Studying ${pack.name} rules + universal rules. Start with Today's Set.`, "car");
+  const scopeNote = state.settings.statePack === "UK"
+    ? "Studying UK Highway Code rules for the DVSA car theory test. Start with Today's Set."
+    : `Studying ${pack.name} rules + universal rules. Start with Today's Set.`;
+  toast("Welcome aboard", scopeNote, "car");
 }
 
 /* ---------------- wire up ---------------- */
@@ -1548,9 +1599,10 @@ function init() {
     renderHome();
     const pack = Packs.STATE_PACKS[e.target.value] || Packs.STATE_PACKS.generic;
     const n = (pack.questions || []).length;
-    toast("State pack: " + pack.name,
-      n ? `${n} state-specific questions added · key rules updated` : "Universal questions — confirm specifics with your handbook.",
-      "car");
+    const scopeMsg = e.target.value === "UK"
+      ? `${n} Highway Code questions · US rules excluded · key rules updated`
+      : n ? `${n} state-specific questions added · key rules updated` : "Universal questions — confirm specifics with your handbook.";
+    toast("Pack: " + pack.name, scopeMsg, "car");
   });
   on($("btnExport"), "click", exportProgress);
   on($("btnOutcomePass"), "click", () => {
@@ -1603,33 +1655,36 @@ function init() {
   showView("home");
 }
 
-/* state pack selector (settings) */
+/* state pack selector (settings) — one optgroup per shipped country (US + UK) */
 function initStatePackSelect() {
   const sel = $("selStatePack");
   if (!sel) return;
   sel.innerHTML = "";
-  // country group header, then its regions — the pluggable tree, visible
-  if (COUNTRY) {
-    const g = document.createElement("optgroup");
-    g.label = COUNTRY.name + " — " + TERMS.agencyShort;
-    const tree = Jur.jurisdictionTree({
-      STATE_PACKS: Packs.STATE_PACKS,
-      EXAM_BLUEPRINTS: BLUEPRINTS,
-      SOURCE_REGISTRY: Packs.SOURCE_REGISTRY || {},
-    });
-    const us = tree.find((c) => c.id === COUNTRY.id);
-    const generic = document.createElement("option");
-    generic.value = "generic";
-    generic.textContent = "General U.S. rules";
-    g.appendChild(generic);
-    (us ? us.regions : []).forEach((r) => {
-      const o = document.createElement("option");
-      o.value = r.id;
-      o.textContent = r.name + (r.exam ? ` · ${r.exam.questionCount}q` : "");
-      o.dataset.exam = r.exam ? JSON.stringify(r.exam) : "";
-      g.appendChild(o);
-    });
-    sel.appendChild(g);
+  const tree = (Jur.jurisdictionTree) ? Jur.jurisdictionTree({
+    STATE_PACKS: Packs.STATE_PACKS,
+    EXAM_BLUEPRINTS: BLUEPRINTS,
+    SOURCE_REGISTRY: Packs.SOURCE_REGISTRY || {},
+  }) : [];
+  if (tree.length) {
+    for (const c of tree) {
+      const g = document.createElement("optgroup");
+      const terms = (c.terminology) || {};
+      g.label = `${c.name} — ${terms.agencyShort || ""}`.trim();
+      if (c.id === "us") {
+        const generic = document.createElement("option");
+        generic.value = "generic";
+        generic.textContent = "General U.S. rules";
+        g.appendChild(generic);
+      }
+      for (const r of c.regions || []) {
+        const o = document.createElement("option");
+        o.value = r.id;
+        o.textContent = r.name + (r.exam ? ` · ${r.exam.questionCount}q` : "");
+        o.dataset.exam = r.exam ? JSON.stringify(r.exam) : "";
+        g.appendChild(o);
+      }
+      sel.appendChild(g);
+    }
   } else {
     Packs.PACK_IDS.forEach(id => {
       const o = document.createElement("option");
