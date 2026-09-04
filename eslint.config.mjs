@@ -21,6 +21,7 @@ const sharedScriptGlobals = {
   CONCEPT_FACT_KEYS: "readonly", VERIFICATION_MAX_AGE_DAYS: "readonly",
   EXAM_BLUEPRINTS: "readonly", JURISDICTIONS: "readonly", ACTIVE_COUNTRY: "readonly",
   RoadReadyCore: "readonly", RoadReadyPacks: "readonly", RoadReadyBlueprints: "readonly", RoadReadyJurisdictions: "readonly",
+  RoadReadyAccount: "readonly", URLSearchParams: "readonly", history: "readonly",
   module: "readonly",
   icon: "writable", signSVG: "readonly", hydrateIcons: "readonly",
 };
@@ -44,6 +45,22 @@ export default [
   {
     files: ["serve.js"],
     languageOptions: { globals: { require: "readonly", __dirname: "readonly", http: "writable", fs: "writable", path: "writable", console: "readonly" } },
+  },
+  {
+    // Serverless API routes: Node-only ES modules, so they get Node globals
+    // rather than the browser set the classic scripts above use. Linted like
+    // everything else rather than left as an unchecked corner of the repo.
+    files: ["api/**/*.js"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
+      globals: {
+        process: "readonly", Buffer: "readonly", console: "readonly",
+        fetch: "readonly", URL: "readonly", URLSearchParams: "readonly",
+        AbortSignal: "readonly", TextEncoder: "readonly", TextDecoder: "readonly",
+      },
+    },
+    rules: { "no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }] },
   },
   {
     files: ["scripts/**/*.mjs", "tests/**/*.{js,mjs}", "e2e/**/*.js", "*.config.mjs", "vitest.config.js", "playwright.config.js"],

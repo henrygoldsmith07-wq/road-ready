@@ -95,6 +95,116 @@ function importProgress(file) {
   reader.readAsText(file);
 }
 
+/* ---------------- account & sync ---------------- */
+/* Sync carries exactly the bundle Export/Import uses, so a downloaded copy
+   goes through the same Core.parseImport validation as a file the user picked
+   — one format, one restore path, one set of guarantees. */
+
+const Account = window.RoadReadyAccount;
+let accountState = { available: false, user: null };
+let accountRemoteAt = null;
+
+function setAccountNote(text) {
+  const note = document.getElementById("accountNote");
+  if (note) note.textContent = text || "";
+}
+
+function accountButton(label, onClick) {
+  const button = document.createElement("button");
+  button.className = "btn ghost";
+  button.textContent = label;
+  button.addEventListener("click", onClick);
+  return button;
+}
+
+async function uploadToAccount(force) {
+  setAccountNote("Saving…");
+  const result = await Account.push(Core.exportBundle(state), accountRemoteAt, force);
+  if (result.status === "ok") {
+    accountRemoteAt = result.updatedAt;
+    renderAccount();
+    setAccountNote("Saved to your account.");
+    return;
+  }
+  if (result.status === "conflict") {
+    // Never overwrite a copy this device has not seen without asking.
+    const when = result.remoteUpdatedAt ? new Date(result.remoteUpdatedAt).toLocaleString() : "unknown";
+    if (confirm("Another device saved at " + when + ". Overwrite it with this device's progress?")) {
+      await uploadToAccount(true);
+      return;
+    }
+    setAccountNote("Left the other device's copy alone.");
+    return;
+  }
+  setAccountNote(result.message || "Sync failed.");
+}
+
+async function downloadFromAccount() {
+  setAccountNote("Fetching…");
+  const result = await Account.pull();
+  if (result.status === "empty") { setAccountNote("Nothing has been saved to this account yet."); return; }
+  if (result.status !== "ok") { setAccountNote(result.message || "Sync failed."); return; }
+
+  const parsed = Core.parseImport(result.bundle, { packIds: Packs.PACK_IDS });
+  if (!parsed.ok) { setAccountNote("That saved copy could not be read (" + parsed.error + ")."); return; }
+  if (!confirm(parsed.warnings.length
+    ? "The saved copy is from another app version (" + parsed.warnings.join(", ") + "). Restore anyway?"
+    : "Replace current progress with the copy from your account?")) return;
+
+  state = parsed.state;
+  bank = Packs.filterBankForPack(ALL_QUESTIONS, state.settings.statePack);
+  save();
+  renderStateFacts();
+  renderHome(); renderStats(); renderFlashcards();
+  accountRemoteAt = result.updatedAt;
+  renderAccount();
+  setAccountNote("Restored from your account.");
+}
+
+function renderAccount() {
+  const panel = document.getElementById("accountPanel");
+  const actions = document.getElementById("accountActions");
+  if (!panel || !actions) return;
+  // Nothing to offer where accounts are not configured.
+  panel.hidden = !accountState.available;
+  if (!accountState.available) return;
+
+  actions.textContent = "";
+  if (!accountState.user) {
+    actions.appendChild(accountButton("Sign in with Google", () => Account.startGoogleSignIn()));
+    setAccountNote("Optional — Road Ready works fully offline without an account.");
+    return;
+  }
+
+  actions.appendChild(accountButton("Save", () => uploadToAccount(false)));
+  actions.appendChild(accountButton("Restore", downloadFromAccount));
+  actions.appendChild(accountButton("Sign out", async () => {
+    await Account.signOut();
+    accountState = { available: true, user: null };
+    accountRemoteAt = null;
+    renderAccount();
+    setAccountNote("Signed out. Your progress stays on this device.");
+  }));
+  actions.appendChild(accountButton("Delete copy", async () => {
+    if (!confirm("Delete the copy stored in your account? This device keeps its progress.")) return;
+    await Account.deleteRemote();
+    accountRemoteAt = null;
+    setAccountNote("Removed the copy from your account.");
+  }));
+
+  setAccountNote("Signed in as " + accountState.user.email
+    + (accountRemoteAt ? " — last saved " + new Date(accountRemoteAt).toLocaleDateString() : " — nothing saved yet") + ".");
+}
+
+async function initAccount() {
+  if (!Account) return;
+  const outcome = Account.consumeSignInOutcome();
+  accountState = await Account.fetchAccount();
+  if (accountState.user) accountRemoteAt = await Account.remoteUpdatedAt().catch(() => null);
+  renderAccount();
+  if (outcome) setAccountNote(outcome);
+}
+
 /* ---------------- XP, levels & achievements ---------------- */
 const ACHIEVEMENTS = Core.ACHIEVEMENTS;
 function levelFor(xp) { return Core.levelFor(xp); }
@@ -1605,6 +1715,7 @@ function init() {
     toast("Pack: " + pack.name, scopeMsg, "car");
   });
   on($("btnExport"), "click", exportProgress);
+  void initAccount();
   on($("btnOutcomePass"), "click", () => {
     if (confirm("Log that you PASSED your real knowledge test? The snapshot below is stored only on this device.")) logOutcome("pass");
   });
