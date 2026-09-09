@@ -39,8 +39,8 @@ describe("official-blueprints", () => {
 
   it("labels are user-facing and jurisdiction-scoped", () => {
     for (const [packId, bp] of Object.entries(EXAM_BLUEPRINTS)) {
-      expect(bp.label.startsWith(`${STATE_PACKS[packId].name.split(" ")[0]}`) || bp.label.includes("Official")).toBe(true);
-      expect(bp.label).toContain("Official Simulation");
+      expect(bp.label.startsWith(`${STATE_PACKS[packId].name.split(" ")[0]}`) || /-format simulation$/.test(bp.label)).toBe(true);
+      expect(bp.label).toMatch(/-format simulation$/);
     }
   });
 });

@@ -29,7 +29,7 @@ describe("blueprint registry", () => {
       const src = data.SOURCE_REGISTRY[bp.sourceId];
       expect(src, `${packId} sourceId`).toBeTruthy();
       expect(src.jurisdiction).toBe(packId);
-      expect(bp.label).toMatch(/Official Simulation$/);
+      expect(bp.label).toMatch(/-format simulation$/);
     }
   });
 

@@ -32,8 +32,9 @@ const on = (el, ev, fn) => el.addEventListener(ev, fn);
 
 /* ---------------- state ---------------- */
 let storageOk = true;
-try { localStorage.setItem("roadready.probe", "1"); localStorage.removeItem("roadready.probe"); }
-catch (e) { storageOk = false; }
+  try { localStorage.setItem("roadready.probe", "1"); localStorage.removeItem("roadready.probe"); }
+  catch (e) { storageOk = false; }
+if (!storageOk) setTimeout(() => showPersistenceWarning("unavailable"), 0);
 const memStore = {};
 const rawGet = (k) => storageOk ? localStorage.getItem(k) : (memStore[k] ?? null);
 const rawSet = (k, v) => { if (storageOk) localStorage.setItem(k, v); else memStore[k] = v; };
@@ -52,15 +53,34 @@ function loadState() {
   m.warnings.forEach((w) => console.warn("[road-ready] state:", w));
   return m.state;
 }
-function save() {
-  try { rawSet(STORE_KEY, JSON.stringify(state)); } catch (e) {}
+function showPersistenceWarning(kind) {
+  const host = document.getElementById("toasts");
+  if (!host) return;
+  let el = document.getElementById("storageWarning");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "storageWarning";
+    el.className = "toast warning";
+    el.setAttribute("role", "alert");
+    host.appendChild(el);
+  }
+  el.innerHTML = `${icon("alert", 17)}<div><b>Progress is not being saved</b><small>${kind === "quota" ? "Storage is full — export a backup and free browser storage." : kind === "unavailable" ? "Browser storage is unavailable — export a backup if possible." : "The last save could not be completed. Your latest activity may be lost."}</small></div>`;
 }
-const todayStr = () => new Date().toISOString().slice(0, 10);
+function save() {
+  try {
+    rawSet(STORE_KEY, JSON.stringify(state));
+    const el = document.getElementById("storageWarning");
+    if (el) el.remove();
+  } catch (e) {
+    showPersistenceWarning(e && (e.name === "QuotaExceededError" || e.code === 22 || /quota/i.test(String(e && e.message))) ? "quota" : "write");
+  }
+}
+const todayStr = () => Core.localDay(Date.now());
+const yesterdayStr = () => Core.localDayBefore(todayStr(), 1);
 
 function touchStreak() {
   const t = todayStr();
-  const y = new Date(Date.now() - Core.DAY_MS).toISOString().slice(0, 10);
-  state.streak = Core.touchStreak(state.streak, t, y);
+  state.streak = Core.touchStreak(state.streak, t, yesterdayStr());
 }
 function todayAnswered() {
   return Core.dailyCount(state.daily, todayStr());
@@ -132,6 +152,7 @@ function achievementSnapshot(sessionAnswers) {
     streak: state.streak.count,
     examsPassed: state.exams.filter(e => e.pass).length,
     hazardBest: state.hazardBest,
+    hazardPct: state.hazardBest ? state.hazardBest / (HZ_SCENARIOS.length * 5) : 0,
     readinessPct: Math.round(readiness() * 100),
     allSignsKnown: Object.keys(SIGNS).every(id => state.fcKnown[id]),
     perfectRun: !!(session && session.perfectRun),
@@ -164,7 +185,7 @@ function speak(text) {
   } catch (e) { /* speech unavailable — silently ignore */ }
 }
 function stopSpeaking() {
-  if (ttsSupported()) { try { speechSynthesis.cancel(); } catch (e) {} }
+  if (ttsSupported()) { try { speechSynthesis.cancel(); } catch (e) { console.warn("[road-ready] speech:", e); } }
 }
 
 /* ---------------- study time tracking ---------------- */
@@ -196,6 +217,7 @@ const qMastery = (q) => Core.qMastery(state.qstats[q.id]);
 const readiness = () => Core.readiness(bank, state.qstats, state.exams);
 const missedQuestions = () => Core.missedQuestions(bank, state.qstats);
 const catAccuracy = (cat) => Core.catAccuracy(catQ(cat), state.qstats);
+const validTestDate = () => Core.validIsoDate(state.settings.testDate) && Core.daysBetweenLocalDates(todayStr(), state.settings.testDate) >= 0;
 
 /* adaptive pool: unseen & previously-missed questions surface more often;
    scheduled-due ones most of all (weak-topic scheduling) */
@@ -224,7 +246,7 @@ function renderReadinessPanel() {
   if (!host) return;
   host.hidden = false;
   const theoryPct = Math.round(readiness() * 100);
-  const log = Array.isArray(state.practical) ? (state.practical.log || []) : [];
+  const log = Core.practicalLog(state);
   const dr = Core.drivingReadiness(theoryPct, log);
   const pct = dr.combined === null ? theoryPct : dr.combined;
 
@@ -239,22 +261,19 @@ function renderReadinessPanel() {
     };
   });
   const { strong, risk } = Core.strongAndRiskTopics(topics);
-  // calibrated sentence (only speaks once pooled outcomes exist)
-  const samples = (state.outcomes || []).map((o) => ({ readinessPct: o.progressPct, result: o.result }));
   const spreadPts = (() => { const sp = Core.mockStability(state.exams, 3); return sp == null ? null : Math.round(sp * 100); })();
-  rpCalNarrative = Core.readinessNarrative({ readinessPct: theoryPct, curve: Core.calibrationCurve(samples), riskTopics: risk.map((t) => t.name), stabilitySpread: spreadPts });
+  const predictionSamples = predictionCalibrationSamples();
+  rpCalNarrative = Core.readinessNarrative({ readinessPct: theoryPct, curve: Core.calibrationCurve(predictionSamples), riskTopics: risk.map((t) => t.name), stabilitySpread: spreadPts });
 
-  // unmastered count + days until test date (if set)
-  const unmastered = topics.reduce((t, tp) => {
-    const qs = catQ(tp.id);
-    return t + qs.filter((q) => !state.qstats[q.id] || Core.qMastery(state.qstats[q.id]) < 0.8).length;
-  }, 0);
   let daysLeft = null;
   if (state.settings.testDate) {
-    const diff = Math.ceil((Date.parse(state.settings.testDate + "T12:00:00Z") - Date.now()) / Core.DAY_MS);
-    if (diff > 0) daysLeft = diff;
+    const diff = Core.daysBetweenLocalDates(todayStr(), state.settings.testDate);
+    if (diff != null && diff > 0) daysLeft = diff;
   }
-  const rec = Core.recommendedToday({ unmasteredQuestions: unmastered, daysUntilTest: daysLeft, dailyGoal: Core.DAILY_GOAL, riskCount: risk.length });
+  const recPlan = Core.dailyStudyRecommendation({
+    bank, qstats: state.qstats, exams: state.exams, daily: state.daily,
+    testDate: state.settings.testDate, today: todayStr(), nowMs: Date.now(),
+  });
 
   const calEl = $("rpCalLine");
   if (calEl) {
@@ -265,19 +284,19 @@ function renderReadinessPanel() {
       : `Uncalibrated estimate — ${rpCalNarrative.text}`;
   }
   const band = pct <= 0 && !topics.some((t) => t.seen) ? "Not Started" : Core.readinessBand(pct).label;
-  $("rpBand").textContent = state.outcomes && state.outcomes.length ? band : `${band} · uncalibrated`;
+  const decidedPredictions = predictionSamples.filter((s) => s.result === "pass" || s.result === "fail");
+  $("rpBand").textContent = decidedPredictions.length ? band : `${band} · uncalibrated`;
 
   const items = [];
   strong.forEach((t) => items.push(`<li class="rp-strong"><span class="rp-glyph">✓</span> Strong: ${t.name.toLowerCase()}</li>`));
   risk.forEach((t) => items.push(`<li class="rp-risk"><span class="rp-glyph">△</span> Risk: ${t.name.toLowerCase()}</li>`));
   if (!items.length) items.push('<li class="muted">Answer a few questions and your strong/risk areas will appear here.</li>');
-  if (rec > 0) items.push(`<li class="rp-rec">Recommended today: <b>${rec} questions</b>${daysLeft ? ` (test in ${daysLeft} day${daysLeft === 1 ? "" : "s"})` : ""}</li>`);
+  if (recPlan.questions > 0) items.push(`<li class="rp-rec">Recommended today: <b>${recPlan.questions} questions</b>${daysLeft ? ` (test in ${daysLeft} day${daysLeft === 1 ? "" : "s"})` : ""}</li>`);
   else items.push('<li class="rp-rec"><b>Bank mastered</b> — keep sharp with mock exams.</li>');
   $("rpList").innerHTML = items.join("");
 
-  // Start today's set: adaptive mix weighted toward risk topics, sized to rec
   on($("rpStart"), "click", () => {
-    const n = Math.max(5, Math.min(rec || Core.DAILY_GOAL, bank.length));
+    const n = Math.max(5, Math.min(recPlan.questions || Core.DAILY_GOAL, bank.length));
     const qs = pickWeighted(adaptivePool(), n);
     if (qs.length) startPractice(qs, "Today's Set", "home");
   });
@@ -307,7 +326,6 @@ function renderHome() {
       ? "You've passed a practice mock exam — keep drilling to stay sharp."
       : "Keep going — review your weak spots and drill the questions you missed.";
 
-  // level chip + hazard best + achievement checks
   const lv = levelFor(state.xp);
   $("heroLvl").textContent = state.answered ? `Level ${lv.lvl} · ${state.xp} XP` : "";
   const HAZARD_INFO = hazardInfoForPack();
@@ -315,43 +333,56 @@ function renderHome() {
     ? "core section of your theory test (real test: 14 clips, 44/75)"
     : "bonus training — not part of most U.S. knowledge exams";
   $("hazardBestLabel").textContent = state.hazardBest
-    ? `Best score: ${state.hazardBest}/30 — ${hazardTag}`
+    ? `Best score: ${state.hazardBest}/${HZ_SCENARIOS.length * 5} — ${hazardTag}`
     : `Spot developing hazards early (${hazardTag})`;
   checkProgressAchievements();
 
-  // daily goal + test-date study plan
   const plan = Core.studyPlan(bank, state.qstats, state.exams, state.daily, state.settings.testDate, todayStr());
+  const rec = Core.dailyStudyRecommendation({
+    bank,
+    qstats: state.qstats,
+    exams: state.exams,
+    daily: state.daily,
+    testDate: state.settings.testDate,
+    today: todayStr(),
+    nowMs: Date.now(),
+  });
   const t = plan.todayCount;
-  const target = plan.dailyTarget;
+  const target = Math.max(1, plan.dailyTarget);
   const goalEl = $("dailyGoal");
-  /** @type {HTMLElement} */(goalEl.querySelector(".dg-bar-fill")).style.width = Math.min(100, 100 * t / target) + "%";
+  goalEl.querySelector(".dg-bar-fill").style.width = Math.min(100, 100 * t / target) + "%";
   goalEl.querySelector(".dg-label").innerHTML = t >= target
     ? `Daily goal complete — <b>${t}</b> answered today`
     : `Today's goal: <b>${t}/${target}</b> questions answered`;
 
   const planBtn = $("btnPlanAction");
-  if (plan.status === "no-date") {
-    $("planTitle").textContent = "Turn practice into a plan";
-    $("planDetail").textContent = "Add your test date and Road Ready will calculate what to study each day.";
-    $("planMeta").textContent = "Private · offline · adjustable anytime";
+  const rationaleEl = $("planRationale");
+  if (!validTestDate()) {
+    $("planTitle").textContent = `${rec.questions} questions today`;
+    $("planDetail").textContent = `${rec.estimatedMinutes} min · adaptive mix${rec.focusConcepts.length ? ` · ${rec.focusConcepts.slice(0, 2).join(" + ")}` : ""}`;
+    $("planMeta").textContent = "Add your test date for a paced plan";
+    rationaleEl.hidden = !rec.rationale.length;
+    rationaleEl.innerHTML = rec.rationale.map(r => `<li>${r}</li>`).join("");
     planBtn.textContent = "Set test date";
     planBtn.dataset.action = "set-date";
   } else if (plan.status === "past") {
     $("planTitle").textContent = "Update your test date";
     $("planDetail").textContent = "Your saved test date has passed. Choose a new date to rebuild the plan.";
     $("planMeta").textContent = "Your progress is still here";
+    rationaleEl.hidden = true;
     planBtn.textContent = "Choose a date";
     planBtn.dataset.action = "set-date";
   } else {
-    const dayLabel = plan.daysLeft === 0 ? "Test day is today" : `${plan.daysLeft} day${plan.daysLeft === 1 ? "" : "s"} to test day`;
-    $("planTitle").textContent = dayLabel;
-    $("planDetail").textContent = plan.remainingToday
-      ? `${plan.remainingToday} more question${plan.remainingToday === 1 ? "" : "s"} today keeps you on pace.`
-      : "Today's target is complete. Keep the momentum or take a mock exam.";
-    $("planMeta").textContent = `${plan.unseen} unseen · ${plan.weak} weak · ${plan.dailyTarget}/day`;
-    planBtn.dataset.action = plan.action;
-    planBtn.textContent = plan.action === "exam" ? "Take mock exam"
-      : plan.action === "review" ? "Review weak spots" : "Start today's practice";
+    const dayLabel = plan.daysLeft === 0 ? "Test day" : `Test in ${plan.daysLeft} day${plan.daysLeft === 1 ? "" : "s"}`;
+    $("planTitle").textContent = `${dayLabel} · ${rec.questions} questions today`;
+    $("planDetail").textContent = `${rec.estimatedMinutes} min · ${rec.action === "exam" ? "representative mock" : rec.reviewDue ? "reviews + weak concepts" : "adaptive practice"}${rec.focusConcepts.length ? ` · ${rec.focusConcepts.slice(0, 2).join(" + ")}` : ""}`;
+    $("planMeta").textContent = `${plan.unseen} unseen · ${plan.weak} weak · ${rec.reviewDue} due · ${plan.dailyTarget}/day`;
+    rationaleEl.hidden = !rec.rationale.length;
+    rationaleEl.innerHTML = rec.rationale.map(r => `<li>${r}</li>`).join("");
+    planBtn.dataset.action = plan.status === "today" ? "review" : rec.action;
+    planBtn.textContent = plan.status === "today"
+      ? "Short confidence review"
+      : rec.action === "exam" ? "Take representative mock" : rec.action === "review" ? "Review weak spots" : "Start today's session";
   }
 
   // topics
@@ -397,8 +428,8 @@ function startSetup(mode, focusCat) {
     const unmasteredCount = bank.filter((q) => !state.qstats[q.id] || Core.qMastery(state.qstats[q.id]) < 0.8).length;
     let daysLeftPractice = null;
     if (state.settings.testDate) {
-      const diffPractice = Math.ceil((Date.parse(state.settings.testDate + "T12:00:00Z") - Date.now()) / Core.DAY_MS);
-      if (diffPractice > 0) daysLeftPractice = diffPractice;
+      const diffPractice = Core.daysBetweenLocalDates(todayStr(), state.settings.testDate);
+      if (diffPractice != null && diffPractice > 0) daysLeftPractice = diffPractice;
     }
     const todaySize = Math.max(5, Math.min(
       Core.recommendedToday({ unmasteredQuestions: Math.max(1, unmasteredCount), daysUntilTest: daysLeftPractice, dailyGoal: Core.DAILY_GOAL, riskCount: 0 }) || Core.DAILY_GOAL,
@@ -438,7 +469,7 @@ function startSetup(mode, focusCat) {
         id: "official", icon: "grad", name: bp.label,
         desc: starter
           ? `Starter bank: ${available} of ${bp.questionCount} questions · ${Math.round(100 * bp.minCorrect / bp.questionCount)}% official bar · growing to the full mock · feedback at end`
-          : `${bp.questionCount} questions · pass ${bp.minCorrect}/${bp.questionCount} (official threshold) · ${bp.timeLimitMin ? bp.timeLimitMin + "-min limit" : `${Core.timeLimitSecs(bp.questionCount) / 60}-min pacing`} · feedback at end`,
+        : `${bp.questionCount} questions · pass ${bp.minCorrect}/${bp.questionCount} (official threshold) · ${bp.timeLimitMin ? bp.timeLimitMin + "-min limit" : `${Core.timeLimitSecs(bp.questionCount) / 60}-min pacing`} · feedback at end`,
         action: () => startOfficialExam(packId),
       });
     }
@@ -853,7 +884,7 @@ function renderStats() {
   $("ssStreak").textContent = state.streak.count;
   $("ssExams").textContent = state.exams.length;
   $("ssTime").textContent = fmtTime(state.timeStudied);
-  $("ssHazard").textContent = state.hazardBest ? state.hazardBest + "/30" : "–";
+  $("ssHazard").textContent = state.hazardBest ? state.hazardBest + "/" + (HZ_SCENARIOS.length * 5) : "–";
 
   const lv = levelFor(state.xp);
   $("xpLabel").textContent = "Level " + lv.lvl;
@@ -901,40 +932,113 @@ function renderStats() {
     $("inpTestDate").value = state.settings.testDate || "";
     $("inpTestDate").min = todayStr();
   }
+  const calNarrative = $("calibrationNarrative");
+  if (calNarrative) {
+    const samples = predictionCalibrationSamples();
+    const narrative = Core.readinessNarrative({ readinessPct: Math.round(readiness() * 100), curve: Core.calibrationCurve(samples), riskTopics: [], stabilitySpread: null });
+    calNarrative.textContent = narrative.text;
+    $("calibrationDisclaimer").textContent = narrative.disclaimer;
+  }
   renderCalibration();
   renderStudy();
 }
 
-/* ---------------- real-test outcome journal (calibration beta) ---------------- */
-function outcomeSnapshot() {
+/* ---------------- official-test predictions (primary calibration) ---------------- */
+function predictionSnapshot() {
+  const theoryPct = Math.round(readiness() * 100);
+  const practicalLog = Core.practicalLog(state);
   return {
-    progressPct: Math.round(readiness() * 100),
+    readinessPct: theoryPct,
     mockAvgPct: Math.round((Core.mockAverage(state.exams) ?? 0) * 100),
+    diagnosticPct: (() => {
+      const d = state.exams.slice().sort((a, b) => a.date - b.date).find((e) => e.tag === "diagnostic");
+      return d ? Math.round(d.pct * 100) : null;
+    })(),
+    coveragePct: Math.round(Core.bankCoverage(bank, state.qstats) * 100),
+    stabilitySpread: (() => {
+      const s = Core.mockStability(state.exams, 3);
+      return s == null ? null : Math.round(s * 100);
+    })(),
     questionsSeen: state.answered,
     studyMinutes: Math.round((state.timeStudied || 0) / 60),
+    skillsRated: Object.values(practicalLog.slice(-5).reduce((acc, s) => Object.assign(acc, s.skills || {}), {})),
+    bank,
   };
 }
+function predictionCalibrationSamples() {
+  return (state.predictions || [])
+    .filter((p) => p.outcome && (p.outcome.result === "pass" || p.outcome.result === "fail"))
+    .map((p) => ({
+      readinessPct: p.readinessPct,
+      result: p.outcome.result,
+      jurisdiction: p.jurisdiction,
+      engineVersion: p.readinessEngineVersion,
+      date: p.predictionCreatedAt,
+    }));
+}
+function freezeOfficialPrediction() {
+  const snapshot = predictionSnapshot();
+  const prediction = Core.freezePrediction(state.predictions, state.study.participantId || "local-learner", state.settings.statePack, snapshot, {
+    intendedTestDate: state.settings.testDate || undefined,
+    nowMs: Date.now(),
+    appVersion: APP_VERSION,
+  });
+  state.predictions = [...(Array.isArray(state.predictions) ? state.predictions : []), prediction];
+  save();
+  return prediction;
+}
+function pendingOutcomePrediction() {
+  return (state.predictions || []).find((p) => !p.outcome) || null;
+}
 function logOutcome(result) {
-  state.outcomes = Core.appendOutcome(state.outcomes, { ...outcomeSnapshot(), result });
+  const pending = pendingOutcomePrediction();
+  if (pending) {
+    const idx = state.predictions.findIndex((p) => p.id === pending.id);
+    state.predictions[idx] = Core.attachOutcome(pending, result, state.settings.testDate, Date.now());
+  }
+  const snapshot = predictionSnapshot();
+  state.outcomes = Core.appendOutcome(state.outcomes, {
+    progressPct: snapshot.readinessPct,
+    mockAvgPct: snapshot.mockAvgPct,
+    coveragePct: snapshot.coveragePct,
+    stabilitySpread: snapshot.stabilitySpread ?? 0,
+    diagnosticPct: snapshot.diagnosticPct ?? undefined,
+    jurisdiction: state.settings.statePack,
+    readinessEngineVersion: Core.MASTERY_VERSION,
+    questionsSeen: snapshot.questionsSeen,
+    studyMinutes: snapshot.studyMinutes,
+    result,
+  });
   save();
   renderCalibration();
-  toast("Outcome logged", "Stored on this device only — included in backups.", "chart");
+  renderHome();
+  toast("Outcome logged", "Frozen prediction preserved. Stored only on this device.", "chart");
 }
 function renderCalibration() {
   const host = $("outcomeList");
   if (!host) return;
-  const list = Array.isArray(state.outcomes) ? state.outcomes : [];
-  host.innerHTML = list.length
-    ? list.slice().reverse().map(o => {
-        const d = new Date(o.date);
-        const resLabel = o.result === "pass" ? "PASS" : o.result === "fail" ? "FAIL" : "?";
-        return `<div class="outcome-row">
-          <span>${d.toLocaleDateString()} · ${o.progressPct}% progress · mock avg ${o.mockAvgPct}% · ${o.questionsSeen} questions
-            <span class="outcome-meta">${fmtTime(o.studyMinutes * 60)} of study</span></span>
-          <b class="res-${o.result}">${resLabel}</b>
-        </div>`;
-      }).join("")
-    : `<p class="muted" style="margin:0;">No outcomes logged yet.</p>`;
+  const predictions = Array.isArray(state.predictions) ? state.predictions : [];
+  const retrospectives = Array.isArray(state.outcomes) ? state.outcomes : [];
+  const rows = [];
+  predictions.slice().reverse().forEach((p) => {
+    const d = new Date(p.predictionCreatedAt);
+    const res = p.outcome ? (p.outcome.result === "pass" ? "PASS" : p.outcome.result === "fail" ? "FAIL" : "?") : "PENDING";
+    rows.push(`<div class="outcome-row">
+      <span>${d.toLocaleDateString()} · ${p.jurisdiction} · readiness ${p.readinessPct}% · mocks ${p.mockAvgPct}% · coverage ${p.coveragePct}%
+        <span class="outcome-meta">frozen prediction · ${p.evidenceClass} evidence</span></span>
+      <b class="res-${p.outcome ? p.outcome.result : "pending"}">${res}</b>
+    </div>`);
+  });
+  retrospectives.slice().reverse().forEach((o) => {
+    const d = new Date(o.date);
+    const resLabel = o.result === "pass" ? "PASS" : o.result === "fail" ? "FAIL" : "?";
+    rows.push(`<div class="outcome-row">
+      <span>${d.toLocaleDateString()} · ${o.progressPct}% progress · mock avg ${o.mockAvgPct}% · ${o.questionsSeen} questions
+        <span class="outcome-meta">retrospective journal</span></span>
+      <b class="res-${o.result}">${resLabel}</b>
+    </div>`);
+  });
+  host.innerHTML = rows.length ? rows.join("") : `<p class="muted" style="margin:0;">No outcomes logged yet.</p>`;
 }
 
 /* ---------------- practical drive log ---------------- */
@@ -942,7 +1046,7 @@ const plFormState = { conditions: new Set(), roadTypes: new Set(), skills: {} };
 
 function renderPractical() {
   if (!$("view-practical")) return;
-  const log = Array.isArray(state.practical) ? [] : (state.practical.log || []);
+  const log = Core.practicalLog(state);
   // readiness card
   const theoryPct = Math.round(readiness() * 100);
   const dr = Core.drivingReadiness(theoryPct, log);
@@ -982,8 +1086,7 @@ function renderPractical() {
       }).join("")
     : `<li class="muted">No sessions logged yet.</li>`;
   hist.querySelectorAll(".pl-del").forEach(b => on(b, "click", () => {
-    state.practical.log.splice(Number(b.dataset.i), 1);
-    save(); renderPractical();
+    removePracticalSession(Number(b.dataset.i));
   }));
 
   // form defaults once
@@ -1047,12 +1150,24 @@ function buildPracticalForm() {
   }
 }
 
+function localDateFromDay(dayIso) {
+  if (!Core.validIsoDate(dayIso)) return null;
+  return new Date(Number(dayIso.slice(0, 4)), Number(dayIso.slice(5, 7)) - 1, Number(dayIso.slice(8, 10)), 12).getTime();
+}
+function removePracticalSession(index) {
+  const log = Core.practicalLog(state);
+  if (!Number.isInteger(index) || index < 0 || index >= log.length) return;
+  log.splice(index, 1);
+  save();
+  renderPractical();
+}
 function savePracticalSession() {
   const minutes = parseInt($("plMinutes").value, 10);
   const skills = Object.keys(plFormState.skills);
   if (!skills.length) { alert("Rate at least one skill before saving."); return; }
-  const dateVal = $("plDate").value ? Date.parse($("plDate").value + "T12:00:00Z") : Date.now();
-  state.practical.log = Core.appendPracticalSession(state.practical.log || [], {
+  const dateVal = $("plDate").value ? (localDateFromDay($("plDate").value) ?? Date.now()) : Date.now();
+  state.practical = { log: Core.practicalLog(state) };
+  state.practical.log = Core.appendPracticalSession(state.practical.log, {
     date: isFinite(dateVal) ? dateVal : Date.now(),
     minutes: isFinite(minutes) ? minutes : 45,
     conditions: [...plFormState.conditions],
@@ -1166,6 +1281,9 @@ const Y = (t, ts) => -46 + HZ.V * (t - ts);           // scroll position of an o
 const HZ_SCENARIOS = [
   {
     name: "Ball & child", win: [2.6, 6.0], max: 7.6,
+    hazard: "A child runs out from between parked vehicles while chasing a ball.",
+    clues: ["A ball rolls into the road", "Parked vehicles block the view", "Residential street"],
+    response: "Ease off immediately and prepare to stop; a child may follow the ball.",
     tip: "A rolling ball means a child is close behind — react the moment you see it.",
     objs: t => {
       let s = "";
@@ -1176,6 +1294,9 @@ const HZ_SCENARIOS = [
   },
   {
     name: "Parked car door", win: [3.0, 5.6], max: 7.2,
+    hazard: "A door opens from a parked vehicle into your path.",
+    clues: ["A silhouette appears in the parked vehicle", "You are passing close to parked cars", "The gap narrows"],
+    response: "Drop back or move left if clear and give the door zone space.",
     tip: "Park beside the door zone — expect doors to open and leave a gap.",
     objs: t => {
       let s = hzParked(Y(t, 2.0));
@@ -1185,6 +1306,9 @@ const HZ_SCENARIOS = [
   },
   {
     name: "Brake lights ahead", win: [3.0, 5.1], max: 6.8,
+    hazard: "Traffic ahead brakes suddenly after a crest.",
+    clues: ["Brake lights appear ahead", "Following distance is short", "The view beyond the crest is limited"],
+    response: "Ease off and increase your gap before the queue reaches you.",
     tip: "Brake lights far ahead are your first warning — ease off the gas early.",
     objs: t => {
       const y = -46 + HZ.V * (t - 3.0) + (t > 3.6 ? 30 * (t - 3.6) * (t - 3.6) : 0);
@@ -1192,12 +1316,18 @@ const HZ_SCENARIOS = [
     },
   },
   {
-    name: "Deer crossing", win: [3.2, 4.9], max: 6.5,
+    name: "Rural animal crossing", win: [3.2, 4.9], max: 6.5,
+    hazard: "An animal crosses from a rural verge.",
+    clues: ["Warning signs or open fields", "Movement at the road edge", "One animal often precedes another"],
+    response: "Brake in your lane and be ready to stop; do not swerve at speed.",
     tip: "Where one animal crosses, more follow — brake in your lane, don't swerve.",
     objs: t => hzDeer(30 + (t >= 3.2 ? 60 * (t - 3.2) : 0), Y(t, 1.6)),
   },
   {
-    name: "Crosswalk ahead", win: [3.0, 5.4], max: 7.0,
+    name: "Waiting pedestrian", win: [3.0, 5.4], max: 7.0,
+    hazard: "A pedestrian waiting at a crossing starts to move toward the road.",
+    clues: ["Crosswalk markings ahead", "A person waits near the kerb", "Their attention is on traffic, not you"],
+    response: "Slow down before they step out and prepare to give way.",
     tip: "A waiting pedestrian plus a crosswalk = slow now, not when they step out.",
     objs: t => {
       let s = hzCrosswalk(Y(t, 1.4));
@@ -1206,9 +1336,86 @@ const HZ_SCENARIOS = [
     },
   },
   {
-    name: "Cyclist swerve", win: [2.6, 4.6], max: 6.2,
+    name: "Cyclist ahead", win: [2.6, 4.6], max: 6.2,
+    hazard: "A cyclist moves around a parked vehicle into your lane.",
+    clues: ["The cyclist looks over their shoulder", "A parked vehicle narrows the lane", "No safe passing gap yet"],
+    response: "Ease off and hold back until you can pass with at least 1.5 metres.",
     tip: "Riders swerve for hazards you can't see — give them room to do it.",
     objs: t => hzCyclist(246 - (t >= 2.6 ? 38 * (t - 2.6) : 0), Y(t, 1.8)),
+  },
+  {
+    name: "Emerging vehicle", win: [2.8, 5.0], max: 6.8,
+    hazard: "A vehicle emerges from a side road into your path.",
+    clues: ["A junction is ahead", "Wheels move before the vehicle appears", "The side-road view is partly blocked"],
+    response: "Cover the brake and prepare to slow; give the emerging driver time to react.",
+    tip: "At junctions, watch wheels and nose movement — they often move before the car appears.",
+    objs: t => {
+      let s = hzJunction(Y(t, 1.2));
+      const k = Math.min(1, Math.max(0, (t - 2.8) / 1.5));
+      if (t >= 2.8) s += hzCarAhead(126 + 45 * k, Y(t, 1.2) + 18, false);
+      return s;
+    },
+  },
+  {
+    name: "Merging traffic", win: [3.1, 5.5], max: 7.0,
+    hazard: "A vehicle accelerates down a slip road into your lane.",
+    clues: ["A merge arrow or slip road appears", "The other vehicle's speed is still changing", "Your lane becomes the through lane"],
+    response: "Adjust speed or change lane early; avoid competing for the same space.",
+    tip: "Merge conflicts are about space and speed — make room before the lane line ends.",
+    objs: t => {
+      let s = hzMergeLine(Y(t, 1.6));
+      const k = Math.min(1, Math.max(0, (t - 3.1) / 1.7));
+      s += hzCarAhead(92 + 88 * k, Y(t, 1.6) + 30, false);
+      return s;
+    },
+  },
+  {
+    name: "Motorcycle filtering", win: [2.9, 4.9], max: 6.5,
+    hazard: "A motorcycle filters between slow vehicles into your lane.",
+    clues: ["A narrow moving shape appears between vehicles", "Traffic ahead is slow", "Mirror checks are essential"],
+    response: "Hold steady, check mirrors, and leave room; do not move suddenly.",
+    tip: "Filtering riders rely on predictable drivers — avoid abrupt lane movement.",
+    objs: t => {
+      const k = Math.min(1, Math.max(0, (t - 2.9) / 1.4));
+      return hzMotorcycle(132 + 66 * k, Y(t, 1.5));
+    },
+  },
+  {
+    name: "Restricted visibility", win: [3.0, 5.2], max: 6.8,
+    hazard: "A parked van blocks your view of a crossing pedestrian.",
+    clues: ["A large vehicle hides the near-side view", "A school or shop is nearby", "Speed makes the hidden risk worse"],
+    response: "Slow until you can see past the obstruction and be ready to stop.",
+    tip: "If you cannot see, assume something may be there — slow to see.",
+    objs: t => {
+      let s = hzVan(220, Y(t, 1.4));
+      if (t >= 4.0) s += hzPerson(302 - 70 * (t - 4.0), Y(t, 1.4) + 10);
+      return s;
+    },
+  },
+  {
+    name: "Roadworks ahead", win: [3.0, 5.3], max: 6.9,
+    hazard: "Workers and cones narrow the carriageway.",
+    clues: ["Temporary cones appear", "Signals or workers are present", "Lanes merge ahead"],
+    response: "Reduce speed before the cone taper and follow the temporary lane.",
+    tip: "Treat roadworks as a speed problem first — deal with the merge second.",
+    objs: t => {
+      let s = hzCones(Y(t, 1.5));
+      if (t >= 3.4) s += hzPerson(278, Y(t, 1.5) + 5);
+      return s;
+    },
+  },
+  {
+    name: "Emergency vehicle", win: [2.8, 4.8], max: 6.4,
+    hazard: "An emergency vehicle approaches from behind while the road ahead narrows.",
+    clues: ["Flashing blue lights in mirrors", "Traffic starts pulling right", "Sirens change direction"],
+    response: "Check mirrors, then pull right or stop where it is safe and legal.",
+    tip: "Never block an intersection to make room — move right only when it is safe.",
+    objs: t => {
+      const k = Math.min(1, Math.max(0, (t - 2.8) / 1.5));
+      let s = hzCarAhead(168, 70 + 90 * (1 - k), false);
+      if (t >= 2.8) s += hzBlueLights(168, 70 + 90 * (1 - k));
+      return s;
+    },
   },
 ];
 
@@ -1232,6 +1439,12 @@ function hzCrosswalk(y) {
   return s;
 }
 function hzCyclist(x, y) { return hzRR(x - 5, y - 8, 12, 14, "#e8e8ec", 4) + hzC(x - 10, y + 12, 6, "#0b0b0d") + hzC(x + 12, y + 12, 6, "#0b0b0d") + hzRR(x - 16, y - 4, 8, 3, "#8b8b93", 1); }
+function hzJunction(y) { return hzRR(HZ.RR - 20, y, 76, 4, "rgba(255,255,255,.45)", 1) + hzRR(HZ.RR - 20, y + 7, 4, 4, "rgba(255,255,255,.45)", 1) + hzRR(HZ.RR - 20, y + 14, 4, 4, "rgba(255,255,255,.45)", 1); }
+function hzMergeLine(y) { return hzRR(214, y, 4, 108, "rgba(255,255,255,.35)", 1) + hzRR(214, y + 114, 4, 4, "rgba(255,255,255,.35)", 1); }
+function hzMotorcycle(x, y) { return hzRR(x - 4, y - 5, 10, 14, "#e8e8ec", 3) + hzC(x - 4, y + 11, 5, "#0b0b0d") + hzC(x + 7, y + 11, 5, "#0b0b0d"); }
+function hzVan(x, y) { return hzRR(x - 28, y, 56, 84, "#4d4d58", 7) + hzRR(x - 22, y + 8, 20, 22, "#222229", 4); }
+function hzCones(y) { let s = ""; for (let i = 0; i < 3; i++) { const cy = y + i * 26; s += hzC(204 + (i % 2) * 7, cy, 6, "#e07b18") + hzRR(199 + (i % 2) * 7, cy + 5, 12, 3, "#e07b18", 1); } return s; }
+function hzBlueLights(x, y) { return hzC(x - 14, y + 2, 5, "#4287f5") + hzC(x + 14, y + 2, 5, "#4287f5"); }
 
 let hz = null;
 function hzScene(t, sc) {
@@ -1267,17 +1480,28 @@ function hzStartGame() {
   hzIntro();
 }
 function hzIntro() {
-  const best = state.hazardBest ? ` · best ${state.hazardBest}/30` : "";
+  const best = state.hazardBest ? ` · best ${state.hazardBest}/${HZ_SCENARIOS.length * 5}` : "";
   hzShowOverlay(`
     <div class="ov-inner">
       <span class="ov-ico">${icon("eye", 34)}</span>
-      <h2>Hazard Perception</h2>
-      <p>6 scenarios. One hazard each.<br>Tap <b>SLOW</b> — or press <b>Space</b> — as soon as the hazard starts to develop.</p>
+      <h2>Hazard identification training</h2>
+      <p>${HZ_SCENARIOS.length} original scenarios. One developing hazard each.<br>Tap <b>SLOW</b> — or press <b>Space</b> — as soon as the hazard starts to develop.</p>
       <p class="ov-dim">5 points for instant recognition, down to 1. Too early or too late scores 0${best}.</p>
       <button class="btn primary" id="hzGo">Start</button>
     </div>`);
+  renderHazardAccessibleList();
   $("hzGo").focus();
   on($("hzGo"), "click", hzNextScenario);
+}
+function renderHazardAccessibleList() {
+  const host = $("hzAccessibleList");
+  if (!host) return;
+  host.innerHTML = HZ_SCENARIOS.map((sc, i) => `<article class="hz-access-list">
+    <b>${i + 1}. ${sc.name}</b>
+    <p><b>Developing hazard:</b> ${sc.hazard}</p>
+    <p><b>Early clues:</b></p><ul>${sc.clues.map((c) => `<li>${c}</li>`).join("")}</ul>
+    <p><b>Best response:</b> ${sc.response}</p>
+  </article>`).join("");
 }
 function hzNextScenario() {
   if (hz.i >= HZ_SCENARIOS.length) return hzResults();
@@ -1312,36 +1536,41 @@ function hzEndScenario(sc) {
   const r = Core.hazardScore(press, s, e);
   let pts = r.pts, verdict;
   if (r.band === "late") { verdict = "Too late — the hazard fully developed"; $("hzFlash").hidden = false; }
-  else if (r.band === "early") { verdict = "Too early — nothing was developing yet"; }
+  else if (r.band === "early") { verdict = "Too early — that was not yet a developing hazard"; }
   else if (r.band === "instant") verdict = "Instant recognition";
-  else if (r.band === "good") verdict = "Good spot";
-  else verdict = "Cutting it close";
+  else if (r.band === "good") verdict = "Good early recognition";
+  else verdict = "Recognised, but late";
   hz.scores.push(pts);
   hzShowOverlay(`
     <div class="ov-inner">
       <p class="ov-count">${hz.i + 1} / ${HZ_SCENARIOS.length} · ${sc.name}</p>
       <div class="ov-pts ${pts ? "" : "zero"}">${pts ? "+" + pts : "0"} pts</div>
       <p><b>${verdict}</b></p>
+      <p class="ov-dim"><b>Developing hazard:</b> ${sc.hazard}</p>
+      <p class="ov-dim"><b>Early clues:</b> ${sc.clues.join(" · ")}</p>
+      <p class="ov-dim"><b>Best response:</b> ${sc.response}</p>
       <p class="ov-dim">${sc.tip}</p>
     </div>`);
   hz.i++;
   setTimeout(() => { if (hz) hzNextScenario(); }, 2600);
 }
 function hzResults() {
+  const maxScore = HZ_SCENARIOS.length * 5;
   const total = hz.scores.reduce((a, b) => a + b, 0);
-  const best = Math.max(state.hazardBest, total);
+  const best = Math.min(maxScore, Math.max(state.hazardBest, total));
   const isNew = total > state.hazardBest;
   state.hazardBest = best;
+  state.hazardPct = total / maxScore;
   addXP(total * Core.XP_PER_HAZARD_POINT);
-  if (total >= 24) unlock("hawk");
+  if (total >= Math.round(maxScore * 0.7)) unlock("hawk");
   save();
   checkProgressAchievements();
   hzShowOverlay(`
     <div class="ov-inner">
-      <span class="ov-ico">${icon(total >= 18 ? "trophy" : "eye", 34)}</span>
-      <h2>${total} / 30</h2>
-      <p>${total >= 24 ? "Hawk-level awareness." : total >= 18 ? "Solid instincts — polish the early spots." : "Keep training — early recognition is the skill."}</p>
-      ${isNew ? `<p class="ov-dim">New personal best</p>` : `<p class="ov-dim">Best: ${best}/30</p>`}
+      <span class="ov-ico">${icon(total >= maxScore * 0.6 ? "trophy" : "eye", 34)}</span>
+      <h2>${total} / ${maxScore}</h2>
+      <p>${total >= maxScore * 0.7 ? "Hawk-level awareness." : total >= maxScore * 0.6 ? "Solid instincts — polish the early spots." : "Keep training — early recognition is the skill."}</p>
+      ${isNew ? `<p class="ov-dim">New personal best</p>` : `<p class="ov-dim">Best: ${best}/${maxScore}</p>`}
       <div class="ov-btns">
         <button class="btn ghost" id="hzAgain">Play Again</button>
         <button class="btn primary" id="hzDone">Done</button>
@@ -1554,14 +1783,22 @@ function init() {
     }
     if (action === "review") {
       const missed = missedQuestions();
+      const size = Math.min(12, Math.max(4, missed.length));
       if (missed.length) {
-        startPractice(pickWeighted(missed.map(q => ({ q, w: 1 })), Math.min(20, missed.length)), "Test Day Review", "home");
+        startPractice(pickWeighted(missed.map(q => ({ q, w: 1 })), size), "Test Day Review", "home");
         return;
       }
+      startPractice(pickWeighted(adaptivePool(), size), "Test Day Review", "home");
+      return;
     }
     const plan = Core.studyPlan(bank, state.qstats, state.exams, state.daily, state.settings.testDate, todayStr());
-    const size = Math.min(20, Math.max(10, plan.remainingToday || 10));
+    const rec = Core.dailyStudyRecommendation({
+      bank, qstats: state.qstats, exams: state.exams, daily: state.daily,
+      testDate: state.settings.testDate, today: todayStr(), nowMs: Date.now(),
+    });
+    const size = Math.min(Math.max(rec.questions, 5), bank.length);
     startPractice(pickWeighted(adaptivePool(), size), "Today's Plan", "home");
+    void plan;
   });
 
   // flashcards
@@ -1606,14 +1843,29 @@ function init() {
   });
   on($("btnExport"), "click", exportProgress);
   on($("btnOutcomePass"), "click", () => {
-    if (confirm("Log that you PASSED your real knowledge test? The snapshot below is stored only on this device.")) logOutcome("pass");
+    let pending = pendingOutcomePrediction();
+    if (!pending) pending = freezeOfficialPrediction();
+    if (!confirm(`Freeze this pre-test snapshot (${pending.readinessPct}% readiness, ${pending.coveragePct}% coverage), then log that you PASSED your real test?`)) return;
+    logOutcome("pass");
+  });
+  on($("btnFreezePrediction"), "click", () => {
+    if (pendingOutcomePrediction()) {
+      toast("Prediction already frozen", "Record your real result when it arrives.", "chart");
+      return;
+    }
+    const p = freezeOfficialPrediction();
+    renderCalibration();
+    toast("Prediction frozen", `Readiness ${p.readinessPct}% · coverage ${p.coveragePct}% · evidence ${p.evidenceClass}.`, "chart");
   });
   on($("btnStudyJoin"), "click", joinStudy);
   on($("btnDiagnostic"), "click", startDiagnostic);
   on($("btnRetentionProbes"), "click", startRetentionProbes);
   on($("btnStudyExport"), "click", exportStudyData);
   on($("btnOutcomeFail"), "click", () => {
-    if (confirm("Log that you DID NOT pass your real knowledge test? Honest data is what makes future predictions meaningful.")) logOutcome("fail");
+    let pending = pendingOutcomePrediction();
+    if (!pending) pending = freezeOfficialPrediction();
+    if (!confirm(`Freeze this pre-test snapshot (${pending.readinessPct}% readiness, ${pending.coveragePct}% coverage), then log that you DID NOT pass?`)) return;
+    logOutcome("fail");
   });
   on($("btnImport"), "click", () => $("fileImport").click());
   on($("fileImport"), "change", e => {

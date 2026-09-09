@@ -53,9 +53,11 @@ const JURISDICTIONS = {
       learnerPermit: "provisional licence",
     },
     hazardPerception: {
-      // core section of the UK theory test: 14 clips, 15 hazards, 44/75 to pass
       includedInExam: true,
       positioning: "core section",
+      trainingLabel: "Hazard identification training",
+      officialLabel: "Official-test simulation unavailable",
+      officialNote: "Road Ready uses original scenarios, not DVSA clips; this is training, not an official simulation.",
     },
   },
 };

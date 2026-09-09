@@ -41,7 +41,9 @@
       xp: 0,
       timeStudied: 0,    // seconds
       hazardBest: 0,
-      outcomes: [],      // opt-in real-test outcome journal: {date, progressPct, mockAvgPct, questionsSeen, studyMinutes, result}
+      hazardPct: 0,
+      outcomes: [],      // retrospective outcome journal (secondary to predictions)
+      predictions: [],  // immutable pre-test snapshots, primary calibration dataset
       practical: { log: [] }, // driving-log sessions: {date, minutes, conditions[], roadTypes[], skills{skillId:rating}, notes}
       study: { enrolledAt: undefined, participantId: "", confidence: [], retentionLog: [] },
       settings: defaultSettings(),
@@ -103,6 +105,7 @@ function sanitizeState(s, opts) {
       correct: num(e.correct, 0, 0, 1e6),
       total: num(e.total, 0, 1, 1e6),
       pass: bool(e.pass),
+      official: bool(e.official),
       durationSec: e.durationSec == null ? undefined : num(e.durationSec, 0, 0, 86400),
       tag: typeof e.tag === "string" ? e.tag.slice(0, 16) : undefined,
     })) : [];
@@ -118,8 +121,11 @@ function sanitizeState(s, opts) {
     s.achievements = plainObject(s.achievements);
     s.xp = num(s.xp, 0, 0, 1e9);
     s.timeStudied = num(s.timeStudied, 0, 0, 1e9);
-    s.hazardBest = num(s.hazardBest, 0, 0, 30);
-    const practical = plainObject(s.practical);
+    s.hazardBest = num(s.hazardBest, 0, 0, 75);
+    s.hazardPct = num(s.hazardPct, 0, 0, 1);
+    const practical = Array.isArray(s.practical)
+      ? { log: s.practical.filter((x) => x && typeof x === "object" && !Array.isArray(x)) }
+      : plainObject(s.practical);
     practical.log = Array.isArray(practical.log)
       ? practical.log.filter((x) => x && typeof x === "object" && !Array.isArray(x))
         .map((x) => ({
@@ -159,7 +165,36 @@ function sanitizeState(s, opts) {
           stabilitySpread: num(o.stabilitySpread, 0, 0, 100),
           diagnosticPct: num(o.diagnosticPct, 0, 0, 100) || undefined,
           jurisdiction: typeof o.jurisdiction === "string" ? o.jurisdiction.slice(0, 8) : undefined,
+          readinessEngineVersion: typeof o.readinessEngineVersion === "string" ? o.readinessEngineVersion.slice(0, 48) : undefined,
           result: o.result === "pass" ? "pass" : o.result === "fail" ? "fail" : "unknown",
+        })) : [];
+    s.predictions = Array.isArray(s.predictions)
+      ? s.predictions.filter((p) => p && typeof p === "object" && !Array.isArray(p)).map((p) => ({
+          id: typeof p.id === "string" ? p.id.slice(0, 32) : "",
+          participantId: typeof p.participantId === "string" ? p.participantId.slice(0, 32) : "",
+          jurisdiction: typeof p.jurisdiction === "string" ? p.jurisdiction.slice(0, 8) : "generic",
+          intendedTestDate: validIsoDate(p.intendedTestDate) ? p.intendedTestDate : null,
+          attemptNumber: num(p.attemptNumber, 1, 1, 1e6),
+          predictionCreatedAt: num(p.predictionCreatedAt, Date.now(), 0, 8.64e15),
+          readinessPct: num(p.readinessPct, 0, 0, 100),
+          mockAvgPct: num(p.mockAvgPct, 0, 0, 100),
+          diagnosticPct: num(p.diagnosticPct, 0, 0, 100) || null,
+          coveragePct: num(p.coveragePct, 0, 0, 100),
+          stabilitySpread: num(p.stabilitySpread, 0, 0, 100) || null,
+          questionsSeen: num(p.questionsSeen, 0, 0, 1e6),
+          studyMinutes: num(p.studyMinutes, 0, 0, 1e6),
+          skillsRated: plainObject(p.skillsRated),
+          readinessEngineVersion: typeof p.readinessEngineVersion === "string" ? p.readinessEngineVersion.slice(0, 48) : MASTERY_VERSION,
+          scoringVersion: typeof p.scoringVersion === "string" ? p.scoringVersion.slice(0, 48) : SCORING_VERSION,
+          protocolVersion: typeof p.protocolVersion === "string" ? p.protocolVersion.slice(0, 48) : PROTOCOL_VERSION,
+          contentVersion: typeof p.contentVersion === "string" ? p.contentVersion.slice(0, 96) : "",
+          appVersion: typeof p.appVersion === "string" ? p.appVersion.slice(0, 32) : null,
+          evidenceClass: strEnum(p.evidenceClass, ["weak", "moderate", "strong"], "weak"),
+          outcome: p.outcome && typeof p.outcome === "object" && !Array.isArray(p.outcome) ? {
+            result: p.outcome.result === "pass" ? "pass" : p.outcome.result === "fail" ? "fail" : "unknown",
+            officialTestDate: validIsoDate(p.outcome.officialTestDate) ? p.outcome.officialTestDate : null,
+            recordedAt: num(p.outcome.recordedAt, Date.now(), 0, 8.64e15),
+          } : null,
         })) : [];
     s.settings = Object.assign(defaultSettings(), plainObject(s.settings));
     s.settings.passMark = num(s.settings.passMark, 0.8, 0.5, 1);
@@ -212,10 +247,33 @@ function sanitizeState(s, opts) {
   /* ---------------- dates / streak / daily goal ---------------- */
   const DAY_MS = 86400000;
   const isoDay = (ms) => new Date(ms).toISOString().slice(0, 10);
+  const localDay = (dateLike) => {
+    const d = dateLike == null ? new Date() : new Date(dateLike);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+  const localDayBefore = (dayIso, days) => {
+    const [y, m, d] = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dayIso || "")
+      ? [dayIso.slice(0, 4), dayIso.slice(5, 7), dayIso.slice(8, 10)]
+      : [null, null, null];
+    if (!y) return localDay(new Date(Date.now() - (days || 1) * DAY_MS));
+    const dt = new Date(Number(y), Number(m) - 1, Number(d));
+    dt.setDate(dt.getDate() - (days || 1));
+    return localDay(dt);
+  };
   const validIsoDate = (value) => {
     if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-    const parsed = Date.parse(value + "T00:00:00Z");
-    return isFinite(parsed) && isoDay(parsed) === value;
+    const [y, m, d] = [Number(value.slice(0, 4)), Number(value.slice(5, 7)), Number(value.slice(8, 10))];
+    const parsed = new Date(y, m - 1, d);
+    return parsed.getFullYear() === y && parsed.getMonth() === m - 1 && parsed.getDate() === d;
+  };
+  const daysBetweenLocalDates = (fromIso, toIso) => {
+    if (!validIsoDate(fromIso) || !validIsoDate(toIso)) return null;
+    const from = new Date(Number(fromIso.slice(0, 4)), Number(fromIso.slice(5, 7)) - 1, Number(fromIso.slice(8, 10)));
+    const to = new Date(Number(toIso.slice(0, 4)), Number(toIso.slice(5, 7)) - 1, Number(toIso.slice(8, 10)));
+    return Math.round((Number(to) - Number(from)) / DAY_MS);
   };
 
   /** Pure streak update. Returns {count, last}. */
@@ -234,13 +292,13 @@ function sanitizeState(s, opts) {
 
   /** Build a practical daily study plan around a learner's test date. */
   function studyPlan(questions, qstats, exams, daily, testDateIso, todayIso) {
-    const today = validIsoDate(todayIso) ? todayIso : isoDay(Date.now());
+    const today = validIsoDate(todayIso) ? todayIso : localDay(Date.now());
     const todayCount = dailyCount(daily, today);
     if (!validIsoDate(testDateIso)) {
       return { status: "no-date", daysLeft: null, dailyTarget: DAILY_GOAL, todayCount, remainingToday: Math.max(0, DAILY_GOAL - todayCount) };
     }
 
-    const daysLeft = Math.round((Date.parse(testDateIso + "T00:00:00Z") - Date.parse(today + "T00:00:00Z")) / DAY_MS);
+    const daysLeft = daysBetweenLocalDates(today, testDateIso) == null ? null : Math.max(-1, daysBetweenLocalDates(today, testDateIso));
     const bank = Array.isArray(questions) ? questions : [];
     const stats = plainObject(qstats);
     const unseen = bank.filter((q) => !stats[q.id] || !stats[q.id].seen).length;
@@ -276,7 +334,7 @@ function sanitizeState(s, opts) {
     { id: "signs",       name: "Sign Master",       desc: "Know every sign flashcard",           test: (s) => !!s.allSignsKnown },
     { id: "marathon",    name: "Marathoner",        desc: "Answer 100+ questions in one session",test: (s) => s.sessionAnswers >= 100 },
     { id: "sharp",       name: "Sharpshooter",      desc: "85%+ accuracy across 100+ answers",   test: (s) => s.answered >= 100 && s.accuracy >= 0.85 },
-    { id: "hawk",        name: "Hawk Eye",          desc: "Score 24+ in Hazard Perception",      test: (s) => s.hazardBest >= 24 },
+    { id: "hawk",        name: "Hawk Eye",          desc: "Score 70%+ in Hazard Perception",      test: (s) => s.hazardPct >= 0.7 },
     { id: "ready",       name: "Almost There",      desc: "Reach 80% study progress",            test: (s) => s.readinessPct >= 80 },
   ];
 
@@ -298,7 +356,7 @@ function sanitizeState(s, opts) {
   /** Evaluate which achievement ids are satisfied by a progress snapshot. Pure. */
   function evaluateAchievements(snap) {
     const s = Object.assign({
-      answered: 0, accuracy: 0, streak: 0, examsPassed: 0, hazardBest: 0,
+      answered: 0, accuracy: 0, streak: 0, examsPassed: 0, hazardBest: 0, hazardPct: 0,
       readinessPct: 0, allSignsKnown: false, perfectRun: false, sessionAnswers: 0,
     }, snap);
     return ACHIEVEMENTS.filter((a) => a.test(s)).map((a) => a.id);
@@ -676,6 +734,7 @@ function assembleExam(opts) {
       stabilitySpread: num(entry && entry.stabilitySpread, 0, 0, 100),
       diagnosticPct: num(entry && entry.diagnosticPct, 0, 0, 100) || undefined,
       jurisdiction: typeof (entry && entry.jurisdiction) === "string" ? entry.jurisdiction.slice(0, 8) : undefined,
+      readinessEngineVersion: MASTERY_VERSION,
       questionsSeen: num(entry && entry.questionsSeen, 0, 0, 1e6),
       studyMinutes: num(entry && entry.studyMinutes, 0, 0, 1e6),
       result: OUTCOME_RESULT_VALUES.includes(entry && entry.result) ? entry.result : "unknown",
@@ -763,6 +822,14 @@ function assembleExam(opts) {
       if (!t.n) return { id: c.id, name: c.name, score: null, coverage: 0, skillsPracticed: 0, skillsTotal: c.skills.length };
       return { id: c.id, name: c.name, score: t.sum / t.n, coverage: t.skills.size / c.skills.length, skillsPracticed: t.skills.size, skillsTotal: c.skills.length };
     });
+  }
+
+  /** Safely read the practical log from either current or legacy state. */
+  function practicalLog(stateLike) {
+    const p = stateLike && stateLike.practical;
+    if (Array.isArray(p)) return p;
+    if (p && Array.isArray(p.log)) return p.log;
+    return [];
   }
 
   /** Overall practical score: mean of scored competencies × mean coverage. */
@@ -981,11 +1048,14 @@ function assembleExam(opts) {
       },
       practicalSessions: (stateLike.practical && Array.isArray(stateLike.practical.log)
         ? stateLike.practical.log.map((s) => ({ date: s.date, minutes: s.minutes, skills: clone(s.skills || {}) }))
-        : []),
+        : Array.isArray(stateLike.practical)
+          ? stateLike.practical.map((s) => ({ date: s.date, minutes: s.minutes, skills: clone(s.skills || {}) }))
+          : []),
       outcomes: (stateLike.outcomes || []).map((o) => ({
         date: o.date, progressPct: o.progressPct, mockAvgPct: o.mockAvgPct,
         questionsSeen: o.questionsSeen, studyMinutes: o.studyMinutes, result: o.result,
       })),
+      predictions: (stateLike.predictions || []).map((p) => clone(p)),
     };
   }
 
@@ -1028,6 +1098,99 @@ function assembleExam(opts) {
     }
     const risks = Math.max(0, Math.min(4, riskCount || 0));
     return Math.min(25, goal + risks * 5);
+  }
+
+  function dailyStudyRecommendation(opts) {
+    const o = opts || {};
+    const bank = Array.isArray(o.bank) ? o.bank : [];
+    const qstats = plainObject(o.qstats);
+    const exams = Array.isArray(o.exams) ? o.exams : [];
+    const nowMs = o.nowMs == null ? Date.now() : o.nowMs;
+    const today = validIsoDate(o.today) ? o.today : localDay(nowMs);
+    const daysLeft = o.daysUntilTest == null && validIsoDate(o.testDate)
+      ? daysBetweenLocalDates(today, o.testDate) : o.daysUntilTest;
+    const todayCount = num(dailyCount(o.daily, today), 0, 0, 1e6);
+
+    const conceptStats = new Map();
+    for (const q of bank) {
+      const key = conceptKeyOf(q);
+      if (!conceptStats.has(key)) conceptStats.set(key, { questions: [], seen: 0, wrong: 0, due: 0 });
+      const c = conceptStats.get(key);
+      c.questions.push(q);
+      const st = qstats[q.id];
+      if (!st || !st.seen) continue;
+      c.seen++;
+      c.wrong += num(st.wrong, 0, 0, 1e6);
+      if (schedDue(st, nowMs) === "now" || schedDue(st, nowMs) === "overdue") c.due++;
+    }
+    const withMastery = [];
+    for (const [concept, c] of conceptStats) {
+      const mastery = conceptMastery(c.questions, qstats);
+      c.key = concept;
+      c.mastery = mastery;
+      c.unseen = c.questions.length - c.seen;
+      c.risk = (c.seen > 0 && mastery < 0.65) || c.unseen > 0;
+      withMastery.push(c);
+    }
+    const ranked = withMastery
+      .filter((c) => c.risk)
+      .sort((a, b) => (a.mastery + (a.seen ? 0 : -1)) - (b.mastery + (b.seen ? 0 : -1))
+        || b.wrong - a.wrong
+        || b.due - a.due
+        || b.unseen - a.unseen)
+      .slice(0, Math.max(1, Math.min(4, withMastery.length)));
+
+    const reviewDue = bank.filter((q) => {
+      const st = qstats[q.id];
+      return st && st.seen > 0 && (schedDue(st, nowMs) === "now" || schedDue(st, nowMs) === "overdue");
+    }).length;
+    const unseenNeeded = ranked.reduce((t, c) => t + Math.min(c.unseen, 2), 0);
+    const recentMocks = exams.filter((e) => e && e.tag !== "diagnostic").slice(-2).map((e) => Math.round(e.pct * 100));
+    const stability = mockStability(exams, 3);
+    const coverage = bankCoverage(bank, qstats);
+
+    let questions;
+    let action = "practice";
+    if (daysLeft === 0) {
+      action = "review";
+      questions = Math.min(12, Math.max(4, Math.round((reviewDue || 1) * 0.6)));
+    } else if (daysLeft != null && daysLeft > 0 && daysLeft <= 7) {
+      const passed = exams.some((e) => e.pass);
+      action = passed ? "practice" : "exam";
+      questions = Math.max(12, Math.min(35, reviewDue + unseenNeeded + Math.round(coverage * 8)));
+      if (action === "exam") questions = Math.max(15, Math.min(40, questions + 10));
+    } else {
+      const base = Math.max(DAILY_GOAL, reviewDue + unseenNeeded);
+      const coveragePressure = coverage < 0.7 ? 8 : coverage < 0.9 ? 4 : 0;
+      questions = Math.max(10, Math.min(40, base + coveragePressure));
+    }
+    questions = Math.max(0, Math.min(questions - todayCount, bank.length));
+    if (!questions) action = "practice";
+
+    const focusConcepts = ranked.map((c) => c.key);
+    const estimatedMinutes = Math.max(1, Math.round(questions * (action === "exam" ? 0.85 : 0.75)));
+    const rationale = [];
+    if (ranked[0]) rationale.push(`${ranked[0].key} is your weakest concept`);
+    if (reviewDue) rationale.push(`${reviewDue} reviews are due`);
+    if (unseenNeeded) rationale.push(`${unseenNeeded} unseen questions are needed`);
+    if (recentMocks.length === 2) rationale.push(`your last two mocks were ${recentMocks[0]}% and ${recentMocks[1]}%`);
+    if (stability != null && stability > 0.15) rationale.push("recent mock scores are unstable");
+    if (daysLeft != null && daysLeft >= 0) rationale.push(`your test is in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`);
+    const evidence = [bank.length ? 1 : 0, ranked.length, recentMocks.length, stability != null ? 1 : 0, daysLeft != null ? 1 : 0]
+      .reduce((t, x) => t + x, 0);
+    return {
+      action,
+      questions,
+      estimatedMinutes,
+      focusConcepts,
+      reviewDue,
+      unseenNeeded,
+      rationale,
+      confidence: evidence >= 4 ? "high" : evidence >= 3 ? "medium" : "low",
+      daysLeft,
+      todayCount,
+      coveragePct: Math.round(coverage * 100),
+    };
   }
 
   /* ---------------- calibration (outcome → probability) ---------------- */
@@ -1220,31 +1383,36 @@ function assembleExam(opts) {
   /** Freeze the current state into an immutable prediction. Pure. */
   function freezePrediction(predictions, participantId, jurisdiction, snapshot, opts) {
     const o = opts || {};
-    const intendedTestDate = typeof o.intendedTestDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(o.intendedTestDate)
-      ? o.intendedTestDate : null;
+    const intendedTestDate = validIsoDate(o.intendedTestDate) ? o.intendedTestDate : null;
     const coveragePct = num(snapshot.coveragePct, 0, 0, 100);
     const skillsRated = Object.keys(snapshot.skillsRated || {}).length;
-    const evidenceClass = coveragePct >= 80 && skillsRated >= 3 ? "strong"
-      : coveragePct >= 50 ? "moderate" : "weak";
+    const readinessPct = num(snapshot.readinessPct, 0, 0, 100);
+    const mockAvgPct = num(snapshot.mockAvgPct, 0, 0, 100);
+    const stabilitySpread = num(snapshot.stabilitySpread, 0, 0, 100);
+    const questionsSeen = num(snapshot.questionsSeen, 0, 0, 1e6);
+    const studyMinutes = num(snapshot.studyMinutes, 0, 0, 1e6);
+    const evidenceClass = coveragePct >= 80 && skillsRated >= 3 && mockAvgPct >= 60 ? "strong"
+      : coveragePct >= 50 && questionsSeen >= 20 ? "moderate" : "weak";
     return {
-      id: "pred-" + Math.random().toString(16).slice(2, 10),
+      id: "pred-" + (typeof o.id === "string" && o.id ? o.id.slice(0, 32) : Math.random().toString(16).slice(2, 10)),
       participantId,
       jurisdiction: jurisdiction || "generic",
       intendedTestDate,
       attemptNumber: nextAttemptNumber(predictions, participantId),
       predictionCreatedAt: typeof o.nowMs === "number" ? o.nowMs : Date.now(),
-      readinessPct: num(snapshot.readinessPct, 0, 0, 100),
-      mockAvgPct: num(snapshot.mockAvgPct, 0, 0, 100),
+      readinessPct,
+      mockAvgPct,
       diagnosticPct: num(snapshot.diagnosticPct, 0, 0, 100) || null,
       coveragePct,
-      stabilitySpread: num(snapshot.stabilitySpread, 0, 0, 100) || null,
-      questionsSeen: num(snapshot.questionsSeen, 0, 0, 1e6),
-      studyMinutes: num(snapshot.studyMinutes, 0, 0, 1e6),
+      stabilitySpread: stabilitySpread || null,
+      questionsSeen,
+      studyMinutes,
       skillsRated: Object.assign({}, snapshot.skillsRated || {}),
       readinessEngineVersion: MASTERY_VERSION,
       scoringVersion: SCORING_VERSION,
       protocolVersion: PROTOCOL_VERSION,
       contentVersion: bankFingerprint(snapshot.bank || []),
+      appVersion: typeof (o.appVersion || snapshot.appVersion) === "string" ? (o.appVersion || snapshot.appVersion).slice(0, 32) : null,
       evidenceClass,
       outcome: null, // attached exactly once via attachOutcome()
     };
@@ -1258,7 +1426,7 @@ function assembleExam(opts) {
   function attachOutcome(prediction, result, officialTestDate, recordedAtMs) {
     if (!prediction || prediction.outcome) return prediction;
     if (!["pass", "fail"].includes(result)) return prediction;
-    const out = { result, officialTestDate: officialTestDate || null, recordedAt: nowMs(recordedAtMs) };
+    const out = { result, officialTestDate: validIsoDate(officialTestDate) ? officialTestDate : null, recordedAt: nowMs(recordedAtMs) };
     return Object.assign({}, prediction, { outcome: out });
   }
   function nowMs(ms) { return typeof ms === "number" && isFinite(ms) ? ms : Date.now(); }
@@ -1295,7 +1463,7 @@ function assembleExam(opts) {
   /* ---------------- export surface ---------------- */
   const RoadReadyCore = {
     SCHEMA_VERSION, DAILY_GOAL, EXAM_SECONDS_PER_QUESTION, MAX_EXAM_HISTORY,
-    DAY_MS, isoDay, validIsoDate, defaultState, defaultSettings, migrateState, sanitizeState,
+    DAY_MS, isoDay, localDay, localDayBefore, daysBetweenLocalDates, validIsoDate, defaultState, defaultSettings, migrateState, sanitizeState,
     touchStreak, dailyCount, bumpDaily, studyPlan,
     ACHIEVEMENTS, levelFor, xpForAnswer, xpForExam, evaluateAchievements,
     XP_PER_CORRECT, XP_PER_WRONG, XP_EXAM_PASS, XP_EXAM_PERFECT, XP_PER_HAZARD_POINT,
@@ -1308,11 +1476,11 @@ function assembleExam(opts) {
     OUTCOME_RESULT_VALUES, appendOutcome, mockAverage, progressBucket,
     PRACTICAL_RATINGS, RATING_VALUE, COMPETENCIES, CONDITIONS, ROAD_TYPES,
     skillIds, competencyName, appendPracticalSession, competencyScores,
-    practicalScore, drivingReadiness, nextLessonFocus, nextPracticeSkill,
+    practicalScore, practicalLog, drivingReadiness, nextLessonFocus, nextPracticeSkill,
     RETENTION_DELAY_DAYS, RETENTION_PROBE_SIZE, createEnrollment,
     retentionProbePool, studyMetrics, buildStudyExport,
     PROTOCOL_VERSION, SCORING_VERSION, MASTERY_VERSION, bankFingerprint,
-    readinessBand, strongAndRiskTopics, recommendedToday,
+    readinessBand, strongAndRiskTopics, recommendedToday, dailyStudyRecommendation,
     MIN_BUCKET_N, MAX_INTERVAL_WIDTH, CALIBRATION_BUCKETS, mockStability, bankCoverage,
     freezePrediction, attachOutcome,
     wilsonInterval, bucketFor, calibrationCurve, calibrationRowFor, readinessNarrative, confidenceCalibration,

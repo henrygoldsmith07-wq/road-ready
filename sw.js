@@ -3,7 +3,7 @@
    network refresh (stale-while-revalidate) for same-origin GETs. */
 "use strict";
 
-const VERSION = "v5";
+const VERSION = "v6";
 const CACHE = `roadready-${VERSION}`;
 const SHELL = [
   "./",
@@ -24,7 +24,7 @@ const SHELL = [
 
 self.addEventListener("install", (e) => {
   e.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())
+    caches.open(CACHE).then((c) => c.addAll(SHELL))
   );
 });
 

@@ -47,15 +47,24 @@
             <div class="ring-label"><span id="ringPct">0%</span><small>progress · uncalibrated</small></div>
           </div>
         </div>
-        <div class="quick-actions">
-          <button class="qa" id="qaPractice"><span class="qa-ico" data-icon="book" data-size="20"></span>Practice</button>
-          <button class="qa" id="qaExam"><span class="qa-ico" data-icon="clipboard" data-size="20"></span>Mock Exam</button>
-          <button class="qa" id="qaPractical"><span class="qa-ico" data-icon="car" data-size="20"></span>Drive Log</button>
-          <button class="qa" id="qaCards"><span class="qa-ico" data-icon="layers" data-size="20"></span>Flashcards</button>
-          <button class="qa" id="qaReview"><span class="qa-ico" data-icon="target" data-size="20"></span>Review Missed</button>
-        </div>
       </div>
 
+      <div class="card today-plan" id="todayPlanCard">
+        <div class="plan-kicker">Today's plan</div>
+        <div class="plan-title" id="planTitle">Set your test date</div>
+        <p id="planDetail">Road Ready will then tell you exactly what to study each day.</p>
+        <ul class="plan-rationale" id="planRationale" hidden></ul>
+        <div class="plan-meta" id="planMeta"></div>
+        <button class="btn primary plan-action" id="btnPlanAction">Set test date</button>
+      </div>
+
+      <div class="quick-actions secondary-actions">
+        <button class="qa" id="qaPractice"><span class="qa-ico" data-icon="book" data-size="20"></span>Practice</button>
+        <button class="qa" id="qaExam"><span class="qa-ico" data-icon="clipboard" data-size="20"></span>Mock Exam</button>
+        <button class="qa" id="qaPractical"><span class="qa-ico" data-icon="car" data-size="20"></span>Drive Log</button>
+        <button class="qa" id="qaCards"><span class="qa-ico" data-icon="layers" data-size="20"></span>Signs</button>
+        <button class="qa" id="qaReview"><span class="qa-ico" data-icon="target" data-size="20"></span>Review</button>
+      </div>
       <div class="stat-strip" id="statStrip">
         <div class="stat"><span id="stAnswered">0</span><small>answered</small></div>
         <div class="stat"><span id="stAccuracy">–</span><small>accuracy</small></div>
@@ -85,16 +94,6 @@
       <div class="card daily-goal" id="dailyGoal">
         <div class="dg-label">Today's goal: <b>0/10</b> questions answered</div>
         <div class="dg-bar"><div class="dg-bar-fill"></div></div>
-      </div>
-
-      <div class="card study-plan" id="studyPlanCard">
-        <div class="plan-copy">
-          <div class="plan-kicker">Test Day Plan</div>
-          <div class="plan-title" id="planTitle">Turn practice into a plan</div>
-          <p id="planDetail">Add your test date and Road Ready will calculate what to study each day.</p>
-          <div class="plan-meta" id="planMeta"></div>
-        </div>
-        <button class="btn ghost plan-action" id="btnPlanAction">Set test date</button>
       </div>
 
       <h2 class="section-title">Topics</h2>
@@ -418,6 +417,10 @@
     <section class="view" id="view-hazard">
       <h1 class="view-title">Hazard Perception</h1>
       <p class="view-sub" id="hazardSub">Tap <b>SLOW</b> (or press <b>Space</b>) the moment a hazard starts to develop — before you'd need to brake hard. Earlier = more points.</p>
+      <details class="hz-access-details">
+        <summary>Text-based hazard descriptions</summary>
+        <div id="hzAccessibleList"></div>
+      </details>
       <div class="hz-stage card" id="hzStage">
         <svg id="hzSvg" viewBox="0 0 360 420" preserveAspectRatio="xMidYMid meet"></svg>
         <div class="hz-flash" id="hzFlash" hidden></div>
@@ -454,16 +457,16 @@
       <h2 class="section-title">Exam history</h2>
       <div class="card"><ul class="history-list" id="historyList"></ul></div>
 
-      <h2 class="section-title">Real test outcomes <small class="beta-pill">beta</small></h2>
+      <h2 class="section-title">Official-test predictions <small class="beta-pill">calibration</small></h2>
       <div class="card" id="calibrationCard">
         <p id="calibrationNarrative" class="focus-line" style="margin:0 0 10px;"></p>
         <p class="state-note" style="margin:0 0 10px;" id="calibrationDisclaimer"></p>
         <div id="outcomeList"></div>
         <div class="data-actions" style="margin-top:10px; flex-wrap:wrap;">
-          <button class="btn primary" id="btnOutcomePass">I passed my real test</button>
+          <button class="btn primary" id="btnFreezePrediction">Freeze pre-test prediction</button>
+          <button class="btn ghost" id="btnOutcomePass">I passed my real test</button>
           <button class="btn ghost" id="btnOutcomeFail">I didn't pass</button>
         </div>
-      </div>
       </div>
 
       <h2 class="section-title">Learner study <small class="beta-pill">research</small></h2>

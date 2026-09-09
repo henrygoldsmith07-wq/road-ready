@@ -12,7 +12,7 @@ test.describe("readiness panel", () => {
     await freshApp(page);
     if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
     await expect(page.locator("#readinessPanel")).toBeVisible();
-    await expect(page.locator("#rpBand")).toHaveText("Not Started");
+    await expect(page.locator("#rpBand")).toContainText("Not Started");
     const list = await page.locator("#rpList").textContent();
     expect(list).toContain("Recommended today:");
     expect(list).toMatch(/\d+ questions/);
@@ -32,7 +32,7 @@ test.describe("readiness panel", () => {
     await page.reload();
     if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
     const band = (await page.locator("#rpBand").textContent()).trim();
-    expect(["Ready", "Nearly Ready"]).toContain(band);
+    expect(["Ready", "Nearly Ready"].some((label) => band.startsWith(label))).toBe(true);
     const list = await page.locator("#rpList").textContent();
     expect(list).toContain("Strong:");
   });

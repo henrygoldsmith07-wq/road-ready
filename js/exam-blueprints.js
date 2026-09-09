@@ -19,7 +19,7 @@
 
 const EXAM_BLUEPRINTS = {
   CA: {
-    label: "California Official Simulation",
+    label: "California DMV-format simulation",
     sourceId: "ca-dmv-driver-handbook",
     questionCount: 46,
     minCorrect: 38,
@@ -28,7 +28,7 @@ const EXAM_BLUEPRINTS = {
     notes: "Up to 8 wrong allowed (38/46). Three attempts per application fee; after that the fee renews.",
   },
   TX: {
-    label: "Texas Official Simulation",
+    label: "Texas DPS-format simulation",
     sourceId: "tx-dps-driver-handbook",
     questionCount: 30,
     minCorrect: 21,
@@ -37,7 +37,7 @@ const EXAM_BLUEPRINTS = {
     notes: "21 of 30 (70%) to pass. Road signs are tested within the same exam.",
   },
   NY: {
-    label: "New York Official Simulation",
+    label: "New York DMV-format simulation",
     sourceId: "ny-dmv-driver-manual",
     questionCount: 20,
     minCorrect: 14,
@@ -46,7 +46,7 @@ const EXAM_BLUEPRINTS = {
     notes: "14 of 20 (70%) to pass.",
   },
   FL: {
-    label: "Florida Official Simulation",
+    label: "Florida FLHSMV-format simulation",
     sourceId: "fl-flhsmv-handbook",
     questionCount: 50,
     minCorrect: 40,
@@ -55,7 +55,7 @@ const EXAM_BLUEPRINTS = {
     notes: "40 of 50 (80%) within 60 minutes. Taken online or at the service center.",
   },
   WA: {
-    label: "Washington Official Simulation",
+    label: "Washington DOL-format simulation",
     sourceId: "wa-dol-driver-guide",
     questionCount: 40,
     minCorrect: 32,
@@ -64,7 +64,7 @@ const EXAM_BLUEPRINTS = {
     notes: "32 of 40 (80%) to pass.",
   },
   PA: {
-    label: "Pennsylvania Official Simulation",
+    label: "Pennsylvania PennDOT-format simulation",
     sourceId: "pa-penndot-driver-manual",
     questionCount: 18,
     minCorrect: 15,
@@ -73,13 +73,13 @@ const EXAM_BLUEPRINTS = {
     notes: "15 of 18 (83%) to pass.",
   },
   UK: {
-    label: "UK Official Simulation",
+    label: "DVSA-format simulation",
     sourceId: "uk-highway-code",
     questionCount: 50,
     minCorrect: 43,
     timeLimitMin: 57,
     topicWeights: null,
-    notes: "Car theory: 43 of 50 (86%) in 57 minutes. Hazard perception (14 clips, 44/75) is a separate same-day section — train it as a core section, not a bonus.",
+    notes: "DVSA car-theory format: 43 of 50 (86%) in 57 minutes. Road Ready is not endorsed by DVSA. Hazard perception (14 clips, 44/75) is trained separately as hazard-identification training.",
   },
 };
 
