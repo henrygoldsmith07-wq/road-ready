@@ -2,6 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { loadContent } from "../scripts/content-loader.mjs";
 import { runChecks } from "../scripts/content-checks.mjs";
+import Jur from "../js/jurisdictions.js";
 
 const data = loadContent();
 
@@ -30,6 +31,13 @@ describe("jurisdiction module contract", () => {
     expect(data.JURISDICTIONS.us.terminology.regionLabel).toBe("state");
     expect(data.JURISDICTIONS.us.terminology.rulesLabel).toBe("State Rules");
     expect(data.JURISDICTIONS.uk.hazardPerception.includedInExam).toBe(true);
+  });
+
+  it("resolves packs to country modules without UK-specific application branches", () => {
+    expect(Jur.jurisdictionForRegion("CA").id).toBe("us");
+    expect(Jur.jurisdictionForRegion("UK").id).toBe("uk");
+    expect(Jur.jurisdictionForRegion("generic").id).toBe(data.ACTIVE_COUNTRY);
+    expect(Jur.jurisdictionForRegion("unknown").id).toBe(data.ACTIVE_COUNTRY);
   });
 
   it("registry regions, packs and blueprints agree exactly", () => {
