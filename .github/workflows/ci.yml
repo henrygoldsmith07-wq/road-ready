@@ -33,10 +33,6 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20, cache: npm }
       - run: npm ci
-      - name: Generate provenance manifest for this branch
-        run: |
-          npm run provenance:update
-          node -e "const fs=require('fs'); console.log('MANIFEST_B64_BEGIN'); console.log(fs.readFileSync('content-manifest.json').toString('base64')); console.log('MANIFEST_B64_END')"
       - run: npm run test:unit
       - run: npm run validate   # strict content QA incl. provenance + freshness + blueprints + jurisdiction contract
       - run: npm run hygiene    # cross-project contamination guard
