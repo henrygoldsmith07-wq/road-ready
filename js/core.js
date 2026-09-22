@@ -634,17 +634,12 @@ function reviewSched(sched, right, nowMs, quality) {
   }
 
   /**
-   * Assemble a mock exam.
-   * @param {object} opts {bank, n, qstats, weakBias, rand, nowMs, flags}
-   * Stratified: honors the topic blueprint so every mock mirrors the real
-   * test's topic mix; weakBias reserves ~60% of seats for the 3 weakest topics.
+   * Return whether a jurisdiction pool can support the blueprint's full
+   * official question count using unique questions.
+   * @param {Array} bank
+   * @param {{questionCount?: number}|null|undefined} blueprint
    */
-  /**
- * @param {{bank: Array, n: number, qstats?: object, weakBias?: boolean, rand?: Function,
- *     nowMs?: number, flags?: object, weights?: object|null,
- *     samplingMode?: "adaptive"|"representative"|"fixed", seed?: number}} opts
- */
-function officialExamAvailability(bank, blueprint) {
+  function officialExamAvailability(bank, blueprint) {
     const available = Array.isArray(bank) ? bank.length : 0;
     const rawRequired = blueprint && Number.isFinite(blueprint.questionCount)
       ? Math.floor(blueprint.questionCount) : 0;
@@ -657,6 +652,14 @@ function officialExamAvailability(bank, blueprint) {
     };
   }
 
+  /**
+   * Assemble a mock exam.
+   * Stratified: honors the topic blueprint so every mock mirrors the real
+   * test's topic mix; weakBias reserves ~60% of seats for the 3 weakest topics.
+   * @param {{bank: Array, n: number, qstats?: object, weakBias?: boolean, rand?: Function,
+   *     nowMs?: number, flags?: object, weights?: object|null,
+   *     samplingMode?: "adaptive"|"representative"|"fixed", seed?: number}} opts
+   */
   function assembleExam(opts) {
     const bank = opts.bank, n = Math.min(opts.n, bank.length), qstats = opts.qstats || {};
     // Sampling modes:
