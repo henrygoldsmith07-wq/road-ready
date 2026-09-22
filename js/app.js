@@ -18,8 +18,12 @@ const FALLBACK_HAZARD = { includedInExam: false, positioning: "bonus training" }
 /* Country follows the chosen pack: UK pack → UK module, everything else → US.
    Keeps terminology, hazard positioning and exam naming correct per learner. */
 function countryForPack(packId) {
+  if (typeof Jur.jurisdictionForRegion === "function") return Jur.jurisdictionForRegion(packId);
   const all = (Jur.JURISDICTIONS) || {};
-  if (packId === "UK" && all.uk) return all.uk;
+  const selected = Object.values(all).find((c) =>
+    c && c.active && Array.isArray(c.regions) && c.regions.includes(packId)
+  );
+  if (selected) return selected;
   if (Jur.ACTIVE_COUNTRY && all[Jur.ACTIVE_COUNTRY]) return all[Jur.ACTIVE_COUNTRY];
   return Object.values(all).find((c) => c && c.active) || null;
 }
