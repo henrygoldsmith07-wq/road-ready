@@ -31,6 +31,9 @@ const JURISDICTIONS = {
       examName: "knowledge test",
       examShort: "written test",
       learnerPermit: "learner's permit",
+      regionLabel: "state",
+      rulesLabel: "State Rules",
+      sourceLabel: "the official driver handbook",
     },
     hazardPerception: {
       // honesty note: most US states do NOT run a hazard-perception test
@@ -51,6 +54,9 @@ const JURISDICTIONS = {
       examName: "theory test",
       examShort: "theory test",
       learnerPermit: "provisional licence",
+      regionLabel: "country",
+      rulesLabel: "Highway Code Rules",
+      sourceLabel: "official Highway Code guidance",
     },
     hazardPerception: {
       includedInExam: true,
