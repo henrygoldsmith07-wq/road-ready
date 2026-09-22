@@ -13,7 +13,7 @@ describe("jurisdiction module contract", () => {
     expect(country).toBeTruthy();
     expect(country.regions.length).toBeGreaterThanOrEqual(6);
     for (const c of activeCountries) {
-      for (const key of ["agencyShort", "examName", "learnerPermit"]) {
+      for (const key of ["agencyShort", "examName", "learnerPermit", "regionLabel", "rulesLabel", "sourceLabel"]) {
         expect(typeof c.terminology[key]).toBe("string");
       }
       expect(typeof c.hazardPerception.includedInExam).toBe("boolean");
@@ -24,6 +24,11 @@ describe("jurisdiction module contract", () => {
     expect(data.JURISDICTIONS.uk).toBeTruthy();
     expect(data.JURISDICTIONS.uk.regions).toEqual(["UK"]);
     expect(data.JURISDICTIONS.uk.terminology.agencyShort).toBe("DVSA");
+    expect(data.JURISDICTIONS.uk.terminology.regionLabel).toBe("country");
+    expect(data.JURISDICTIONS.uk.terminology.rulesLabel).toBe("Highway Code Rules");
+    expect(data.JURISDICTIONS.uk.terminology.sourceLabel).toContain("Highway Code");
+    expect(data.JURISDICTIONS.us.terminology.regionLabel).toBe("state");
+    expect(data.JURISDICTIONS.us.terminology.rulesLabel).toBe("State Rules");
     expect(data.JURISDICTIONS.uk.hazardPerception.includedInExam).toBe(true);
   });
 
@@ -57,8 +62,10 @@ describe("jurisdiction module contract", () => {
   it("missing terminology FAILS the build", () => {
     const mutated = JSON.parse(JSON.stringify(data));
     delete mutated.JURISDICTIONS.us.terminology.examName;
+    delete mutated.JURISDICTIONS.uk.terminology.rulesLabel;
     const r = runChecks(mutated);
     expect(r.errors.some((e) => e.rule === "jurisdictions" && /terminology\.examName/.test(e.msg))).toBe(true);
+    expect(r.errors.some((e) => e.rule === "jurisdictions" && /terminology\.rulesLabel/.test(e.msg))).toBe(true);
   });
 
   it("jurisdictionTree joins registry + packs + blueprints into the product map", () => {
