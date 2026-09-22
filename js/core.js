@@ -644,7 +644,20 @@ function reviewSched(sched, right, nowMs, quality) {
  *     nowMs?: number, flags?: object, weights?: object|null,
  *     samplingMode?: "adaptive"|"representative"|"fixed", seed?: number}} opts
  */
-function assembleExam(opts) {
+function officialExamAvailability(bank, blueprint) {
+    const available = Array.isArray(bank) ? bank.length : 0;
+    const rawRequired = blueprint && Number.isFinite(blueprint.questionCount)
+      ? Math.floor(blueprint.questionCount) : 0;
+    const required = Math.max(0, rawRequired);
+    return {
+      full: required > 0 && available >= required,
+      available,
+      required,
+      missing: Math.max(0, required - available),
+    };
+  }
+
+  function assembleExam(opts) {
     const bank = opts.bank, n = Math.min(opts.n, bank.length), qstats = opts.qstats || {};
     // Sampling modes:
     //   adaptive       — practice/weak-topic exams; weights lean toward the
@@ -1471,7 +1484,7 @@ function assembleExam(opts) {
     readiness, topicMastery, catAccuracy,
     adaptiveWeights, buildAdaptivePool, pickWeighted, missedQuestions,
     defaultSched, reviewSched, schedDue,
-    shuffle, timeLimitSecs, gradeExam, examBlueprint, assembleExam,
+    shuffle, timeLimitSecs, gradeExam, examBlueprint, assembleExam, officialExamAvailability,
     hazardScore,
     OUTCOME_RESULT_VALUES, appendOutcome, mockAverage, progressBucket,
     PRACTICAL_RATINGS, RATING_VALUE, COMPETENCIES, CONDITIONS, ROAD_TYPES,
