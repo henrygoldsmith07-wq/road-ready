@@ -5,7 +5,15 @@ const Core = window.RoadReadyCore;
 const Packs = window.RoadReadyPacks;
 const BLUEPRINTS = (window.RoadReadyBlueprints || {}).EXAM_BLUEPRINTS || {};
 const Jur = window.RoadReadyJurisdictions || {};
-const FALLBACK_TERMS = { agencyShort: "DMV", examName: "knowledge test", examShort: "written test", learnerPermit: "learner's permit" };
+const FALLBACK_TERMS = {
+  agencyShort: "DMV",
+  examName: "knowledge test",
+  examShort: "written test",
+  learnerPermit: "learner's permit",
+  regionLabel: "state",
+  rulesLabel: "State Rules",
+  sourceLabel: "the official driver handbook",
+};
 const FALLBACK_HAZARD = { includedInExam: false, positioning: "bonus training" };
 /* Country follows the chosen pack: UK pack → UK module, everything else → US.
    Keeps terminology, hazard positioning and exam naming correct per learner. */
@@ -443,10 +451,11 @@ function startSetup(mode, focusCat) {
     const stateQuestions = bank.filter(q => Array.isArray(q.jurisdiction) && q.jurisdiction.includes(state.settings.statePack));
     if (stateQuestions.length) {
       const pack = Packs.STATE_PACKS[state.settings.statePack];
+      const terms = termsForPack();
       items.splice(1, 0, {
-        id: "state-rules", icon: "scale", name: `${pack.name} State Rules`,
-        desc: `${stateQuestions.length} jurisdiction-specific questions · every answer cites the official handbook`,
-        action: () => startPractice(shuffle(stateQuestions), `${pack.name} State Rules`, "home"),
+        id: "state-rules", icon: "scale", name: `${pack.name} · ${terms.rulesLabel}`,
+        desc: `${stateQuestions.length} jurisdiction-specific questions · every answer cites ${terms.sourceLabel}`,
+        action: () => startPractice(shuffle(stateQuestions), terms.rulesLabel, "home"),
       });
     }
     Object.entries(CATEGORIES).forEach(([id, c]) => {
@@ -475,13 +484,14 @@ function startSetup(mode, focusCat) {
     }
     items.push(
       { id: "weak", icon: "target", name: "Weak Topics Exam", desc: "20 questions weighted toward your lowest categories (extra practice)", action: () => startExam(20, true) },
-      { id: "quick", icon: "zap", name: "Quick Check — 10 questions", desc: "5-minute diagnostic across your state's pool (extra practice)", action: () => startExam(10) },
+      { id: "quick", icon: "zap", name: "Quick Check — 10 questions", desc: `5-minute diagnostic across your selected ${termsForPack().examName} pool (extra practice)`, action: () => startExam(10) },
     );
     items.forEach(it => list.appendChild(setupRow(it)));
     if (!bp) {
       const note = document.createElement("p");
       note.className = "setting-note";
-      note.textContent = "Pick your state / country pack first (Settings → \"Your state / country pack\") — the mock exam then matches that test's real count, time and pass mark.";
+      const terms = termsForPack(packId);
+      note.textContent = `Pick your ${terms.regionLabel} pack first (Settings → "Your jurisdiction pack") — the mock exam then matches that test's published count, time and pass mark.`;
       list.appendChild(note);
     } else {
       const notes = document.createElement("p");
@@ -1836,9 +1846,10 @@ function init() {
     renderHome();
     const pack = Packs.STATE_PACKS[e.target.value] || Packs.STATE_PACKS.generic;
     const n = (pack.questions || []).length;
+    const terms = termsForPack(e.target.value);
     const scopeMsg = e.target.value === "UK"
-      ? `${n} Highway Code questions · US rules excluded · key rules updated`
-      : n ? `${n} state-specific questions added · key rules updated` : "Universal questions — confirm specifics with your handbook.";
+      ? `${n} ${terms.rulesLabel} questions · U.S. rules excluded · key rules updated`
+      : n ? `${n} jurisdiction-specific questions added · key rules updated` : "Universal questions — confirm local details with official sources.";
     toast("Pack: " + pack.name, scopeMsg, "car");
   });
   on($("btnExport"), "click", exportProgress);
@@ -1975,7 +1986,7 @@ function renderStateFacts() {
       <p class="state-note">${escapeHTML(note)}</p>
       <div class="facts-grid">${rows}</div>
       ${n ? `<p class="state-qcount">${n} ${packId}-specific questions are included in your practice and exams.</p>` : ""}
-      ${source ? `<a class="source-link state-source" href="${escapeHTML(source.url)}" target="_blank" rel="noopener noreferrer">Open official ${escapeHTML(source.agency)} handbook ↗</a>` : ""}
+      ${source ? `<a class="source-link state-source" href="${escapeHTML(source.url)}" target="_blank" rel="noopener noreferrer">Open ${escapeHTML(source.title)} ↗</a>` : ""}
     </div>`;
 }
 
