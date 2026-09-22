@@ -40,6 +40,24 @@ describe("jurisdiction module contract", () => {
     expect(data.EXAM_BLUEPRINTS.UK.timeLimitMin).toBe(57);
   });
 
+  it("GB pack is full-length, country-scoped, and cites the dedicated DVSA format source", () => {
+    const uk = data.STATE_PACKS.UK;
+    expect(uk.name).toContain("Great Britain");
+    expect(uk.includeUniversal).toBe(false);
+    expect(uk.questions).toHaveLength(60);
+    expect(uk.questions.every((q) => q.jurisdiction.includes("UK"))).toBe(true);
+    expect(data.EXAM_BLUEPRINTS.UK.sourceId).toBe("uk-theory-test-format");
+    expect(data.SOURCE_REGISTRY["uk-theory-test-format"].agency).toBe("DVSA");
+  });
+
+  it("GB facts preserve the Wales and Scotland regional differences", () => {
+    const facts = data.STATE_PACKS.UK.facts;
+    expect(facts.speedResidential).toContain("20 mph in Wales");
+    expect(facts.speedResidential).toContain("30 mph in England and Scotland");
+    expect(facts.bacAdult).toContain("35");
+    expect(facts.bacAdult).toContain("22");
+  });
+
   it("unregistered region packs FAIL the build", () => {
     const mutated = JSON.parse(JSON.stringify(data));
     mutated.JURISDICTIONS.us.regions = mutated.JURISDICTIONS.us.regions.filter((r) => r !== "TX");
