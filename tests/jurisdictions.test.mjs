@@ -58,6 +58,24 @@ describe("jurisdiction module contract", () => {
     expect(facts.bacAdult).toContain("22");
   });
 
+  it("GB bank keeps answer positions and topics broadly balanced", () => {
+    const questions = data.STATE_PACKS.UK.questions;
+    const positions = [0, 1, 2, 3].map((pos) => questions.filter((q) => q.a === pos).length / questions.length);
+    for (const share of positions) {
+      expect(share).toBeGreaterThanOrEqual(0.20);
+      expect(share).toBeLessThanOrEqual(0.30);
+    }
+
+    const byTopic = Object.fromEntries(Object.keys(data.CATEGORIES).map((cat) => [
+      cat,
+      questions.filter((q) => q.cat === cat).length,
+    ]));
+    for (const count of Object.values(byTopic)) {
+      expect(count).toBeGreaterThanOrEqual(3);
+      expect(count / questions.length).toBeLessThanOrEqual(0.20);
+    }
+  });
+
   it("unregistered region packs FAIL the build", () => {
     const mutated = JSON.parse(JSON.stringify(data));
     mutated.JURISDICTIONS.us.regions = mutated.JURISDICTIONS.us.regions.filter((r) => r !== "TX");
