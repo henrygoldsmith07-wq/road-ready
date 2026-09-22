@@ -74,6 +74,17 @@ function activeJurisdiction() {
   return JURISDICTIONS[ACTIVE_COUNTRY] || null;
 }
 
+/** Resolve a selected region/pack to its active country module.
+ * "generic" intentionally falls back to the active launch jurisdiction.
+ * Adding a future country should require registry data only, not app branches.
+ */
+function jurisdictionForRegion(regionId) {
+  if (!regionId || regionId === "generic") return activeJurisdiction();
+  return Object.values(JURISDICTIONS).find((c) =>
+    c && c.active && Array.isArray(c.regions) && c.regions.includes(regionId)
+  ) || activeJurisdiction();
+}
+
 /**
  * The runtime jurisdiction TREE (the product map):
  *   Road Ready
@@ -112,6 +123,6 @@ function jurisdictionTree(registries) {
     }));
 }
 
-const RoadReadyJurisdictions = { JURISDICTIONS, ACTIVE_COUNTRY, activeJurisdiction, jurisdictionTree };
+const RoadReadyJurisdictions = { JURISDICTIONS, ACTIVE_COUNTRY, activeJurisdiction, jurisdictionForRegion, jurisdictionTree };
 if (typeof module !== "undefined" && module.exports) module.exports = RoadReadyJurisdictions;
 else if (typeof globalThis !== "undefined") globalThis.RoadReadyJurisdictions = RoadReadyJurisdictions;
