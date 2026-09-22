@@ -98,6 +98,7 @@ const CONCEPT_FACT_KEYS = {
 const STATE_PACKS = {
   generic: {
     id: "generic",
+    includeUniversal: true,
     name: "General U.S. rules",
     note: "Follows rules common across state DMV handbooks. Confirm specifics with your official handbook.",
     facts: {
@@ -433,6 +434,7 @@ const STATE_PACKS = {
   },
   UK: {
     id: "UK",
+    includeUniversal: false,
     name: "Great Britain (DVSA car)",
     sourceId: "uk-highway-code",
     facts: {
@@ -585,8 +587,12 @@ function allPackQuestions() {
     right-on-red and US BAC limits must never leak into UK study). */
 function filterBankForPack(questions, packId) {
   if (!packId || packId === "generic") return questions.filter((q) => !q.jurisdiction);
-  if (packId === "UK") return questions.filter((q) => Array.isArray(q.jurisdiction) && q.jurisdiction.includes("UK"));
-  return questions.filter((q) => !q.jurisdiction || q.jurisdiction.includes(packId));
+  const pack = STATE_PACKS[packId];
+  const includeUniversal = !pack || pack.includeUniversal !== false;
+  return questions.filter((q) =>
+    (includeUniversal && (!Array.isArray(q.jurisdiction) || !q.jurisdiction.length)) ||
+    (Array.isArray(q.jurisdiction) && q.jurisdiction.includes(packId))
+  );
 }
 
 function packFacts(packId) {
