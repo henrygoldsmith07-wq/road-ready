@@ -15,8 +15,8 @@ const FALLBACK_TERMS = {
   sourceLabel: "the official driver handbook",
 };
 const FALLBACK_HAZARD = { includedInExam: false, positioning: "bonus training" };
-/* Country follows the chosen pack: UK pack → UK module, everything else → US.
-   Keeps terminology, hazard positioning and exam naming correct per learner. */
+/* Country follows the selected pack through the jurisdiction registry.
+   Keeps terminology, hazard positioning and exam naming data-driven. */
 function countryForPack(packId) {
   if (typeof Jur.jurisdictionForRegion === "function") return Jur.jurisdictionForRegion(packId);
   const all = (Jur.JURISDICTIONS) || {};
