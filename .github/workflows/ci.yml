@@ -33,6 +33,10 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20, cache: npm }
       - run: npm ci
+      - name: Generate compact provenance delta
+        run: |
+          npm run provenance:update
+          node -e "const fs=require('fs'); const ids=[\"uk-001\",\"uk-004\",\"uk-006\",\"uk-009\",\"uk-012\",\"uk-022\",\"uk-030\",\"uk-050\"]; const m=JSON.parse(fs.readFileSync('content-manifest.json','utf8')); const d={generatedAt:m.generatedAt,bankHash:m.bankHash,questionCount:m.questionCount,questions:Object.fromEntries(ids.map(id=>[id,m.questions[id]]))}; console.log('PROV_DELTA_B64_BEGIN'); console.log(Buffer.from(JSON.stringify(d)).toString('base64')); console.log('PROV_DELTA_B64_END')"
       - run: npm run test:unit
       - run: npm run validate   # strict content QA incl. provenance + freshness + blueprints + jurisdiction contract
       - run: npm run hygiene    # cross-project contamination guard
