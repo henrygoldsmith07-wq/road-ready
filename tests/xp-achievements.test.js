@@ -87,8 +87,8 @@ describe("achievements", () => {
   });
 
   it("hazard, signs, marathon, perfect run and readiness all have triggers", () => {
-    expect(Core.evaluateAchievements(snap({ hazardBest: 24 }))).toContain("hawk");
-    expect(Core.evaluateAchievements(snap({ hazardBest: 23 }))).not.toContain("hawk");
+    expect(Core.evaluateAchievements(snap({ hazardPct: 0.7 }))).toContain("hawk");
+    expect(Core.evaluateAchievements(snap({ hazardPct: 0.69 }))).not.toContain("hawk");
     expect(Core.evaluateAchievements(snap({ allSignsKnown: true }))).toContain("signs");
     expect(Core.evaluateAchievements(snap({ sessionAnswers: 100 }))).toContain("marathon");
     expect(Core.evaluateAchievements(snap({ perfectRun: true }))).toContain("perfect");

@@ -2,25 +2,91 @@
 import { describe, it, expect } from "vitest";
 import { loadContent } from "../scripts/content-loader.mjs";
 import { runChecks } from "../scripts/content-checks.mjs";
+import Jur from "../js/jurisdictions.js";
 
 const data = loadContent();
 
 describe("jurisdiction module contract", () => {
   const country = data.JURISDICTIONS[data.ACTIVE_COUNTRY];
+  const activeCountries = Object.values(data.JURISDICTIONS).filter((c) => c && c.active);
 
-  it("active country is registered and declares its regions", () => {
+  it("active countries are registered and declare their regions", () => {
     expect(country).toBeTruthy();
     expect(country.regions.length).toBeGreaterThanOrEqual(6);
-    for (const key of ["agencyShort", "examName", "learnerPermit"]) {
-      expect(typeof country.terminology[key]).toBe("string");
+    for (const c of activeCountries) {
+      for (const key of ["agencyShort", "examName", "learnerPermit", "regionLabel", "rulesLabel", "sourceLabel"]) {
+        expect(typeof c.terminology[key]).toBe("string");
+      }
+      expect(typeof c.hazardPerception.includedInExam).toBe("boolean");
     }
-    expect(typeof country.hazardPerception.includedInExam).toBe("boolean");
+  });
+
+  it("US regions carry the DVSA-style counterpart: UK ships its own region", () => {
+    expect(data.JURISDICTIONS.uk).toBeTruthy();
+    expect(data.JURISDICTIONS.uk.regions).toEqual(["UK"]);
+    expect(data.JURISDICTIONS.uk.terminology.agencyShort).toBe("DVSA");
+    expect(data.JURISDICTIONS.uk.terminology.regionLabel).toBe("country");
+    expect(data.JURISDICTIONS.uk.terminology.rulesLabel).toBe("Highway Code Rules");
+    expect(data.JURISDICTIONS.uk.terminology.sourceLabel).toContain("Highway Code");
+    expect(data.JURISDICTIONS.us.terminology.regionLabel).toBe("state");
+    expect(data.JURISDICTIONS.us.terminology.rulesLabel).toBe("State Rules");
+    expect(data.JURISDICTIONS.uk.hazardPerception.includedInExam).toBe(true);
+  });
+
+  it("resolves packs to country modules without GB-specific application branches", () => {
+    expect(Jur.jurisdictionForRegion("CA").id).toBe("us");
+    expect(Jur.jurisdictionForRegion("UK").id).toBe("uk");
+    expect(Jur.jurisdictionForRegion("generic").id).toBe(data.ACTIVE_COUNTRY);
+    expect(Jur.jurisdictionForRegion("unknown").id).toBe(data.ACTIVE_COUNTRY);
   });
 
   it("registry regions, packs and blueprints agree exactly", () => {
     const jurisdictionalPacks = Object.keys(data.STATE_PACKS).filter((k) => k !== "generic");
-    expect(jurisdictionalPacks.sort()).toEqual([...country.regions].sort());
-    for (const r of country.regions) expect(data.EXAM_BLUEPRINTS[r], r).toBeTruthy();
+    const claimed = activeCountries.flatMap((c) => c.regions);
+    expect(jurisdictionalPacks.sort()).toEqual([...claimed].sort());
+    for (const r of claimed) expect(data.EXAM_BLUEPRINTS[r], r).toBeTruthy();
+  });
+
+  it("UK blueprint matches the real DVSA car spec", () => {
+    expect(data.EXAM_BLUEPRINTS.UK.questionCount).toBe(50);
+    expect(data.EXAM_BLUEPRINTS.UK.minCorrect).toBe(43);
+    expect(data.EXAM_BLUEPRINTS.UK.timeLimitMin).toBe(57);
+  });
+
+  it("GB pack is full-length, country-scoped, and cites the dedicated DVSA format source", () => {
+    const uk = data.STATE_PACKS.UK;
+    expect(uk.name).toContain("Great Britain");
+    expect(uk.includeUniversal).toBe(false);
+    expect(uk.questions).toHaveLength(60);
+    expect(uk.questions.every((q) => q.jurisdiction.includes("UK"))).toBe(true);
+    expect(data.EXAM_BLUEPRINTS.UK.sourceId).toBe("uk-theory-test-format");
+    expect(data.SOURCE_REGISTRY["uk-theory-test-format"].agency).toBe("DVSA");
+  });
+
+  it("GB facts preserve the Wales and Scotland regional differences", () => {
+    const facts = data.STATE_PACKS.UK.facts;
+    expect(facts.speedResidential).toContain("20 mph in Wales");
+    expect(facts.speedResidential).toContain("30 mph in England and Scotland");
+    expect(facts.bacAdult).toContain("35");
+    expect(facts.bacAdult).toContain("22");
+  });
+
+  it("GB bank keeps answer positions and topics broadly balanced", () => {
+    const questions = data.STATE_PACKS.UK.questions;
+    const positions = [0, 1, 2, 3].map((pos) => questions.filter((q) => q.a === pos).length / questions.length);
+    for (const share of positions) {
+      expect(share).toBeGreaterThanOrEqual(0.20);
+      expect(share).toBeLessThanOrEqual(0.30);
+    }
+
+    const byTopic = Object.fromEntries(Object.keys(data.CATEGORIES).map((cat) => [
+      cat,
+      questions.filter((q) => q.cat === cat).length,
+    ]));
+    for (const count of Object.values(byTopic)) {
+      expect(count).toBeGreaterThanOrEqual(3);
+      expect(count / questions.length).toBeLessThanOrEqual(0.20);
+    }
   });
 
   it("unregistered region packs FAIL the build", () => {
@@ -40,8 +106,10 @@ describe("jurisdiction module contract", () => {
   it("missing terminology FAILS the build", () => {
     const mutated = JSON.parse(JSON.stringify(data));
     delete mutated.JURISDICTIONS.us.terminology.examName;
+    delete mutated.JURISDICTIONS.uk.terminology.rulesLabel;
     const r = runChecks(mutated);
     expect(r.errors.some((e) => e.rule === "jurisdictions" && /terminology\.examName/.test(e.msg))).toBe(true);
+    expect(r.errors.some((e) => e.rule === "jurisdictions" && /terminology\.rulesLabel/.test(e.msg))).toBe(true);
   });
 
   it("jurisdictionTree joins registry + packs + blueprints into the product map", () => {

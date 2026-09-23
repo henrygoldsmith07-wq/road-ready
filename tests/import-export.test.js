@@ -124,7 +124,11 @@ describe("state packs", () => {
       expect(packSource.jurisdiction).toBe(pack.id);
       expect(packSource.url).toMatch(/^https:\/\//);
       for (const q of pack.questions) {
-        expect(Packs.sourceForQuestion(q)).toBe(packSource);
+        // packs may cite several official sources (e.g. Highway Code +
+        // Know Your Traffic Signs) — each must resolve to this pack's authority
+        const src = Packs.sourceForQuestion(q);
+        expect(src).toBeTruthy();
+        expect(src.jurisdiction).toBe(pack.id);
       }
     }
     expect(Packs.packSource("generic")).toBe(null);

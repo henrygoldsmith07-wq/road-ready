@@ -114,13 +114,31 @@ test.describe("flashcards & settings", () => {
     await expect(page.locator("#stateFacts .state-note")).not.toContainText("undefined");
 
     await page.locator('#bottomNav button[data-nav="practice"]').click();
-    const stateDrill = page.locator('.setup-row:has-text("California (DMV) State Rules")');
+    const stateDrill = page.locator('.setup-row:has-text("California (DMV) · State Rules")');
     await expect(stateDrill).toBeVisible();
     await stateDrill.click();
     await page.keyboard.press("1");
     await expect(page.locator("#feedback")).toBeVisible();
     await expect(page.locator("#fbSource")).toBeVisible();
     await expect(page.locator("#fbSource")).toHaveAttribute("href", /dmv\.ca\.gov/);
+  });
+
+  test("GB pack uses native theory-test and Highway Code wording", async ({ page }) => {
+    await freshApp(page);
+    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+
+    await page.locator('#bottomNav button[data-nav="stats"]').click();
+    await page.locator("#selStatePack").selectOption("UK");
+
+    await page.locator('#bottomNav button[data-nav="guide"]').click();
+    await expect(page.locator("#stateFacts .state-source")).toContainText("The Highway Code");
+    await expect(page.locator("#stateFacts .state-source")).not.toContainText("handbook");
+
+    await page.locator('#bottomNav button[data-nav="practice"]').click();
+    await expect(page.locator("#setupSub")).not.toContainText("DMV");
+    const gbDrill = page.locator('.setup-row:has-text("Highway Code Rules")');
+    await expect(gbDrill).toBeVisible();
+    await expect(gbDrill).not.toContainText("State Rules");
   });
 
   test("test date builds a persistent daily plan", async ({ page }) => {
@@ -132,7 +150,7 @@ test.describe("flashcards & settings", () => {
     await page.locator("#inpTestDate").fill(future);
     await page.locator("#inpTestDate").dispatchEvent("change");
     await page.locator('#bottomNav button[data-nav="home"]').click();
-    await expect(page.locator("#planTitle")).toContainText("day");
+    await expect(page.locator("#planTitle")).toContainText("Test in");
     await expect(page.locator("#planMeta")).toContainText("/day");
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("roadready.v1")).settings.testDate);
     expect(saved).toBe(future);
@@ -223,7 +241,7 @@ test.describe("official simulation", () => {
     await page.locator("#selStatePack").selectOption("CA");
     await page.locator('#bottomNav button[data-nav="exam"]').click();
 
-    const official = page.locator("#setupList .setup-row", { hasText: "California Official Simulation" });
+    const official = page.locator("#setupList .setup-row", { hasText: "California DMV-format simulation" });
     await expect(official).toContainText("46 questions");
     await expect(official).toContainText("38/46");
     await expect(official).toContainText("feedback at end");
@@ -242,49 +260,65 @@ test.describe("official simulation", () => {
 
     // recorded in history as the official attempt
     await page.locator('#bottomNav button[data-nav="stats"]').click();
-    await expect(page.locator("#historyList")).toContainText("California Official Simulation");
+    await expect(page.locator("#historyList")).toContainText("California DMV-format simulation");
+  });
+
+  test("GB selection unlocks a full 50-question DVSA-format simulation", async ({ page }) => {
+    await freshApp(page);
+    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    await page.locator('#bottomNav button[data-nav="stats"]').click();
+    await page.locator("#selStatePack").selectOption("UK");
+    await page.locator('#bottomNav button[data-nav="exam"]').click();
+
+    const official = page.locator("#setupList .setup-row", { hasText: "DVSA-format simulation" });
+    await expect(official).toContainText("50 questions");
+    await expect(official).toContainText("43/50");
+    await expect(official).toContainText("57-min limit");
+    await expect(page.locator("#setupList .setup-row", { hasText: "practice preview" })).toHaveCount(0);
+
+    await official.click();
+    await expect(page.locator("#view-quiz")).toHaveClass(/active/);
+    await expect(page.locator("#qTimer")).toContainText("57:00");
+    await expect(page.locator("#qCounter")).toContainText("/50");
   });
 });
 
-test.describe("outcome journal (calibration beta)", () => {
-  test("logging a real-test outcome persists and survives reload", async ({ page }) => {
+test.describe("prospective predictions", () => {
+  test("freeze → reload → attach outcome keeps the snapshot immutable", async ({ page }) => {
     await freshApp(page);
-    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
-    // seed some study so the snapshot is meaningful
+    if (await page.locator("#onboarding").isVisible()) await page.locator("#obSkip").click();
     await page.locator("#topicGrid .topic-card").first().click();
-    await expect(page.locator("#view-quiz")).toHaveClass(/active/);
-    await expect(page.locator(".choice")).toHaveCount(4);
-    await page.keyboard.press("1");
-    await expect(page.locator("#feedback")).toBeVisible();
-    await page.locator('#bottomNav button[data-nav="stats"]').click();
-
-    await expect(page.locator("#outcomeList")).toContainText("No outcomes logged yet");
-    page.once("dialog", (d) => d.accept());
-    await page.locator("#btnOutcomePass").click();
-    await expect(page.locator("#outcomeList .outcome-row")).toHaveCount(1);
-    await expect(page.locator("#outcomeList .res-pass")).toHaveText("PASS");
-
-    const logged = await page.evaluate(() => JSON.parse(localStorage.getItem("roadready.v1")).outcomes);
-    expect(logged).toHaveLength(1);
-    expect(logged[0].result).toBe("pass");
-    expect(logged[0].questionsSeen).toBeGreaterThanOrEqual(1);
+    await page.locator("#bottomNav button[data-nav='stats']").click();
+    await page.locator("#btnFreezePrediction").click();
+    const frozen = await page.evaluate(() => JSON.parse(localStorage.getItem("roadready.v1")).predictions);
+    expect(frozen).toHaveLength(1);
+    expect(frozen[0].outcome).toBe(null);
+    expect(frozen[0].readinessPct).toBeGreaterThanOrEqual(0);
 
     await page.reload();
-    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
-    await page.locator('#bottomNav button[data-nav="stats"]').click();
-    await expect(page.locator("#outcomeList .outcome-row")).toHaveCount(1);
+    if (await page.locator("#onboarding").isVisible()) await page.locator("#obSkip").click();
+    await page.locator("#bottomNav button[data-nav='stats']").click();
+    await expect(page.locator("#outcomeList .res-pending")).toHaveText("PENDING");
+
+    page.once("dialog", (d) => d.accept());
+    await page.locator("#btnOutcomePass").click();
+    const decided = await page.evaluate(() => JSON.parse(localStorage.getItem("roadready.v1")).predictions);
+    expect(decided).toHaveLength(1);
+    expect(decided[0].outcome.result).toBe("pass");
+    expect(decided[0].readinessPct).toBe(frozen[0].readinessPct);
+    expect(decided[0].predictionCreatedAt).toBe(frozen[0].predictionCreatedAt);
   });
 });
 
 test.describe("practical drive log", () => {
-  test("log a session → competencies + readiness appear → persist reload", async ({ page }) => {
+  test("log a session → one next skill + readiness appear → persist reload", async ({ page }) => {
     await freshApp(page);
     if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
     await page.locator("#qaPractical").click();
     await expect(page.locator("#view-practical")).toHaveClass(/active/);
     await expect(page.locator("#drValue")).toHaveText("–"); // nothing logged yet
 
-    // fill the form: rate three skills across two competencies
+    // fill the form: rate three skills; the poorest one becomes the single next skill
     await page.locator('.pl-skill-row', { hasText: "mirrors" }).locator('button[aria-label*="good"]').click();
     await page.locator('.pl-skill-row', { hasText: "roundabout entry lane" }).locator('button[aria-label*="ok"]').click();
     await page.locator('.pl-skill-row', { hasText: "lane keeping" }).locator('button[aria-label*="poor"]').click();
@@ -293,9 +327,9 @@ test.describe("practical drive log", () => {
 
     // readiness now blends theory with the fresh practical data
     await expect(page.locator("#drValue")).not.toHaveText("–");
-    const competencyRows = page.locator("#competencyList .m-name");
-    await expect(competencyRows.filter({ hasText: "Roundabouts" })).toContainText("Roundabouts");
-    await expect(page.locator("#nextFocus")).toContainText("Lane discipline");
+    // single next-skill suggestion, not seven competency charts
+    await expect(page.locator("#competencyList")).toHaveCount(0);
+    await expect(page.locator("#nextFocus")).toContainText("lane keeping");
 
     // persisted
     const log = await page.evaluate(() => JSON.parse(localStorage.getItem("roadready.v1")).practical.log);

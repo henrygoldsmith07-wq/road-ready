@@ -4,9 +4,10 @@ A self-contained driving-theory study app. No build step, no dependencies, no in
 
 ## What Road Ready is (product decision)
 
-**Jurisdiction-pluggable driving-theory trainer. Launching with one jurisdiction done extremely well: the United States** (universal bank + CA, TX, NY, FL, WA, PA region packs with official exam simulations).
+**Jurisdiction-pluggable driving-theory trainer. Shipped with two jurisdiction modules: the United States** (universal bank + CA, TX, NY, FL, WA, PA region packs with official exam simulations) **and Great Britain** (England, Scotland and Wales; Highway Code car-theory pack with a 60-question verified bank feeding the DVSA 50/43-in-57-minutes official simulation; hazard perception is a core section there).
 
-The architecture is built for expansion to other countries: concepts, terminology, signs, scoring and test formats are jurisdiction modules (`js/jurisdictions.js` defines the contract; `js/state-packs.js`, `js/exam-blueprints.js` and the source registry are the U.S. module's data). The content QA system enforces the contract — packs and blueprints must be registered regions or CI fails.
+The architecture grows by adding jurisdiction modules, not by
+special-casing content: concepts, terminology, signs, scoring and test formats are jurisdiction modules (`js/jurisdictions.js` defines the contract; `js/state-packs.js`, `js/exam-blueprints.js` and the source registry are each module's data). The content QA system enforces the contract — packs and blueprints must be registered regions or CI fails. Country packs are strictly scoped: the GB bank contains only GB-tagged Highway Code questions, so US rules (right-on-red, US BAC limits) never leak into UK study.
 
 Two honest scoping calls that follow from this:
 - **Hazard Perception is labeled bonus training**, not "the real test" — most U.S. knowledge exams don't include it (it's a UK-style section). The trainer stays because early hazard spotting is universally valuable; when a jurisdiction module includes it in its exam (e.g., UK), its module declares `hazardPerception.includedInExam: true` and the UI copy updates itself.
@@ -26,9 +27,9 @@ Two honest scoping calls that follow from this:
 | Onboarding | A 4-step first-run intro: what's inside, theme + read-aloud setup, and how the daily habit works — skippable, shown once |
 | Adaptive Practice | 267 questions across 10 topics and 34 concepts, spanning 9 **question forms** — junction-priority road-layout diagrams, lane-selection scenarios, sign combinations, what-happens-next chains, prioritisation drills, multi-step ordering, photo-described scenes, deliberately similar alternatives, same-concept rewording variants, and classic recall; mastery aggregates per concept (coverage Ã depth), then topic, then overall score |
 | Marathon Mode | The full 267-question bank in one run — anything you miss comes back until you've seen it through |
-| Mock Exams | Quick Check (10), Standard (20), Full (46), or a Weak-Topics exam — timed at 1 min/question, DMV-style pass mark, no feedback until you submit |
-| Official Simulations | Pick your state and the exam locks to its real spec — CA 46/38, TX 30/21, NY 20/14, FL 50/40 in 60 min, WA 40/32, PA 18/15. Jurisdiction pool only, official pass bar, feedback at the end (`js/exam-blueprints.js`, source-cited) |
-| Hazard Perception | Interactive trainer with 6 animated scenarios (children, doors, deer, cyclists…) — honestly labeled bonus training (most U.S. exams don't include it); jurisdiction modules declare whether their exam does |
+| Mock Exams | Quick Check (10), Standard (20), Full (46), or a Weak-Topics exam — timed practice with jurisdiction-aware exam terminology and no feedback until you submit |
+| Official Simulations | Pick a jurisdiction and the exam locks to its real published count, time and pass bar **only when the bank has enough unique questions**. Full pools run as locked official-format simulations; incomplete pools are explicitly labelled practice previews and cannot award an official-standard pass. Specs include CA 46/38, TX 30/21, NY 20/14, FL 50/40 in 60 min, WA 40/32, PA 18/15, GB 50/43 in 57 min (`js/exam-blueprints.js`, source-cited) |
+| Hazard Perception | Interactive trainer with 6 animated scenarios (children, doors, deer, cyclists…) — labeled bonus training where exams don't include it (most U.S. states) and a core section where they do (GB DVSA test: 14 clips, 44/75); jurisdiction modules declare this via `hazardPerception.includedInExam` |
 | Sign Flashcards | 31 hand-drawn SVG road signs with flip animation and known/still-learning tracking |
 | Study Guide | Cheat sheets (sign system, markings, right-of-way, emergencies, hill parking, key numbers) plus a full behind-the-wheel road test guide |
 | Read Aloud | Text-to-speech for questions, choices, and explanations — great for commutes and accessibility |
@@ -41,7 +42,7 @@ Two honest scoping calls that follow from this:
 | Outcome Journal *(beta)* | The progress % is an **uncalibrated heuristic**, not a predicted pass probability. Log your real test result (opt-in, on-device only) — progress %, mock average, **coverage**, **stability**, questions seen and study time are snapshotted with the outcome to ground a future P(pass) model |
 | Calibration | Pooled outcome exports feed a **calibration curve** (progress bucket → observed pass rate). Buckets with fewer than 8 outcomes report "insufficient" — the app never states a probability it hasn't measured, and never implies theory readiness means safe independent practical driving |
 | Test Day Plan | Save your knowledge-test date and get an adaptive daily question target plus the best next action; private and fully offline |
-| Official Sources | State-rule explanations and Study Guide facts link directly to the issuing DMV/DPS/DOL handbook; dedicated State Rules drills keep the cited material together |
+| Official Sources | Jurisdiction-rule explanations and Study Guide facts link directly to the issuing authority's source; dedicated local-rules drills keep cited material together |
 
 ## Study protocol (frozen)
 
@@ -123,9 +124,9 @@ works offline after one visit. Progress lives in versioned localStorage
 (`v2` schema) with a migration pipeline; Settings can export/import it as a
 JSON backup.
 
-## State packs
+## Jurisdiction packs
 
-Settings → "Your state's rules" selects a jurisdiction (CA, TX, NY, FL, WA, PA).
+Settings → "Your jurisdiction pack" selects a jurisdiction pack (CA, TX, NY, FL, WA, PA, or GB).
 Each non-generic pack ships its own jurisdiction-tagged questions
 (`jurisdiction:["XX"]`, `concept`, `sourceId`, `sourceSection`) that merge into
 practice and exams when the pack is selected, plus a key-facts card (BAC limits,
