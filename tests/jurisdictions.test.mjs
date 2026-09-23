@@ -2,6 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { loadContent } from "../scripts/content-loader.mjs";
 import { runChecks } from "../scripts/content-checks.mjs";
+import Jur from "../js/jurisdictions.js";
 
 const data = loadContent();
 
@@ -13,7 +14,7 @@ describe("jurisdiction module contract", () => {
     expect(country).toBeTruthy();
     expect(country.regions.length).toBeGreaterThanOrEqual(6);
     for (const c of activeCountries) {
-      for (const key of ["agencyShort", "examName", "learnerPermit"]) {
+      for (const key of ["agencyShort", "examName", "learnerPermit", "regionLabel", "rulesLabel", "sourceLabel"]) {
         expect(typeof c.terminology[key]).toBe("string");
       }
       expect(typeof c.hazardPerception.includedInExam).toBe("boolean");
@@ -24,7 +25,19 @@ describe("jurisdiction module contract", () => {
     expect(data.JURISDICTIONS.uk).toBeTruthy();
     expect(data.JURISDICTIONS.uk.regions).toEqual(["UK"]);
     expect(data.JURISDICTIONS.uk.terminology.agencyShort).toBe("DVSA");
+    expect(data.JURISDICTIONS.uk.terminology.regionLabel).toBe("country");
+    expect(data.JURISDICTIONS.uk.terminology.rulesLabel).toBe("Highway Code Rules");
+    expect(data.JURISDICTIONS.uk.terminology.sourceLabel).toContain("Highway Code");
+    expect(data.JURISDICTIONS.us.terminology.regionLabel).toBe("state");
+    expect(data.JURISDICTIONS.us.terminology.rulesLabel).toBe("State Rules");
     expect(data.JURISDICTIONS.uk.hazardPerception.includedInExam).toBe(true);
+  });
+
+  it("resolves packs to country modules without GB-specific application branches", () => {
+    expect(Jur.jurisdictionForRegion("CA").id).toBe("us");
+    expect(Jur.jurisdictionForRegion("UK").id).toBe("uk");
+    expect(Jur.jurisdictionForRegion("generic").id).toBe(data.ACTIVE_COUNTRY);
+    expect(Jur.jurisdictionForRegion("unknown").id).toBe(data.ACTIVE_COUNTRY);
   });
 
   it("registry regions, packs and blueprints agree exactly", () => {
@@ -93,8 +106,10 @@ describe("jurisdiction module contract", () => {
   it("missing terminology FAILS the build", () => {
     const mutated = JSON.parse(JSON.stringify(data));
     delete mutated.JURISDICTIONS.us.terminology.examName;
+    delete mutated.JURISDICTIONS.uk.terminology.rulesLabel;
     const r = runChecks(mutated);
     expect(r.errors.some((e) => e.rule === "jurisdictions" && /terminology\.examName/.test(e.msg))).toBe(true);
+    expect(r.errors.some((e) => e.rule === "jurisdictions" && /terminology\.rulesLabel/.test(e.msg))).toBe(true);
   });
 
   it("jurisdictionTree joins registry + packs + blueprints into the product map", () => {

@@ -31,6 +31,9 @@ const JURISDICTIONS = {
       examName: "knowledge test",
       examShort: "written test",
       learnerPermit: "learner's permit",
+      regionLabel: "state",
+      rulesLabel: "State Rules",
+      sourceLabel: "the official driver handbook",
     },
     hazardPerception: {
       // honesty note: most US states do NOT run a hazard-perception test
@@ -51,6 +54,9 @@ const JURISDICTIONS = {
       examName: "theory test",
       examShort: "theory test",
       learnerPermit: "provisional licence",
+      regionLabel: "country",
+      rulesLabel: "Highway Code Rules",
+      sourceLabel: "official Highway Code guidance",
     },
     hazardPerception: {
       includedInExam: true,
@@ -66,6 +72,17 @@ const ACTIVE_COUNTRY = "us";
 
 function activeJurisdiction() {
   return JURISDICTIONS[ACTIVE_COUNTRY] || null;
+}
+
+/** Resolve a selected region/pack to its active country module.
+ * "generic" intentionally falls back to the active launch jurisdiction.
+ * Adding a future country should require registry data only, not app branches.
+ */
+function jurisdictionForRegion(regionId) {
+  if (!regionId || regionId === "generic") return activeJurisdiction();
+  return Object.values(JURISDICTIONS).find((country) =>
+    country && country.active && Array.isArray(country.regions) && country.regions.includes(regionId)
+  ) || activeJurisdiction();
 }
 
 /**
@@ -106,6 +123,6 @@ function jurisdictionTree(registries) {
     }));
 }
 
-const RoadReadyJurisdictions = { JURISDICTIONS, ACTIVE_COUNTRY, activeJurisdiction, jurisdictionTree };
+const RoadReadyJurisdictions = { JURISDICTIONS, ACTIVE_COUNTRY, activeJurisdiction, jurisdictionForRegion, jurisdictionTree };
 if (typeof module !== "undefined" && module.exports) module.exports = RoadReadyJurisdictions;
 else if (typeof globalThis !== "undefined") globalThis.RoadReadyJurisdictions = RoadReadyJurisdictions;

@@ -448,7 +448,7 @@ export function runChecks(data, opts = {}) {
       }
     }
     const terms = c.terminology || {};
-    for (const key of ["agencyShort", "examName", "learnerPermit"]) {
+    for (const key of ["agencyShort", "examName", "learnerPermit", "regionLabel", "rulesLabel", "sourceLabel"]) {
       if (typeof terms[key] !== "string" || !terms[key].trim())
         err("jurisdictions", `active country "${c.id}" is missing terminology.${key}`);
     }

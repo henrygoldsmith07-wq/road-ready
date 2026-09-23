@@ -114,13 +114,31 @@ test.describe("flashcards & settings", () => {
     await expect(page.locator("#stateFacts .state-note")).not.toContainText("undefined");
 
     await page.locator('#bottomNav button[data-nav="practice"]').click();
-    const stateDrill = page.locator('.setup-row:has-text("California (DMV) State Rules")');
+    const stateDrill = page.locator('.setup-row:has-text("California (DMV) · State Rules")');
     await expect(stateDrill).toBeVisible();
     await stateDrill.click();
     await page.keyboard.press("1");
     await expect(page.locator("#feedback")).toBeVisible();
     await expect(page.locator("#fbSource")).toBeVisible();
     await expect(page.locator("#fbSource")).toHaveAttribute("href", /dmv\.ca\.gov/);
+  });
+
+  test("GB pack uses native theory-test and Highway Code wording", async ({ page }) => {
+    await freshApp(page);
+    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+
+    await page.locator('#bottomNav button[data-nav="stats"]').click();
+    await page.locator("#selStatePack").selectOption("UK");
+
+    await page.locator('#bottomNav button[data-nav="guide"]').click();
+    await expect(page.locator("#stateFacts .state-source")).toContainText("The Highway Code");
+    await expect(page.locator("#stateFacts .state-source")).not.toContainText("handbook");
+
+    await page.locator('#bottomNav button[data-nav="practice"]').click();
+    await expect(page.locator("#setupSub")).not.toContainText("DMV");
+    const gbDrill = page.locator('.setup-row:has-text("Highway Code Rules")');
+    await expect(gbDrill).toBeVisible();
+    await expect(gbDrill).not.toContainText("State Rules");
   });
 
   test("test date builds a persistent daily plan", async ({ page }) => {
