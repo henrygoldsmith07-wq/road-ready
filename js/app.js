@@ -20,12 +20,12 @@ const FALLBACK_HAZARD = { includedInExam: false, positioning: "bonus training" }
 function countryForPack(packId) {
   if (typeof Jur.jurisdictionForRegion === "function") return Jur.jurisdictionForRegion(packId);
   const all = (Jur.JURISDICTIONS) || {};
-  const selected = Object.values(all).find((c) =>
-    c && c.active && Array.isArray(c.regions) && c.regions.includes(packId)
+  const selected = Object.values(all).find((country) =>
+    country && country.active && Array.isArray(country.regions) && country.regions.includes(packId)
   );
   if (selected) return selected;
   if (Jur.ACTIVE_COUNTRY && all[Jur.ACTIVE_COUNTRY]) return all[Jur.ACTIVE_COUNTRY];
-  return Object.values(all).find((c) => c && c.active) || null;
+  return Object.values(all).find((country) => country && country.active) || null;
 }
 function termsForPack(packId) {
   const c = countryForPack(packId == null ? (typeof state !== "undefined" ? state.settings.statePack : null) : packId);

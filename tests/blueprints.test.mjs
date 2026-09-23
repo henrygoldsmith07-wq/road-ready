@@ -54,6 +54,23 @@ describe("blueprint registry", () => {
 });
 
 describe("official simulation engine", () => {
+  it("reports whether the bank can support a full unique official-length exam", () => {
+    const shortBank = Array.from({ length: 12 }, (_, i) => ({ id: `q${i}` }));
+    expect(Core.officialExamAvailability(shortBank, { questionCount: 50 })).toEqual({
+      full: false,
+      available: 12,
+      required: 50,
+      missing: 38,
+    });
+    const fullBank = Array.from({ length: 50 }, (_, i) => ({ id: `q${i}` }));
+    expect(Core.officialExamAvailability(fullBank, { questionCount: 50 })).toEqual({
+      full: true,
+      available: 50,
+      required: 50,
+      missing: 0,
+    });
+  });
+
   it("assembles exactly questionCount questions from the jurisdiction pool", () => {
     // CA-compatible pool = universal + CA-tagged
     const pool = data.QUESTIONS.filter((q) => !q.jurisdiction || q.jurisdiction.includes("CA"));

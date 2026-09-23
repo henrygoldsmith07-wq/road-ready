@@ -41,11 +41,11 @@ const JURISDICTIONS = {
       positioning: "bonus training",
     },
   },
-  // Second shipped module: United Kingdom (car theory test). Added only
+  // Second shipped module: Great Britain (DVSA car theory test). Added only
   // because a learner here will sit that test — never as a tease.
   uk: {
     id: "uk",
-    name: "United Kingdom",
+    name: "Great Britain",
     active: true,
     regions: ["UK"],
     defaultRegion: null, // users pick the UK car pack; universal US bank never mixes in
@@ -80,8 +80,8 @@ function activeJurisdiction() {
  */
 function jurisdictionForRegion(regionId) {
   if (!regionId || regionId === "generic") return activeJurisdiction();
-  return Object.values(JURISDICTIONS).find((c) =>
-    c && c.active && Array.isArray(c.regions) && c.regions.includes(regionId)
+  return Object.values(JURISDICTIONS).find((country) =>
+    country && country.active && Array.isArray(country.regions) && country.regions.includes(regionId)
   ) || activeJurisdiction();
 }
 

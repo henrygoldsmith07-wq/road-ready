@@ -123,7 +123,7 @@ test.describe("flashcards & settings", () => {
     await expect(page.locator("#fbSource")).toHaveAttribute("href", /dmv\.ca\.gov/);
   });
 
-  test("UK pack uses native theory-test and Highway Code wording", async ({ page }) => {
+  test("GB pack uses native theory-test and Highway Code wording", async ({ page }) => {
     await freshApp(page);
     if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
 
@@ -136,9 +136,9 @@ test.describe("flashcards & settings", () => {
 
     await page.locator('#bottomNav button[data-nav="practice"]').click();
     await expect(page.locator("#setupSub")).not.toContainText("DMV");
-    const ukDrill = page.locator('.setup-row:has-text("Highway Code Rules")');
-    await expect(ukDrill).toBeVisible();
-    await expect(ukDrill).not.toContainText("State Rules");
+    const gbDrill = page.locator('.setup-row:has-text("Highway Code Rules")');
+    await expect(gbDrill).toBeVisible();
+    await expect(gbDrill).not.toContainText("State Rules");
   });
 
   test("test date builds a persistent daily plan", async ({ page }) => {
@@ -263,26 +263,23 @@ test.describe("official simulation", () => {
     await expect(page.locator("#historyList")).toContainText("California DMV-format simulation");
   });
 
-  test("UK incomplete bank is a practice preview, never an official simulation", async ({ page }) => {
+  test("GB selection unlocks a full 50-question DVSA-format simulation", async ({ page }) => {
     await freshApp(page);
     if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
     await page.locator('#bottomNav button[data-nav="stats"]').click();
     await page.locator("#selStatePack").selectOption("UK");
     await page.locator('#bottomNav button[data-nav="exam"]').click();
 
-    await expect(page.locator("#setupList .setup-row", { hasText: "DVSA-format simulation" })).toHaveCount(0);
-    const preview = page.locator("#setupList .setup-row", { hasText: "DVSA-format practice preview" });
-    await expect(preview).toContainText("12 unique questions available");
-    await expect(preview).toContainText("needs 50");
-    await expect(preview).toContainText("not scored as an official test");
+    const official = page.locator("#setupList .setup-row", { hasText: "DVSA-format simulation" });
+    await expect(official).toContainText("50 questions");
+    await expect(official).toContainText("43/50");
+    await expect(official).toContainText("57-min limit");
+    await expect(page.locator("#setupList .setup-row", { hasText: "practice preview" })).toHaveCount(0);
 
-    await preview.click();
+    await official.click();
     await expect(page.locator("#view-quiz")).toHaveClass(/active/);
-    await expect(page.locator("#qTimer")).toBeHidden();
-    await expect(page.locator("#btnQuit")).toHaveText("End");
-
-    await page.keyboard.press("1");
-    await expect(page.locator("#feedback")).toBeVisible();
+    await expect(page.locator("#qTimer")).toContainText("57:00");
+    await expect(page.locator("#qCounter")).toContainText("/50");
   });
 });
 
