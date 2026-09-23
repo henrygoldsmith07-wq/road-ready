@@ -31,6 +31,9 @@ const JURISDICTIONS = {
       examName: "knowledge test",
       examShort: "written test",
       learnerPermit: "learner's permit",
+      regionLabel: "state",
+      rulesLabel: "State Rules",
+      sourceLabel: "the official driver handbook",
     },
     hazardPerception: {
       // honesty note: most US states do NOT run a hazard-perception test
@@ -38,16 +41,48 @@ const JURISDICTIONS = {
       positioning: "bonus training",
     },
   },
-  // Future modules ship as data + a new entry here:
-  // uk: { id:"uk", regions:["ENG","WLS","SCT"], terminology:{ agencyShort:"DVSA",
-  //      examName:"theory test", learnerPermit:"provisional licence" },
-  //      hazardPerception:{ includedInExam:true, positioning:"core section" } },
+  // Second shipped module: Great Britain (DVSA car theory test). Added only
+  // because a learner here will sit that test — never as a tease.
+  uk: {
+    id: "uk",
+    name: "Great Britain",
+    active: true,
+    regions: ["UK"],
+    defaultRegion: null, // users pick the UK car pack; universal US bank never mixes in
+    terminology: {
+      agencyShort: "DVSA",          // Driver and Vehicle Standards Agency (GB car theory)
+      examName: "theory test",
+      examShort: "theory test",
+      learnerPermit: "provisional licence",
+      regionLabel: "country",
+      rulesLabel: "Highway Code Rules",
+      sourceLabel: "official Highway Code guidance",
+    },
+    hazardPerception: {
+      includedInExam: true,
+      positioning: "core section",
+      trainingLabel: "Hazard identification training",
+      officialLabel: "Official-test simulation unavailable",
+      officialNote: "Road Ready uses original scenarios, not DVSA clips; this is training, not an official simulation.",
+    },
+  },
 };
 
 const ACTIVE_COUNTRY = "us";
 
 function activeJurisdiction() {
   return JURISDICTIONS[ACTIVE_COUNTRY] || null;
+}
+
+/** Resolve a selected region/pack to its active country module.
+ * "generic" intentionally falls back to the active launch jurisdiction.
+ * Adding a future country should require registry data only, not app branches.
+ */
+function jurisdictionForRegion(regionId) {
+  if (!regionId || regionId === "generic") return activeJurisdiction();
+  return Object.values(JURISDICTIONS).find((country) =>
+    country && country.active && Array.isArray(country.regions) && country.regions.includes(regionId)
+  ) || activeJurisdiction();
 }
 
 /**
@@ -88,6 +123,6 @@ function jurisdictionTree(registries) {
     }));
 }
 
-const RoadReadyJurisdictions = { JURISDICTIONS, ACTIVE_COUNTRY, activeJurisdiction, jurisdictionTree };
+const RoadReadyJurisdictions = { JURISDICTIONS, ACTIVE_COUNTRY, activeJurisdiction, jurisdictionForRegion, jurisdictionTree };
 if (typeof module !== "undefined" && module.exports) module.exports = RoadReadyJurisdictions;
 else if (typeof globalThis !== "undefined") globalThis.RoadReadyJurisdictions = RoadReadyJurisdictions;

@@ -21,6 +21,7 @@ describe("blueprint registry", () => {
     expect(EXAM_BLUEPRINTS.FL).toMatchObject({ questionCount: 50, minCorrect: 40, timeLimitMin: 60 });
     expect(EXAM_BLUEPRINTS.WA).toMatchObject({ questionCount: 40, minCorrect: 32 });
     expect(EXAM_BLUEPRINTS.PA).toMatchObject({ questionCount: 18, minCorrect: 15 });
+    expect(EXAM_BLUEPRINTS.UK).toMatchObject({ questionCount: 50, minCorrect: 43, timeLimitMin: 57 });
   });
 
   it("cites a registered source whose jurisdiction matches", () => {
@@ -28,7 +29,7 @@ describe("blueprint registry", () => {
       const src = data.SOURCE_REGISTRY[bp.sourceId];
       expect(src, `${packId} sourceId`).toBeTruthy();
       expect(src.jurisdiction).toBe(packId);
-      expect(bp.label).toMatch(/Official Simulation$/);
+      expect(bp.label).toMatch(/-format simulation$/);
     }
   });
 
@@ -53,6 +54,23 @@ describe("blueprint registry", () => {
 });
 
 describe("official simulation engine", () => {
+  it("reports whether the bank can support a full unique official-length exam", () => {
+    const shortBank = Array.from({ length: 12 }, (_, i) => ({ id: `q${i}` }));
+    expect(Core.officialExamAvailability(shortBank, { questionCount: 50 })).toEqual({
+      full: false,
+      available: 12,
+      required: 50,
+      missing: 38,
+    });
+    const fullBank = Array.from({ length: 50 }, (_, i) => ({ id: `q${i}` }));
+    expect(Core.officialExamAvailability(fullBank, { questionCount: 50 })).toEqual({
+      full: true,
+      available: 50,
+      required: 50,
+      missing: 0,
+    });
+  });
+
   it("assembles exactly questionCount questions from the jurisdiction pool", () => {
     // CA-compatible pool = universal + CA-tagged
     const pool = data.QUESTIONS.filter((q) => !q.jurisdiction || q.jurisdiction.includes("CA"));

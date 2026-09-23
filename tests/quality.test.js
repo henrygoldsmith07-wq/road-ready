@@ -84,10 +84,14 @@ describe("outcome→prediction leakage isolation", () => {
     s.study.enrolledAt = NOW();
     s.study.participantId = "rr-x";
     s.outcomes = Core.appendOutcome(s.outcomes, { progressPct: 84, result: "pass" }, NOW());
+    s.predictions = [Core.freezePrediction(s.predictions, "rr-x", "PA", {
+      readinessPct: 72, mockAvgPct: 70, coveragePct: 65, stabilitySpread: 8,
+      questionsSeen: 210, studyMinutes: 180, skillsRated: { mirrors: "good" }, bank,
+    }, { intendedTestDate: "2026-09-01", nowMs: NOW() })];
     const exp1 = Core.buildStudyExport(s, bank, NOW());
-    // tamper attempt via re-import → export again must preserve the frozen sample
     const r = Core.parseImport(Core.exportBundle(s), { packIds: ["generic"] });
     const exp2 = Core.buildStudyExport(r.state, bank, NOW());
     expect(exp2.outcomes).toEqual(exp1.outcomes);
+    expect(exp2.predictions).toEqual(exp1.predictions);
   });
 });

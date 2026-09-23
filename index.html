@@ -36,7 +36,7 @@
         <div class="hero-top">
           <div>
             <h1 id="greeting">Let's get you licensed</h1>
-            <p class="sub" id="heroSub">Study a little every day and you'll walk into the DMV with confidence.</p>
+            <p class="sub" id="heroSub">Study a little every day and walk into your test with confidence.</p>
             <p class="lvl" id="heroLvl"></p>
           </div>
           <div class="readiness-ring" id="readinessRing" role="img" aria-label="Study progress score">
@@ -44,18 +44,27 @@
               <circle class="ring-bg" cx="60" cy="60" r="52"></circle>
               <circle class="ring-fg" cx="60" cy="60" r="52" id="ringFg"></circle>
             </svg>
-            <div class="ring-label"><span id="ringPct">0%</span><small>progress</small></div>
+            <div class="ring-label"><span id="ringPct">0%</span><small>progress · uncalibrated</small></div>
           </div>
-        </div>
-        <div class="quick-actions">
-          <button class="qa" id="qaPractice"><span class="qa-ico" data-icon="book" data-size="20"></span>Practice</button>
-          <button class="qa" id="qaExam"><span class="qa-ico" data-icon="clipboard" data-size="20"></span>Mock Exam</button>
-          <button class="qa" id="qaPractical"><span class="qa-ico" data-icon="car" data-size="20"></span>Drive Log</button>
-          <button class="qa" id="qaCards"><span class="qa-ico" data-icon="layers" data-size="20"></span>Flashcards</button>
-          <button class="qa" id="qaReview"><span class="qa-ico" data-icon="target" data-size="20"></span>Review Missed</button>
         </div>
       </div>
 
+      <div class="card today-plan" id="todayPlanCard">
+        <div class="plan-kicker">Today's plan</div>
+        <div class="plan-title" id="planTitle">Set your test date</div>
+        <p id="planDetail">Road Ready will then tell you exactly what to study each day.</p>
+        <ul class="plan-rationale" id="planRationale" hidden></ul>
+        <div class="plan-meta" id="planMeta"></div>
+        <button class="btn primary plan-action" id="btnPlanAction">Set test date</button>
+      </div>
+
+      <div class="quick-actions secondary-actions">
+        <button class="qa" id="qaPractice"><span class="qa-ico" data-icon="book" data-size="20"></span>Practice</button>
+        <button class="qa" id="qaExam"><span class="qa-ico" data-icon="clipboard" data-size="20"></span>Mock Exam</button>
+        <button class="qa" id="qaPractical"><span class="qa-ico" data-icon="car" data-size="20"></span>Drive Log</button>
+        <button class="qa" id="qaCards"><span class="qa-ico" data-icon="layers" data-size="20"></span>Signs</button>
+        <button class="qa" id="qaReview"><span class="qa-ico" data-icon="target" data-size="20"></span>Review</button>
+      </div>
       <div class="stat-strip" id="statStrip">
         <div class="stat"><span id="stAnswered">0</span><small>answered</small></div>
         <div class="stat"><span id="stAccuracy">–</span><small>accuracy</small></div>
@@ -65,7 +74,7 @@
 
       <div class="card readiness-panel" id="readinessPanel" hidden>
         <div class="rp-head">
-          <h2>Test readiness <small class="beta-pill">estimate</small></h2>
+          <h2>Test readiness <small class="beta-pill">uncalibrated</small></h2>
           <b id="rpBand" class="rp-band">–</b>
         </div>
         <p id="rpCalLine" class="state-note" style="margin:6px 0 0;" hidden></p>
@@ -77,7 +86,7 @@
         <span class="fx-ico" data-icon="eye" data-size="22"></span>
         <div class="fx-body">
           <div class="fx-name">Hazard Perception</div>
-          <div class="fx-desc" id="hazardBestLabel">Train spotting developing hazards — like the real test</div>
+          <div class="fx-desc" id="hazardBestLabel">Hazard-identification training</div>
         </div>
         <span class="chev" data-icon="chevron-right" data-size="16"></span>
       </button>
@@ -85,16 +94,6 @@
       <div class="card daily-goal" id="dailyGoal">
         <div class="dg-label">Today's goal: <b>0/10</b> questions answered</div>
         <div class="dg-bar"><div class="dg-bar-fill"></div></div>
-      </div>
-
-      <div class="card study-plan" id="studyPlanCard">
-        <div class="plan-copy">
-          <div class="plan-kicker">Test Day Plan</div>
-          <div class="plan-title" id="planTitle">Turn practice into a plan</div>
-          <p id="planDetail">Add your test date and Road Ready will calculate what to study each day.</p>
-          <div class="plan-meta" id="planMeta"></div>
-        </div>
-        <button class="btn ghost plan-action" id="btnPlanAction">Set test date</button>
       </div>
 
       <h2 class="section-title">Topics</h2>
@@ -105,7 +104,7 @@
         <ul id="weakList" class="weak-list"></ul>
       </div>
 
-      <p class="disclaimer"><span data-icon="alert" data-size="14"></span> Study aid based on general rules of the road. Requirements vary by state &amp; country — always confirm with your official driver handbook.</p>
+      <p class="disclaimer"><span data-icon="alert" data-size="14"></span> Study aid based on rules of the road. Requirements vary by jurisdiction — always confirm with official sources for your test.</p>
     </section>
 
     <!-- ============ TOPIC / MODE SETUP ============ -->
@@ -220,13 +219,10 @@
           <span>Theory <b id="drTheory">–</b></span>
           <span>Practical <b id="drPractical">–</b></span>
         </div>
-        <p class="state-note" style="margin:8px 0 0;">Heuristic blend, not yet calibrated against pass rates.</p>
+        <p class="state-note" style="margin:8px 0 0;">Uncalibrated heuristic blend — not a pass prediction. Theory readiness alone never means ready for independent driving.</p>
       </div>
 
-      <h2 class="section-title">Competencies</h2>
-      <div class="card"><div id="competencyList"></div></div>
-
-      <h2 class="section-title">Next lesson focus</h2>
+      <h2 class="section-title">Next practice skill</h2>
       <div class="card"><p id="nextFocus" class="focus-line"></p></div>
 
       <h2 class="section-title">Log a session</h2>
@@ -352,7 +348,7 @@
         <summary>Before you go — checklist</summary>
         <div class="acc-body">
           <ul class="ref">
-            <li>Permit/license documents, test appointment confirmation</li>
+            <li>Required licence/permit documents and test appointment confirmation</li>
             <li>Car with current registration + proof of insurance</li>
             <li>Car in test-ready shape: all lights work, tires healthy, horn, wipers, no warning lights, clean windshield</li>
             <li>Licensed adult driver accompanies you (required in most states)</li>
@@ -420,7 +416,11 @@
     <!-- ============ HAZARD PERCEPTION ============ -->
     <section class="view" id="view-hazard">
       <h1 class="view-title">Hazard Perception</h1>
-      <p class="view-sub">Tap <b>SLOW</b> (or press <b>Space</b>) the moment a hazard starts to develop — before you'd need to brake hard. Earlier = more points. Bonus training: most U.S. knowledge exams don't include this, but the skill saves lives.</p>
+      <p class="view-sub" id="hazardSub">Tap <b>SLOW</b> (or press <b>Space</b>) the moment a hazard starts to develop — before you'd need to brake hard. Earlier = more points.</p>
+      <details class="hz-access-details">
+        <summary>Text-based hazard descriptions</summary>
+        <div id="hzAccessibleList"></div>
+      </details>
       <div class="hz-stage card" id="hzStage">
         <svg id="hzSvg" viewBox="0 0 360 420" preserveAspectRatio="xMidYMid meet"></svg>
         <div class="hz-flash" id="hzFlash" hidden></div>
@@ -457,16 +457,16 @@
       <h2 class="section-title">Exam history</h2>
       <div class="card"><ul class="history-list" id="historyList"></ul></div>
 
-      <h2 class="section-title">Real test outcomes <small class="beta-pill">beta</small></h2>
+      <h2 class="section-title">Official-test predictions <small class="beta-pill">calibration</small></h2>
       <div class="card" id="calibrationCard">
         <p id="calibrationNarrative" class="focus-line" style="margin:0 0 10px;"></p>
         <p class="state-note" style="margin:0 0 10px;" id="calibrationDisclaimer"></p>
         <div id="outcomeList"></div>
         <div class="data-actions" style="margin-top:10px; flex-wrap:wrap;">
-          <button class="btn primary" id="btnOutcomePass">I passed my real test</button>
+          <button class="btn primary" id="btnFreezePrediction">Freeze pre-test prediction</button>
+          <button class="btn ghost" id="btnOutcomePass">I passed my real test</button>
           <button class="btn ghost" id="btnOutcomeFail">I didn't pass</button>
         </div>
-      </div>
       </div>
 
       <h2 class="section-title">Learner study <small class="beta-pill">research</small></h2>
@@ -491,7 +491,7 @@
       <h2 class="section-title">Settings</h2>
       <div class="card settings-card">
         <label class="setting-row">
-          <span>Exam pass mark</span>
+          <span>Extra practice pass mark</span>
           <select id="selPassMark">
             <option value="0.8" selected>80% (standard)</option>
             <option value="0.75">75%</option>
@@ -499,7 +499,7 @@
           </select>
         </label>
         <label class="setting-row">
-          <span>Exam questions</span>
+          <span>Extra practice length</span>
           <select id="selExamLen">
             <option value="10">10</option>
             <option value="20" selected>20 (standard)</option>
@@ -507,15 +507,16 @@
             <option value="46">46 (full test)</option>
           </select>
         </label>
+        <p class="setting-note">The official mock exam uses the selected jurisdiction's published count, time and pass mark — these settings only affect extra practice.</p>
         <label class="setting-row">
           <span>Immediate feedback in practice</span>
           <input type="checkbox" id="chkFeedback" checked>
         </label>
         <label class="setting-row">
-          <span>Your state's rules</span>
+          <span>Your jurisdiction pack</span>
           <select id="selStatePack" aria-describedby="statePackNote"></select>
         </label>
-        <p class="setting-note" id="statePackNote">State packs adjust state-specific numbers (BAC limits, right-on-red, school buses). Generic covers common U.S. rules.</p>
+        <p class="setting-note" id="statePackNote">Country packs adjust local rules (BAC/drink-drive limits, passing distances, speed limits). Generic covers common U.S. rules; UK uses only Highway Code questions.</p>
         <label class="setting-row">
           <span>Knowledge test date</span>
           <input type="date" id="inpTestDate" aria-describedby="testDateNote">
@@ -566,19 +567,27 @@
     <div class="ob-steps">
       <div class="ob-step" data-step="0">
         <span class="ob-ico" data-icon="car" data-size="40"></span>
-        <h1>Welcome to Road Ready</h1>
-        <p>Everything you need to pass your driving test — the <b>written exam</b> and the <b>road test</b>. No account, no internet, no ads.</p>
+        <h1>Where will you take your test?</h1>
+        <p class="ob-lead">Road Ready studies only that test's rules. Pick now — you can change it later in Settings.</p>
+        <div class="ob-choice">
+          <span>Your jurisdiction</span>
+          <select id="obStatePack" aria-label="Your jurisdiction"></select>
+        </div>
       </div>
       <div class="ob-step" data-step="1">
         <h1>How you'll study</h1>
-        <div class="ob-row"><span class="ob-row-ico" data-icon="book" data-size="20"></span><div><b>Adaptive practice</b><small>186 questions across 10 topics — your misses come back until you nail them</small></div></div>
-        <div class="ob-row"><span class="ob-row-ico" data-icon="clipboard" data-size="20"></span><div><b>Mock exams</b><small>Timed, DMV-style, with a real pass mark and full answer review</small></div></div>
+        <div class="ob-row"><span class="ob-row-ico" data-icon="book" data-size="20"></span><div><b>Daily set</b><small>Sized to your test date — what to study each day, not the whole bank at once</small></div></div>
+        <div class="ob-row"><span class="ob-row-ico" data-icon="clipboard" data-size="20"></span><div><b>Official mock exam</b><small>Matches the published question count, time limit and pass mark for your selected test</small></div></div>
         <div class="ob-row"><span class="ob-row-ico" data-icon="layers" data-size="20"></span><div><b>Flashcards &amp; study guide</b><small>31 road signs plus cheat sheets and a road-test walkthrough</small></div></div>
-        <div class="ob-row"><span class="ob-row-ico" data-icon="eye" data-size="20"></span><div><b>Hazard perception</b><small>Train your eye to spot danger before it develops — bonus training beyond the written exam</small></div></div>
+        <div class="ob-row"><span class="ob-row-ico" data-icon="eye" data-size="20"></span><div><b>Hazard perception</b><small>Bonus training beyond the written exam — early spotting saves lives</small></div></div>
       </div>
       <div class="ob-step" data-step="2">
         <h1>Make it yours</h1>
         <p class="ob-lead">You can change these anytime.</p>
+        <div class="ob-choice">
+          <span>Knowledge test date</span>
+          <input type="date" id="obTestDate" aria-label="Knowledge test date">
+        </div>
         <div class="ob-choice">
           <span>Appearance</span>
           <div class="ob-seg">
@@ -597,7 +606,7 @@
       <div class="ob-step" data-step="3">
         <span class="ob-ico" data-icon="gauge" data-size="40"></span>
         <h1>Little and often wins</h1>
-        <p>Answer <b>10 questions a day</b> to hit your daily goal and build a streak. Passing <b>mock exams consistently</b> is the strongest sign you're on track for the real thing.</p>
+        <p>Your <b>daily set is sized to your test date</b>. Scores stay labeled <b>uncalibrated</b> until real results exist — passing <b>official mock exams consistently</b> is the strongest sign you're on track.</p>
       </div>
     </div>
     <div class="ob-foot">

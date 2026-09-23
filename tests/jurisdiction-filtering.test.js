@@ -15,21 +15,31 @@ describe("jurisdiction-filtering", () => {
     { id: "tx1", cat: "row", jurisdiction: ["TX", "NY"] },
   ];
 
-  it("generic = universal only; region = universal + own tagged items", () => {
+  it("generic = universal only; US region = universal + own tagged items; UK = UK-tagged only", () => {
     expect(Packs.filterBankForPack(bank, "generic").map((q) => q.id)).toEqual(["u1"]);
     expect(Packs.filterBankForPack(bank, "CA").map((q) => q.id)).toEqual(["u1", "ca1"]);
     expect(Packs.filterBankForPack(bank, "TX").map((q) => q.id)).toEqual(["u1", "tx1"]);
     expect(Packs.filterBankForPack(bank, "NY").map((q) => q.id)).toEqual(["u1", "tx1"]);
     // a state never sees another state's exclusive questions
     expect(Packs.filterBankForPack(bank, "PA")).toHaveLength(1);
+    // UK bank is country-scoped: US universal rules never leak into UK study
+    const ukBank = [
+      { id: "u1", cat: "signs" },
+      { id: "uk1", cat: "laws", jurisdiction: ["UK"] },
+    ];
+    expect(Packs.filterBankForPack(ukBank, "UK").map((q) => q.id)).toEqual(["uk1"]);
   });
 
-  it("the shipped bank grows for every non-generic pack and stays disjoint otherwise", () => {
+  it("the shipped bank grows for every US pack and stays disjoint otherwise (UK is country-scoped)", () => {
     const universal = Packs.filterBankForPack(data.QUESTIONS, "generic");
     for (const packId of Object.keys(Packs.STATE_PACKS)) {
       if (packId === "generic") continue;
       const active = Packs.filterBankForPack(data.QUESTIONS, packId);
-      expect(active.length, packId).toBeGreaterThan(universal.length);
+      if (packId === "UK") {
+        expect(active.length, packId).toBeGreaterThan(0);
+      } else {
+        expect(active.length, packId).toBeGreaterThan(universal.length);
+      }
       // no other state's exclusive questions leak in
       for (const q of active) {
         if (q.jurisdiction) expect(q.jurisdiction).toContain(packId);
@@ -37,10 +47,10 @@ describe("jurisdiction-filtering", () => {
     }
   });
 
-  it("registry ↔ packs ↔ blueprints stay in lockstep", () => {
-    const regions = data.JURISDICTIONS.us.regions;
-    expect(regions.sort()).toEqual(Object.keys(data.STATE_PACKS).filter((k) => k !== "generic").sort());
-    for (const r of regions) expect(data.EXAM_BLUEPRINTS[r]).toBeTruthy();
+  it("registry ↔ packs ↔ blueprints stay in lockstep across active countries", () => {
+    const claimed = Object.values(data.JURISDICTIONS).filter((c) => c.active).flatMap((c) => c.regions);
+    expect(claimed.sort()).toEqual(Object.keys(data.STATE_PACKS).filter((k) => k !== "generic").sort());
+    for (const r of claimed) expect(data.EXAM_BLUEPRINTS[r]).toBeTruthy();
   });
 
   it("terminology is present for user-facing strings", () => {

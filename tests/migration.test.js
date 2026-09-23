@@ -80,7 +80,7 @@ describe("state migration", () => {
     expect(m.state.answered).toBe(0);
     expect(m.state.correctCount).toBe(0); // clamped to ≤ answered
     expect(m.state.xp).toBe(0);
-    expect(m.state.hazardBest).toBeLessThanOrEqual(30);
+    expect(m.state.hazardBest).toBeLessThanOrEqual(75);
     expect(m.state.exams.length).toBe(1); // non-objects dropped
     expect(m.state.exams[0].pass).toBe(false);
     expect(m.state.settings.passMark).toBeGreaterThanOrEqual(0.5);

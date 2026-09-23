@@ -131,6 +131,23 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
   transition: width 0.5s cubic-bezier(.22, 1, .36, 1);
 }
 
+.today-plan {
+  margin: 10px 0 6px; padding: 16px; display: grid;
+  grid-template-columns: 1fr auto; align-items: center; gap: 14px;
+}
+.today-plan .plan-kicker { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.today-plan .plan-title { margin-top: 4px; font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
+.today-plan p { color: var(--muted); font-size: 12.5px; line-height: 1.5; margin-top: 3px; }
+.today-plan .plan-meta { color: var(--text); font-size: 11.5px; font-weight: 600; margin-top: 7px; }
+.today-plan .plan-action { white-space: nowrap; padding: 12px 16px; min-height: 44px; }
+.plan-rationale { margin: 8px 0 0; padding-left: 18px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.plan-rationale li + li { margin-top: 3px; }
+.secondary-actions { margin-top: 8px; }
+@media (max-width: 480px) {
+  .today-plan { grid-template-columns: 1fr; }
+  .today-plan .plan-action { width: 100%; }
+}
+
 /* ---------- test day plan ---------- */
 .study-plan {
   margin: 8px 0 6px; padding: 16px; display: grid;
@@ -440,6 +457,9 @@ kbd {
 .toast b { display: block; font-size: 13.5px; }
 .toast small { color: var(--muted); font-size: 12px; }
 .toast svg { color: var(--text); flex-shrink: 0; }
+.toast.warning { border-color: #d97706; }
+.toast.warning svg { color: #d97706; }
+.toast.warning b { color: var(--text); }
 @keyframes toastIn { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: none; } }
 @keyframes toastOut { to { opacity: 0; transform: translateY(-8px); } }
 
@@ -467,8 +487,11 @@ kbd {
   box-shadow: inset 0 0 0 3px #c1272d; animation: pulse 0.8s infinite;
 }
 .hz-actions { display: flex; gap: 8px; margin: 12px 0 4px; }
-.hz-slow { flex: 1; padding: 15px; font-size: 15px; letter-spacing: 0.06em; }
+.hz-slow { flex: 1; padding: 15px; font-size: 15px; letter-spacing: 0.06em; min-height: 48px; }
 .hz-slow.pressed { opacity: 0.45; }
+.hz-access-details { margin: 0 0 10px; color: var(--muted); font-size: 12.5px; }
+.hz-access-details summary { cursor: pointer; color: var(--text); font-weight: 600; }
+.hz-access-list { display: grid; gap: 8px; margin-top: 8px; }
 
 /* ---------- stats: xp + achievements ---------- */
 .xp-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 9px; }

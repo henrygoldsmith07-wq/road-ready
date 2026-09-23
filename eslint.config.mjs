@@ -47,9 +47,6 @@ export default [
     languageOptions: { globals: { require: "readonly", __dirname: "readonly", http: "writable", fs: "writable", path: "writable", console: "readonly" } },
   },
   {
-    // Serverless API routes: Node-only ES modules, so they get Node globals
-    // rather than the browser set the classic scripts above use. Linted like
-    // everything else rather than left as an unchecked corner of the repo.
     files: ["api/**/*.js"],
     languageOptions: {
       ecmaVersion: 2022,
