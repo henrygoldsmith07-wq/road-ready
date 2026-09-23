@@ -634,17 +634,33 @@ function reviewSched(sched, right, nowMs, quality) {
   }
 
   /**
+   * Return whether a jurisdiction pool can support the blueprint's full
+   * official question count using unique questions.
+   * @param {Array} bank
+   * @param {{questionCount?: number}|null|undefined} blueprint
+   */
+  function officialExamAvailability(bank, blueprint) {
+    const available = Array.isArray(bank) ? bank.length : 0;
+    const rawRequired = blueprint && Number.isFinite(blueprint.questionCount)
+      ? Math.floor(blueprint.questionCount) : 0;
+    const required = Math.max(0, rawRequired);
+    return {
+      full: required > 0 && available >= required,
+      available,
+      required,
+      missing: Math.max(0, required - available),
+    };
+  }
+
+  /**
    * Assemble a mock exam.
-   * @param {object} opts {bank, n, qstats, weakBias, rand, nowMs, flags}
    * Stratified: honors the topic blueprint so every mock mirrors the real
    * test's topic mix; weakBias reserves ~60% of seats for the 3 weakest topics.
+   * @param {{bank: Array, n: number, qstats?: object, weakBias?: boolean, rand?: Function,
+   *     nowMs?: number, flags?: object, weights?: object|null,
+   *     samplingMode?: "adaptive"|"representative"|"fixed", seed?: number}} opts
    */
-  /**
- * @param {{bank: Array, n: number, qstats?: object, weakBias?: boolean, rand?: Function,
- *     nowMs?: number, flags?: object, weights?: object|null,
- *     samplingMode?: "adaptive"|"representative"|"fixed", seed?: number}} opts
- */
-function assembleExam(opts) {
+  function assembleExam(opts) {
     const bank = opts.bank, n = Math.min(opts.n, bank.length), qstats = opts.qstats || {};
     // Sampling modes:
     //   adaptive       — practice/weak-topic exams; weights lean toward the
@@ -1471,7 +1487,7 @@ function assembleExam(opts) {
     readiness, topicMastery, catAccuracy,
     adaptiveWeights, buildAdaptivePool, pickWeighted, missedQuestions,
     defaultSched, reviewSched, schedDue,
-    shuffle, timeLimitSecs, gradeExam, examBlueprint, assembleExam,
+    shuffle, timeLimitSecs, gradeExam, examBlueprint, assembleExam, officialExamAvailability,
     hazardScore,
     OUTCOME_RESULT_VALUES, appendOutcome, mockAverage, progressBucket,
     PRACTICAL_RATINGS, RATING_VALUE, COMPETENCIES, CONDITIONS, ROAD_TYPES,

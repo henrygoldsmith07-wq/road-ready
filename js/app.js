@@ -463,15 +463,21 @@ function startSetup(mode, focusCat) {
     const packId = Packs.PACK_IDS.includes(state.settings.statePack) ? state.settings.statePack : "generic";
     const bp = BLUEPRINTS[packId];
     if (bp) {
-      const available = Math.min(bp.questionCount, bank.length);
-      const starter = available < bp.questionCount;
-      items.push({
-        id: "official", icon: "grad", name: bp.label,
-        desc: starter
-          ? `Starter bank: ${available} of ${bp.questionCount} questions · ${Math.round(100 * bp.minCorrect / bp.questionCount)}% official bar · growing to the full mock · feedback at end`
-        : `${bp.questionCount} questions · pass ${bp.minCorrect}/${bp.questionCount} (official threshold) · ${bp.timeLimitMin ? bp.timeLimitMin + "-min limit" : `${Core.timeLimitSecs(bp.questionCount) / 60}-min pacing`} · feedback at end`,
-        action: () => startOfficialExam(packId),
-      });
+      const availability = Core.officialExamAvailability(bank, bp);
+      if (availability.full) {
+        items.push({
+          id: "official", icon: "grad", name: bp.label,
+          desc: `${bp.questionCount} questions · pass ${bp.minCorrect}/${bp.questionCount} (official threshold) · ${bp.timeLimitMin ? bp.timeLimitMin + "-min limit" : `${Core.timeLimitSecs(bp.questionCount) / 60}-min pacing`} · feedback at end`,
+          action: () => startOfficialExam(packId),
+        });
+      } else {
+        items.push({
+          id: "official-preview", icon: "grad",
+          name: `${bp.label.replace(/ simulation$/i, "")} practice preview`,
+          desc: `${availability.available} unique questions available · full official-length simulation needs ${availability.required} · not scored as an official test`,
+          action: () => startOfficialPreview(packId),
+        });
+      }
     }
     items.push(
       { id: "weak", icon: "target", name: "Weak Topics Exam", desc: "20 questions weighted toward your lowest categories (extra practice)", action: () => startExam(20, true) },
@@ -518,12 +524,39 @@ function startExam(n, weakBias) {
   beginQuiz();
 }
 
+/* Incomplete jurisdiction banks get a clearly non-official practice preview.
+   Never award an official-standard pass until enough UNIQUE questions exist
+   to assemble the jurisdiction's full published question count. */
+function startOfficialPreview(packId) {
+  const bp = BLUEPRINTS[packId];
+  if (!bp) return;
+  const availability = Core.officialExamAvailability(bank, bp);
+  if (!availability.available) return;
+  const qs = Core.assembleExam({
+    bank,
+    n: availability.available,
+    samplingMode: "representative",
+    weights: bp.topicWeights,
+  });
+  toast(
+    "Practice preview",
+    `${availability.available}/${availability.required} unique questions available. This is not an official-length mock.`,
+    "grad"
+  );
+  startPractice(qs, `${bp.label.replace(/ simulation$/i, "")} practice preview`, "setup");
+}
+
 /* Official Simulation — locked to the jurisdiction's real exam parameters.
    Pool: universal + this state's questions only. Feedback stays hidden until
    the end; pass bar and pacing come from EXAM_BLUEPRINTS, not settings. */
 function startOfficialExam(packId) {
   const bp = BLUEPRINTS[packId];
   if (!bp) return;
+  const availability = Core.officialExamAvailability(bank, bp);
+  if (!availability.full) {
+    startOfficialPreview(packId);
+    return;
+  }
   quizBackTarget = "home";
   const qs = Core.assembleExam({ bank, n: bp.questionCount, samplingMode: "representative", weights: bp.topicWeights });
   session = {
@@ -717,7 +750,7 @@ function finishSession(timedOut) {
     const bp = session.official ? session.blueprint : null;
     const passMark = bp ? bp.minCorrect / Math.max(1, bp.questionCount) : state.settings.passMark;
     const g = Core.gradeExam(correct, total, passMark);
-    const pass = g.pass && (!bp || total === Math.min(bp.questionCount, bank.length));
+    const pass = g.pass && (!bp || total === bp.questionCount);
     state.exams.push({ date: Date.now(), label: session.label, pct: g.pct, correct, total, pass, durationSec: Core.timeLimitSecs(total) - Math.max(0, session.timeLeft || 0), official: !!bp, tag: session.tag || undefined });
     if (state.exams.length > Core.MAX_EXAM_HISTORY) state.exams = state.exams.slice(-Core.MAX_EXAM_HISTORY);
     save();

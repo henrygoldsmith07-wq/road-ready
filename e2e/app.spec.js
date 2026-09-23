@@ -245,29 +245,27 @@ test.describe("official simulation", () => {
     await expect(page.locator("#historyList")).toContainText("California DMV-format simulation");
   });
 
-  test("UK selection offers the DVSA blueprint and grades on the 43/50 bar", async ({ page }) => {
+  test("UK incomplete bank is a practice preview, never an official simulation", async ({ page }) => {
     await freshApp(page);
     if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
     await page.locator('#bottomNav button[data-nav="stats"]').click();
     await page.locator("#selStatePack").selectOption("UK");
     await page.locator('#bottomNav button[data-nav="exam"]').click();
 
-    const official = page.locator("#setupList .setup-row", { hasText: "DVSA-format simulation" });
-    await expect(official).toContainText("12 of 50");
-    await expect(official).toContainText("86% official bar");
+    await expect(page.locator("#setupList .setup-row", { hasText: "DVSA-format simulation" })).toHaveCount(0);
+    const preview = page.locator("#setupList .setup-row", { hasText: "DVSA-format practice preview" });
+    await expect(preview).toContainText("12 unique questions available");
+    await expect(preview).toContainText("needs 50");
+    await expect(preview).toContainText("not scored as an official test");
 
-    await official.click();
+    await preview.click();
     await expect(page.locator("#view-quiz")).toHaveClass(/active/);
-    await expect(page.locator("#qTimer")).toBeVisible();
-    await expect(page.locator("#qTimer")).toContainText("57:00");
+    await expect(page.locator("#qTimer")).toBeHidden();
+    await expect(page.locator("#btnQuit")).toHaveText("End");
 
-    // submit immediately: unanswered questions count wrong → fails the official bar
-    page.once("dialog", (d) => d.accept());
-    await page.locator("#btnQuit").click();
-    await expect(page.locator("#view-results")).toHaveClass(/active/);
-    await expect(page.locator("#resultTitle")).toHaveText("Not yet");
-    await expect(page.locator("#resultSub")).toContainText("requires 43 of 50");
-    await expect(page.locator("#resultSub")).toContainText("starter run");  });
+    await page.keyboard.press("1");
+    await expect(page.locator("#feedback")).toBeVisible();
+  });
 });
 
 test.describe("prospective predictions", () => {
