@@ -74,7 +74,7 @@ const EXAM_BLUEPRINTS = {
   },
   UK: {
     label: "DVSA-format simulation",
-    sourceId: "uk-highway-code",
+    sourceId: "uk-theory-test-format",
     questionCount: 50,
     minCorrect: 43,
     timeLimitMin: 57,
