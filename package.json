@@ -25,5 +25,8 @@
     "jsdom": "^24.1.0",
     "typescript": "^7.0.2",
     "vitest": "^2.1.1"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.1.0"
   }
 }

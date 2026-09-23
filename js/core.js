@@ -46,8 +46,7 @@
       predictions: [],  // immutable pre-test snapshots, primary calibration dataset
       practical: { log: [] }, // driving-log sessions: {date, minutes, conditions[], roadTypes[], skills{skillId:rating}, notes}
       study: { enrolledAt: undefined, participantId: "", confidence: [], retentionLog: [] },
-      rtSamples: [],     // recent answer response times (ms), newest last — the
-                         // learner's own distribution, used to judge fast vs slow
+      rtSamples: [],     // recent answer response times (ms), newest last
       settings: defaultSettings(),
     };
   }
@@ -89,9 +88,6 @@ function sanitizeState(s, opts) {
       st.wrong = num(st.wrong, 0, 0, 1e9);
       st.lastSeen = num(st.lastSeen, 0, 0, 8.64e15) || undefined;
       st.lastWrong = num(st.lastWrong, 0, 0, 8.64e15) || undefined;
-      // Answer-fluency counters. Absent in payloads written before response
-      // times were recorded, which is why they default to 0 rather than
-      // needing a migration: an old save simply has nothing to say yet.
       st.fastWrong = num(st.fastWrong, 0, 0, 1e9);
       st.slowRight = num(st.slowRight, 0, 0, 1e9);
       const sc = plainObject(st.sched);
@@ -590,8 +586,6 @@ function sanitizeState(s, opts) {
   function adaptiveWeights(question, stat, flags, nowMs) {
     const st = stat || { seen: 0, wrong: 0 };
     let w = 1 + st.wrong * 2.5 - qMastery(st) * 0.9;
-    // A fast wrong answer is a misconception rather than a gap: it resurfaces
-    // ahead of an ordinary miss, because the learner has no idea it is there.
     w += (st.fastWrong || 0) * 1.5;
     if (!st.seen) w += 1.2;
     if (flags && flags[question.id]) w += 1.5;
@@ -624,11 +618,7 @@ function sanitizeState(s, opts) {
     return out;
   }
 
-  /**
-   * Questions previously answered wrong, worst-first — with misconceptions
-   * (answered fast and wrong) ahead of ordinary misses at the same wrong
-   * count, since the learner cannot feel those on their own.
-   */
+  /** Questions previously answered wrong, worst-first; misconceptions first. */
   function missedQuestions(questions, qstats) {
     return questions
       .filter((q) => qstats[q.id] && qstats[q.id].wrong > 0)
