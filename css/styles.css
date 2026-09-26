@@ -1,5 +1,6 @@
-/* Road Ready â€” minimal monochrome UI */
+/* Road Ready — minimal monochrome UI */
 :root {
+  color-scheme: dark;
   --bg: #0b0b0d;
   --bg2: #101013;
   --card: #131318;
@@ -14,12 +15,15 @@
   --nav-h: 60px;
 }
 html[data-theme="light"] {
+  color-scheme: light;
   --bg: #fafafa;
   --bg2: #f4f4f4;
   --card: #ffffff;
   --card2: #f7f7f8;
   --text: #101012;
-  --muted: #71717a;
+  /* #6c6c74 clears 4.5:1 on the card surface, the page background AND the
+     translucent bottom-nav mix — the previous #71717a hit 4.35:1 on the nav. */
+  --muted: #6c6c74;
   --line: #e7e7ea;
   --line-strong: #c8c8cd;
   --accent: #101012;
@@ -78,6 +82,21 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
   border-radius: var(--radius); padding: 16px;
 }
 .muted { color: var(--muted); }
+/* Small layout utilities so the app can ship a CSP without inline styles.
+   These exist only to replace index.html style="…" attributes 1:1. */
+.mt-8 { margin-top: 8px; }
+.mt-12 { margin-top: 12px; }
+.mt-6 { margin-top: 6px; }
+.mt-10 { margin-top: 10px; }
+.mb-6 { margin-bottom: 6px; }
+.mb-8 { margin-bottom: 8px; }
+.mb-10 { margin-bottom: 10px; }
+.mx0 { margin: 0; }
+.wrap { flex-wrap: wrap; }
+.borderless { border: 0; }
+
+/* Animated width bars: set --w from JS instead of an inline style, keeping
+   the width transition (and CSP compliance) while JS drives the width. */
 .flex-spacer { flex: 1; }
 
 /* ---------- hero ---------- */
@@ -179,7 +198,7 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
 .topic-desc { color: var(--muted); font-size: 12px; }
 .topic-count { margin-left: auto; color: var(--muted); font-size: 11.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .bar { height: 3px; border-radius: 2px; background: var(--line); overflow: hidden; margin: 11px 0 7px; }
-.bar-fill { height: 100%; border-radius: 2px; background: var(--text); transition: width 0.6s ease; }
+.bar-fill { height: 100%; width: var(--w, 0%); border-radius: 2px; background: var(--text); transition: width 0.6s ease; }
 .topic-foot { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
 .topic-foot .link { font-weight: 600; display: inline-flex; align-items: center; gap: 3px; }
 
@@ -214,7 +233,7 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
 /* ---------- quiz ---------- */
 .quiz-meta { margin: 6px 0 14px; }
 .qprog { height: 3px; border-radius: 2px; background: var(--line); overflow: hidden; margin-bottom: 10px; }
-.qprog-bar { height: 100%; width: 0; background: var(--text); transition: width 0.4s ease; }
+.qprog-bar { height: 100%; width: var(--w, 0%); background: var(--text); transition: width 0.4s ease; }
 .quiz-meta-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .pill {
   background: transparent; border: 1px solid var(--line); color: var(--muted);
