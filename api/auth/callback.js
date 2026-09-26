@@ -5,18 +5,19 @@ import {
   callbackUrl,
   exchangeCode,
   GoogleNotConfigured,
-  isGoogleConfigured,
-  profileFromIdToken,
+  verifyIdToken,
 } from '../_lib/google.js';
 import { DatabaseNotConfigured, upsertGoogleUser } from '../_lib/db.js';
 import {
   clearFlowCookie,
+  decodeFlowValue,
   issueSession,
   MissingAuthSecret,
   readCookies,
   setSessionCookie,
 } from '../_lib/session.js';
 import { FLOW_COOKIE } from './google.js';
+import { AccountsNotConfigured, requireAccountsConfigured } from '../_lib/config.js';
 
 /** Sends the browser back to the app with a message it can show. */
 function backToApp(res, params) {
@@ -26,8 +27,15 @@ function backToApp(res, params) {
 }
 
 export default async function handler(req, res) {
+  if (req.method !== 'GET') {
+    res.statusCode = 405;
+    res.setHeader('Allow', 'GET');
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 'no-store');
+    return res.end(JSON.stringify({ error: 'Method not allowed' }));
+  }
   try {
-    if (!isGoogleConfigured()) throw new GoogleNotConfigured();
+    requireAccountsConfigured();
 
     const url = new URL(req.url, 'http://localhost');
     const cookies = readCookies(req);
@@ -40,7 +48,7 @@ export default async function handler(req, res) {
 
     let flow;
     try {
-      flow = JSON.parse(cookies[FLOW_COOKIE] || '');
+      flow = decodeFlowValue(cookies[FLOW_COOKIE] || '');
     } catch {
       flow = null;
     }
@@ -59,14 +67,16 @@ export default async function handler(req, res) {
       redirectUri: callbackUrl(req),
       verifier: flow.verifier,
     });
-    const profile = profileFromIdToken(tokens.id_token);
+    // Full verification — signature against Google's JWKS, issuer, audience,
+    // expiry, verified email — plus the nonce bound to this exact flow.
+    const profile = await verifyIdToken(tokens.id_token, { expectedNonce: flow.nonce });
 
     const user = await upsertGoogleUser(profile);
     setSessionCookie(res, issueSession(user.id));
     return backToApp(res, { signin: 'ok' });
   } catch (error) {
     if (error instanceof DatabaseNotConfigured || error instanceof GoogleNotConfigured
-      || error instanceof MissingAuthSecret) {
+      || error instanceof MissingAuthSecret || error instanceof AccountsNotConfigured) {
       res.statusCode = 503;
       res.setHeader('Content-Type', 'application/json');
       return res.end(JSON.stringify({ error: error.message }));

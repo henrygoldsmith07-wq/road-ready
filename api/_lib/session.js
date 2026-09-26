@@ -10,8 +10,13 @@
 
 import { createHmac, timingSafeEqual, randomBytes } from 'node:crypto';
 
-export const SESSION_COOKIE = 'roadready_session';
+// `__Host-` requires Secure + Path=/ + no Domain, which is exactly how the
+// session cookie is written. In tests NODE_ENV is not "production", so the
+// plain name keeps local HTTP sign-in workable.
+export const SESSION_COOKIE = process.env.NODE_ENV === 'production' ? '__Host-roadready_session' : 'roadready_session';
 export const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60;
+// Bump when the payload contract changes; readSession refuses older versions.
+export const SESSION_TOKEN_VERSION = 2;
 
 /** HTTPS-only cookies outside local development. */
 export function useSecureCookies() {
@@ -19,8 +24,8 @@ export function useSecureCookies() {
 }
 
 export class MissingAuthSecret extends Error {
-  constructor() {
-    super('AUTH_SECRET is not set. Generate one with: openssl rand -base64 32');
+  constructor(message) {
+    super(message || 'AUTH_SECRET is not set. Generate one with: openssl rand -base64 32');
     this.name = 'MissingAuthSecret';
   }
 }
@@ -30,6 +35,15 @@ function secret() {
   // Refusing to run without a secret is the point: a default would mean every
   // deployment sharing a forgeable signing key.
   if (!value) throw new MissingAuthSecret();
+  // A signing key an attacker can guess is the same risk as no check at all.
+  // 32 bytes of base64 is the documented generation command; anything shorter
+  // than 32 characters is refused in production (still warned about locally).
+  if (value.length < 32) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new MissingAuthSecret('AUTH_SECRET is too weak. Generate one with: openssl rand -base64 32');
+    }
+    console.warn('[auth] AUTH_SECRET is shorter than recommended (openssl rand -base64 32)');
+  }
   return value;
 }
 
@@ -41,7 +55,7 @@ function sign(payloadText) {
 
 export function issueSession(userId) {
   const now = Math.floor(Date.now() / 1000);
-  const payload = JSON.stringify({ uid: userId, iat: now, exp: now + SESSION_TTL_SECONDS });
+  const payload = JSON.stringify({ v: SESSION_TOKEN_VERSION, uid: userId, iat: now, exp: now + SESSION_TTL_SECONDS });
   const encoded = b64url(payload);
   return `${encoded}.${b64url(sign(encoded))}`;
 }
@@ -65,7 +79,15 @@ export function readSession(token) {
     return null;
   }
   if (!payload || typeof payload.uid !== 'string') return null;
-  if (typeof payload.exp !== 'number' || payload.exp <= Math.floor(Date.now() / 1000)) return null;
+  // Versioned payload: tokens without the current version are refused so a
+  // format change invalidates every cookie already in the wild.
+  if (payload.v !== SESSION_TOKEN_VERSION) return null;
+  const now = Math.floor(Date.now() / 1000);
+  if (typeof payload.exp !== 'number' || payload.exp <= now) return null;
+  // An expiry that outlives the maximum TTL, or an issued-at in the future,
+  // means a forged or malformed timestamp range — refuse rather than honour.
+  if (payload.exp - (payload.iat || 0) > SESSION_TTL_SECONDS) return null;
+  if (typeof payload.iat !== 'number' || payload.iat > now + 60) return null;
   return payload.uid;
 }
 
@@ -115,6 +137,25 @@ export function readCookies(req) {
     out[part.slice(0, eq).trim()] = decodeURIComponent(part.slice(eq + 1).trim());
   }
   return out;
+}
+
+/**
+ * The OAuth flow cookie carries JSON (state, PKCE verifier, nonce). Cookie
+ * values must be RFC 6265 cookie-octets, so the payload is base64url-encoded
+ * before being written and decoded explicitly when read back.
+ */
+export function encodeFlowValue(value) {
+  return Buffer.from(JSON.stringify(value), 'utf8').toString('base64url');
+}
+
+/** Inverse of encodeFlowValue. Throws on anything it cannot decode. */
+export function decodeFlowValue(raw) {
+  const json = Buffer.from(String(raw), 'base64url').toString('utf8');
+  const parsed = JSON.parse(json);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('Malformed OAuth flow cookie');
+  }
+  return parsed;
 }
 
 export function randomToken() {
