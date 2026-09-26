@@ -104,6 +104,7 @@ test.describe("flashcards & settings", () => {
     await freshApp(page);
     if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
     await page.locator('#bottomNav button[data-nav="stats"]').click();
+    await page.locator("#btnOpenSettings").click();
     await page.locator("#selStatePack").selectOption("CA");
     await page.waitForTimeout(150);
     const pack = await page.evaluate(() => JSON.parse(localStorage.getItem("roadready.v1")).settings.statePack);
@@ -130,11 +131,14 @@ test.describe("flashcards & settings", () => {
     if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
 
     await page.locator('#bottomNav button[data-nav="stats"]').click();
+    await page.locator("#btnOpenSettings").click();
     await page.locator("#selStatePack").selectOption("UK");
 
     await page.locator('#bottomNav button[data-nav="guide"]').click();
     await expect(page.locator("#stateFacts .state-source")).toContainText("The Highway Code");
     await expect(page.locator("#stateFacts .state-source")).not.toContainText("handbook");
+    await expect(page.locator("#guideUs")).toBeHidden();
+    await expect(page.locator("#guideGb")).toBeVisible();
 
     await page.locator('#bottomNav button[data-nav="practice"]').click();
     await expect(page.locator("#setupSub")).not.toContainText("DMV");
@@ -147,7 +151,7 @@ test.describe("flashcards & settings", () => {
     await freshApp(page);
     if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
     await page.locator("#btnPlanAction").click();
-    await expect(page.locator("#view-stats")).toHaveClass(/active/);
+    await expect(page.locator("#view-settings")).toHaveClass(/active/);
     const future = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
     await page.locator("#inpTestDate").fill(future);
     await page.locator("#inpTestDate").dispatchEvent("change");
@@ -158,10 +162,24 @@ test.describe("flashcards & settings", () => {
     expect(saved).toBe(future);
   });
 
+  test("progress keeps research collapsed and settings on a separate screen", async ({ page }) => {
+    await freshApp(page);
+    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    await page.locator('#bottomNav button[data-nav="stats"]').click();
+    await expect(page.locator("details.advanced-research")).not.toHaveAttribute("open", "");
+    await expect(page.locator("#view-settings")).not.toHaveClass(/active/);
+    await page.locator("#btnOpenSettings").click();
+    await expect(page.locator("#view-settings")).toHaveClass(/active/);
+    await expect(page.locator("#selStatePack")).toBeVisible();
+    await page.locator("#btnSettingsDone").click();
+    await expect(page.locator("#view-stats")).toHaveClass(/active/);
+  });
+
   test("export produces a downloadable backup file", async ({ page }) => {
     await freshApp(page);
     if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
     await page.locator('#bottomNav button[data-nav="stats"]').click();
+    await page.locator("#btnOpenSettings").click();
     const [download] = await Promise.all([
       page.waitForEvent("download"),
       page.locator("#btnExport").click(),
@@ -182,6 +200,7 @@ test.describe("flashcards & settings", () => {
     await page.keyboard.press("1");
     await page.waitForTimeout(150);
     await page.locator('#bottomNav button[data-nav="stats"]').click();
+    await page.locator("#btnOpenSettings").click();
 
     const [download] = await Promise.all([page.waitForEvent("download"), page.locator("#btnExport").click()]);
     const path = await download.path();
@@ -191,6 +210,7 @@ test.describe("flashcards & settings", () => {
     await page.reload();
     if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
     await page.locator('#bottomNav button[data-nav="stats"]').click();
+    await page.locator("#btnOpenSettings").click();
     page.once("dialog", (d) => d.accept());
     await page.locator("#fileImport").setInputFiles(path);
     await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("roadready.v1")).answered)).toBeGreaterThan(0);
@@ -200,6 +220,7 @@ test.describe("flashcards & settings", () => {
     await freshApp(page);
     if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
     await page.locator('#bottomNav button[data-nav="stats"]').click();
+    await page.locator("#btnOpenSettings").click();
 
     const fs = await import("node:fs");
     const path = testInfo.outputPath("malicious-backup.json");
@@ -270,6 +291,7 @@ test.describe("official simulation", () => {
     await freshApp(page);
     if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
     await page.locator('#bottomNav button[data-nav="stats"]').click();
+    await page.locator("#btnOpenSettings").click();
     await page.locator("#selStatePack").selectOption("CA");
     await page.locator('#bottomNav button[data-nav="exam"]').click();
 
@@ -299,6 +321,7 @@ test.describe("official simulation", () => {
     await freshApp(page);
     if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
     await page.locator('#bottomNav button[data-nav="stats"]').click();
+    await page.locator("#btnOpenSettings").click();
     await page.locator("#selStatePack").selectOption("UK");
     await page.locator('#bottomNav button[data-nav="exam"]').click();
 
@@ -321,6 +344,7 @@ test.describe("prospective predictions", () => {
     if (await page.locator("#onboarding").isVisible()) await page.locator("#obSkip").click();
     await page.locator("#topicGrid .topic-card").first().click();
     await page.locator("#bottomNav button[data-nav='stats']").click();
+    await page.locator("details.advanced-research").locator("summary").click(); // research tools live collapsed by design
     await page.locator("#btnFreezePrediction").click();
     const frozen = await page.evaluate(() => JSON.parse(localStorage.getItem("roadready.v1")).predictions);
     expect(frozen).toHaveLength(1);
@@ -330,6 +354,7 @@ test.describe("prospective predictions", () => {
     await page.reload();
     if (await page.locator("#onboarding").isVisible()) await page.locator("#obSkip").click();
     await page.locator("#bottomNav button[data-nav='stats']").click();
+    await page.locator("details.advanced-research").locator("summary").click();
     await expect(page.locator("#outcomeList .res-pending")).toHaveText("PENDING");
 
     page.once("dialog", (d) => d.accept());
@@ -343,12 +368,12 @@ test.describe("prospective predictions", () => {
 });
 
 test.describe("practical drive log", () => {
-  test("log a session → one next skill + readiness appear → persist reload", async ({ page }) => {
+  test("log a session → separate practical progress + one next skill → persist reload", async ({ page }) => {
     await freshApp(page);
     if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
     await page.locator("#qaPractical").click();
     await expect(page.locator("#view-practical")).toHaveClass(/active/);
-    await expect(page.locator("#drValue")).toHaveText("–"); // nothing logged yet
+    await expect(page.locator("#drPractical")).toHaveText("no sessions yet");
 
     // fill the form: rate three skills; the poorest one becomes the single next skill
     await page.locator('.pl-skill-row', { hasText: "mirrors" }).locator('button[aria-label*="good"]').click();
@@ -357,8 +382,8 @@ test.describe("practical drive log", () => {
     await page.locator(".chip", { hasText: "dry" }).click();
     await page.locator("#btnSaveSession").click();
 
-    // readiness now blends theory with the fresh practical data
-    await expect(page.locator("#drValue")).not.toHaveText("–");
+    // practical progress is shown separately from theory, not blended into one score
+    await expect(page.locator("#drPractical")).not.toHaveText("no sessions yet");
     // single next-skill suggestion, not seven competency charts
     await expect(page.locator("#competencyList")).toHaveCount(0);
     await expect(page.locator("#nextFocus")).toContainText("lane keeping");
