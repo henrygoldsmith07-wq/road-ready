@@ -2,18 +2,20 @@
   "name": "road-ready",
   "version": "1.0.0",
   "private": true,
-  "description": "Pass Your Driving Test — offline-first DMV study PWA (vanilla JS, no build step)",
+  "description": "Offline-first jurisdiction-aware driving-theory study PWA (vanilla JS, no build step)",
   "type": "commonjs",
   "scripts": {
     "serve": "node serve.js",
     "test": "npm run test:unit && npm run validate && npm run hygiene",
     "test:unit": "vitest run",
+    "test:postgres": "node scripts/test-postgres.mjs",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "validate": "node scripts/validate-content.mjs --strict",
     "provenance:update": "node scripts/validate-content.mjs --update-manifest",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "sw:version": "node scripts/update-sw.mjs",
     "audit": "npm audit --omit=dev --audit-level=high",
     "hygiene": "node scripts/check-hygiene.mjs"
   },
@@ -23,8 +25,9 @@
     "@playwright/test": "^1.62.1",
     "eslint": "^10.9.1",
     "jsdom": "^24.1.0",
+    "pg": "^8.23.0",
     "typescript": "^7.0.2",
-    "vitest": "^2.1.1"
+    "vitest": "^5.0.2"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0"

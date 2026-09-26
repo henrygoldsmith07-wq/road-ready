@@ -1,9 +1,25 @@
-/* Road Ready service worker Ã¢â‚¬â€ offline-first cache.
-   Strategy: precache the app shell; serve cache-first with a background
-   network refresh (stale-while-revalidate) for same-origin GETs. */
+/* Road Ready service worker — offline-first cache with deterministic versioning.
+ *
+ * Cache name strategy: the VERSION below is GENERATED from a content hash of
+ * every precached shell file by scripts/update-sw.mjs (wired into `npm test`
+ * and CI). Any changed byte in any shell asset produces a new cache name, so a
+ * deployed update can never leave users serving an old shell from a cache that
+ * a human forgot to bump. Do not edit VERSION by hand.
+ *
+ * Update flow: a newly installed worker waits (browser default). The page
+ * sends it "skip-waiting", it activates, deletes every older cache, claims
+ * clients, and the page shows a "Reload" toast. Mixed old/new asset versions
+ * are avoided by rebuilding the whole cache per version and deleting the rest.
+ *
+ * API responses can contain signed-in account details and the user's synced
+ * backup. They must always go directly to the network and must never enter
+ * Cache Storage, where a later account in the same browser could read a
+ * previous account's response.
+ */
 "use strict";
 
-const VERSION = "v7";
+// scripts/update-sw.mjs rewrites the line below — do not edit by hand.
+const VERSION = "v.1c1ac235926b";
 const CACHE = `roadready-${VERSION}`;
 const SHELL = [
   "./",
@@ -12,6 +28,7 @@ const SHELL = [
   "icon.svg",
   "icon-maskable.svg",
   "css/styles.css",
+  "js/boot-error.js",
   "js/core.js",
   "js/jurisdictions.js",
   "js/state-packs.js",
@@ -21,6 +38,9 @@ const SHELL = [
   "js/signs.js",
   "js/account.js",
   "js/account-ui.js",
+  "js/practical-ui.js",
+  "js/study-ui.js",
+  "js/guide.js",
   "js/app.js",
 ];
 
@@ -36,6 +56,12 @@ self.addEventListener("activate", (e) => {
       .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
+});
+
+// The page asks a freshly installed worker to take over right away, instead of
+// leaving users on the old controller until every tab happens to close.
+self.addEventListener("message", (e) => {
+  if (e.data === "skip-waiting") self.skipWaiting();
 });
 
 self.addEventListener("fetch", (e) => {

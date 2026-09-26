@@ -8,9 +8,10 @@ const SRC = readFileSync(fileURLToPath(new URL("../sw.js", import.meta.url)), "u
 
 function loadSW() {
   const listeners = {};
+  let skipWaitingCalled = false;
   const selfObj = {
     addEventListener: (ev, fn) => { (listeners[ev] ||= []).push(fn); },
-    skipWaiting: async () => {},
+    skipWaiting: async () => { skipWaitingCalled = true; },
     clients: { claim: async () => {} },
   };
   const created = [];
@@ -45,16 +46,17 @@ function loadSW() {
   const dispatch = async (event, payload = {}) => {
     for (const fn of listeners[event] || []) await fn({ waitUntil: (p) => p, respondWith: (p) => p, ...payload });
   };
-  return { listeners, stores, created, deleted, dispatch, cachesApi };
+  return { listeners, stores, created, deleted, dispatch, cachesApi, get skipWaitingCalled() { return skipWaitingCalled; } };
 }
 
 describe("service worker", () => {
   it("precaches the full app shell including core data files", async () => {
     const sw = loadSW();
     await sw.dispatch("install");
-    expect(sw.stores["roadready-v7"] || Object.values(sw.stores)[0]).toBeTruthy();
+    const cacheName = Object.keys(sw.stores).find((n) => n.startsWith("roadready-"));
+    expect(cacheName).toBeTruthy();
     const shell = Object.values(sw.stores)[0].added;
-    for (const required of ["index.html", "js/core.js", "js/state-packs.js", "js/exam-blueprints.js", "js/questions.js", "js/signs.js", "js/account.js", "js/account-ui.js", "js/app.js", "css/styles.css"]) {
+    for (const required of ["index.html", "js/core.js", "js/state-packs.js", "js/exam-blueprints.js", "js/questions.js", "js/signs.js", "js/account.js", "js/account-ui.js", "js/guide.js", "js/app.js", "css/styles.css"]) {
       expect(shell.some((u) => u.includes(required)), required).toBe(true);
     }
   });
@@ -104,5 +106,33 @@ describe("service worker", () => {
     expect(responded).toBe("unset");
     const allPuts = Object.values(sw.stores).flatMap((store) => store.puts || []);
     expect(allPuts.some((entry) => entry.url.includes("/api/"))).toBe(false);
+  });
+
+  it("acts on a skip-waiting message by calling skipWaiting", async () => {
+    const sw = loadSW();
+    await sw.dispatch("message", { data: "skip-waiting" });
+    expect(sw.skipWaitingCalled).toBe(true);
+  });
+
+  it("ignores unknown postMessage payloads", async () => {
+    const sw = loadSW();
+    await sw.dispatch("message", { data: "something-else" });
+    expect(sw.skipWaitingCalled).toBe(false);
+  });
+
+  it("VERSION follows the content hash of the shell (no stale-cache deploys)", async () => {
+    // Regenerate what the shell's current bytes would produce and require the
+    // checked-in VERSION to match it exactly.
+    const { execFileSync } = await import("node:child_process");
+    execFileSync(process.execPath, ["scripts/update-sw.mjs", "--check"], { cwd: fileURLToPath(new URL("..", import.meta.url)) });
+  });
+
+  it("cache name derives from the generated VERSION", async () => {
+    const version = SRC.match(/^const VERSION = "([^"]*)";$/m);
+    expect(version).toBeTruthy();
+    expect(version[1]).toMatch(/^v\.[0-9a-f]{12}$/);
+    const sw = loadSW();
+    await sw.dispatch("install");
+    expect(Object.keys(sw.stores)).toContain(`roadready-${version[1]}`);
   });
 });
