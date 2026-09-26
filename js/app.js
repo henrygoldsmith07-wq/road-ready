@@ -6,6 +6,58 @@ const Packs = window.RoadReadyPacks;
 const BLUEPRINTS = (window.RoadReadyBlueprints || {}).EXAM_BLUEPRINTS || {};
 const Jur = window.RoadReadyJurisdictions || {};
 const AccountUI = window.RoadReadyAccountUI;
+const Guide = window.RoadReadyGuide;
+// Practical-log UI lives in js/practical-ui.js; it gets its dependencies here
+// instead of reaching into this file's scope.
+const PracticalUI = window.RoadReadyPracticalUI;
+const StudyUI = window.RoadReadyStudyUI;
+if (PracticalUI) {
+  PracticalUI.init({
+    Core,
+    form: { conditions: new Set(), roadTypes: new Set(), skills: {} },
+    getState: () => state,
+    save: () => save(),
+    render: () => renderPractical(),
+    toast,
+    escapeHTML,
+    todayStr: () => todayStr(),
+    readiness: () => readiness(),
+  });
+}
+/** Delegates to js/practical-ui.js (absent only if that script failed to load). */
+function renderPractical() {
+  if (PracticalUI) PracticalUI.render();
+}
+
+if (StudyUI) {
+  StudyUI.init({
+    Core,
+    CATEGORIES,
+    getState: () => state,
+    save: () => save(),
+    getBank: () => bank,
+    appVersion: () => APP_VERSION,
+  });
+}
+/** Delegates to js/study-ui.js (absent only if that script failed to load). */
+function renderStudy() {
+  if (StudyUI) StudyUI.render();
+}
+
+function startDiagnostic() {
+  quizBackTarget = "stats";
+  const qs = Core.assembleExam({ bank, n: 20, samplingMode: "fixed", seed: 0xD1A6 });
+  session = { mode: "exam", tag: "diagnostic", label: "Baseline Diagnostic", questions: qs, i: 0, correct: 0, answers: [], timeLeft: Core.timeLimitSecs(qs.length), endTs: 0, timerId: null };
+  beginQuiz();
+}
+
+function startRetentionProbes() {
+  const pool = Core.retentionProbePool(bank, state.qstats, state.study.retentionLog, Date.now());
+  if (!pool.length) return;
+  quizBackTarget = "stats";
+  session = { mode: "practice", tag: "retention", label: "Memory Check", questions: shuffle(pool), i: 0, correct: 0, answers: [], endTs: 0, timerId: null, marathon: false, requeued: {} };
+  beginQuiz();
+}
 const FALLBACK_TERMS = {
   agencyShort: "DMV",
   examName: "knowledge test",
@@ -275,9 +327,7 @@ function renderReadinessPanel() {
   if (!host) return;
   host.hidden = false;
   const theoryPct = Math.round(readiness() * 100);
-  const log = Core.practicalLog(state);
-  const dr = Core.drivingReadiness(theoryPct, log);
-  const pct = dr.combined === null ? theoryPct : dr.combined;
+  const pct = theoryPct;
 
   // per-topic mastery snapshot
   const topics = Object.keys(CATEGORIES).map((id) => {
@@ -426,8 +476,15 @@ function renderHome() {
     b.innerHTML = `<div class="topic-head"><span class="topic-ico">${icon(c.icon, 19)}</span>
       <div><div class="topic-name">${c.name}</div><div class="topic-desc">${c.desc}</div></div>
       <span class="topic-count">${seenCount}/${qs.length}</span></div>
-      <div class="bar"><div class="bar-fill" style="width:${m}%"></div></div>
+      <div class="bar"><div class="bar-fill"></div></div>
       <div class="topic-foot"><span>${m}% mastery</span><span class="link">Practice ${icon("chevron-right", 12)}</span></div>`;
+    const bar = /** @type {HTMLElement} */ (b.querySelector(".bar-fill"));
+    bar.style.setProperty("--w", m + "%");
+    bar.setAttribute("role", "progressbar");
+    bar.setAttribute("aria-label", c.name + " mastery");
+    bar.setAttribute("aria-valuemin", "0");
+    bar.setAttribute("aria-valuemax", "100");
+    bar.setAttribute("aria-valuenow", String(m));
     on(b, "click", () => startPractice(shuffle(catQ(id)).slice(0, 10), c.name, "home"));
     grid.appendChild(b);
   });
@@ -550,7 +607,11 @@ function startExam(n, weakBias) {
   quizBackTarget = "home";
   // Blueprint-stratified assembly: every mock mirrors the real test's topic
   // mix; weakBias reserves ~60% of seats for your three weakest topics.
-  const qs = Core.assembleExam({ bank, n, qstats: state.qstats, flags: state.flagged, weakBias, samplingMode: "adaptive" });
+  const qs = Core.assembleExam({
+    bank, n, qstats: state.qstats, flags: state.flagged, weakBias,
+    samplingMode: "adaptive",
+    recentlySeen: state.qstats,
+  });
   session = { mode: "exam", label: n >= 40 ? "Full Test" : n > 12 ? "Mock Exam" : "Quick Check", questions: qs, i: 0, correct: 0, answers: [], timeLeft: Core.timeLimitSecs(qs.length), endTs: 0, timerId: null };
   beginQuiz();
 }
@@ -589,7 +650,10 @@ function startOfficialExam(packId) {
     return;
   }
   quizBackTarget = "home";
-  const qs = Core.assembleExam({ bank, n: bp.questionCount, samplingMode: "representative", weights: bp.topicWeights });
+  const qs = Core.assembleExam({
+    bank, n: bp.questionCount, samplingMode: "representative", weights: bp.topicWeights,
+    recentlySeen: state.qstats,
+  });
   session = {
     mode: "exam", official: true, blueprint: bp,
     label: bp.label,
@@ -627,7 +691,7 @@ function renderQuiz() {
   // When this question became answerable. The gap to the answer is the only
   // evidence we have of whether it was recalled or worked out.
   session.shownAt = Date.now();
-  $("qprogBar").style.width = (100 * session.i / total) + "%";
+  $("qprogBar").style.setProperty("--w", (100 * session.i / total) + "%");
   $("qCounter").textContent = `Q ${session.i + 1}/${total}`;
   $("qCategory").textContent = CATEGORIES[q.cat].name;
   // question forms: single sign, sign combination, ASCII road-layout scene, and photo placeholder
@@ -674,15 +738,16 @@ function renderQuiz() {
   updateFlagBtn();
   speak(q.q + ". " + q.choices.map((c, i) => (i + 1) + ". " + c).join(" "));
 }
-function escapeHTML(s) { return s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function escapeHTML(s) { return s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 
 function sourceCitationHTML(q) {
   const source = Packs.sourceForQuestion(q);
   if (!source) return "";
   const detail = q.sourceSection ? `${source.agency} · ${q.sourceSection}` : source.title;
+  const label = source.citationLabel || "Official source";
   // composite sources cite many documents and may have no single URL
-  if (!source.url) return `<span class="source-link">Official source: ${escapeHTML(detail)}</span>`;
-  return `<a class="source-link" href="${escapeHTML(source.url)}" target="_blank" rel="noopener noreferrer">Official source: ${escapeHTML(detail)} ↗</a>`;
+  if (!source.url) return `<span class="source-link">${escapeHTML(label)}: ${escapeHTML(detail)}</span>`;
+  return `<a class="source-link" href="${escapeHTML(source.url)}" target="_blank" rel="noopener noreferrer">${escapeHTML(label)}: ${escapeHTML(detail)} ↗</a>`;
 }
 
 function answer(origIdx, btnEl) {
@@ -989,7 +1054,7 @@ function renderStats() {
   const lv = levelFor(state.xp);
   $("xpLabel").textContent = "Level " + lv.lvl;
   $("xpCount").textContent = `${lv.into}/${lv.need} XP`;
-  $("xpBar").style.width = Math.round(100 * lv.into / lv.need) + "%";
+  $("xpBar").style.setProperty("--w", Math.round(100 * lv.into / lv.need) + "%");
 
   const ag = $("achGrid");
   ag.innerHTML = "";
@@ -1009,10 +1074,35 @@ function renderStats() {
     const qs = catQ(id);
     const m = Math.round(100 * Core.topicMastery(qs, state.qstats));
     const accC = catAccuracy(id);
-    ml.innerHTML += `<div class="mastery-row">
-      <span class="m-name">${icon(c.icon, 15)} ${c.name}</span>
-      <div class="bar"><div class="bar-fill" style="width:${m}%"></div></div>
-      <span class="m-val">${m}%${accC !== null ? ` <small>(${Math.round(accC * 100)}% acc)</small>` : ""}</span></div>`;
+    const bar = document.createElement("div");
+    bar.className = "bar";
+    const fill = document.createElement("div");
+    fill.className = "bar-fill";
+    fill.style.setProperty("--w", m + "%");
+    fill.setAttribute("role", "progressbar");
+    fill.setAttribute("aria-label", c.name + " mastery");
+    fill.setAttribute("aria-valuemin", "0");
+    fill.setAttribute("aria-valuemax", "100");
+    fill.setAttribute("aria-valuenow", String(m));
+    bar.appendChild(fill);
+    const row = document.createElement("div");
+    row.className = "mastery-row";
+    const name = document.createElement("span");
+    name.className = "m-name";
+    name.innerHTML = icon(c.icon, 15); // trusted static SVG from js/icons.js
+    name.appendChild(document.createTextNode(" " + c.name));
+    const val = document.createElement("span");
+    val.className = "m-val";
+    val.textContent = m + "%";
+    if (accC !== null) {
+      const acc = document.createElement("small");
+      acc.textContent = " (" + Math.round(accC * 100) + "% acc)";
+      val.appendChild(acc);
+    }
+    row.appendChild(name);
+    row.appendChild(bar);
+    row.appendChild(val);
+    ml.appendChild(row);
   });
 
   const hl = $("historyList");
@@ -1140,244 +1230,11 @@ function renderCalibration() {
       <b class="res-${o.result}">${resLabel}</b>
     </div>`);
   });
-  host.innerHTML = rows.length ? rows.join("") : `<p class="muted" style="margin:0;">No outcomes logged yet.</p>`;
+  host.innerHTML = rows.length ? rows.join("") : `<p class="muted mx0">No outcomes logged yet.</p>`;
 }
 
-/* ---------------- practical drive log ---------------- */
-const plFormState = { conditions: new Set(), roadTypes: new Set(), skills: {} };
-
-function renderPractical() {
-  if (!$("view-practical")) return;
-  const log = Core.practicalLog(state);
-  // readiness card
-  const theoryPct = Math.round(readiness() * 100);
-  const dr = Core.drivingReadiness(theoryPct, log);
-  $("drValue").textContent = dr.combined === null ? "–" : dr.combined + "%";
-  $("drTheory").textContent = theoryPct + "%";
-  $("drPractical").textContent = dr.practical === null ? "no sessions yet" : Math.round(dr.practical * 100) + "%";
-
-  // One next practice skill — not seven competency charts.
-  const focus = Core.nextPracticeSkill
-    ? Core.nextPracticeSkill(log)
-    : Core.nextLessonFocus(log);
-  const focusName = escapeHTML(focus.skillName || focus.name || "Next skill");
-  const focusReason = escapeHTML(focus.reason || "Keep practising this skill");
-  const focusCompetency = focus.competencyName ? escapeHTML(focus.competencyName) : "";
-  const focusExtra = focus.score === null || focus.score === undefined
-    ? `<b>${focusName}</b> — ${focusReason}.`
-    : `<b>${focusName}</b> (${Math.round(focus.score * 100)}%) — ${focusReason}${focusCompetency ? ` · ${focusCompetency}` : ""}.`;
-  $("nextFocus").innerHTML = focusExtra;
-
-  // history
-  const hist = $("sessionList");
-  hist.innerHTML = log.length
-    ? log.slice().reverse().map((s, idxRev) => {
-        const realIdx = log.length - 1 - idxRev;
-        const d = new Date(s.date).toLocaleDateString();
-        const marks = Object.values(s.skills || {});
-        const good = marks.filter(r => r === "good").length;
-        const ok = marks.filter(r => r === "ok").length;
-        const poor = marks.filter(r => r === "poor").length;
-        const tags = escapeHTML(s.conditions.concat(s.roadTypes).join(" · "));
-        return `<li class="pl-session">
-          <div class="pl-session-head">
-            <span><b>${d}</b> · ${s.minutes} min</span>
-            <span class="pl-marks">✓${good} △${ok} ✗${poor}</span>
-          </div>
-          <div class="outcome-meta">${tags || "—"}${s.notes ? ` · ${escapeHTML(s.notes.slice(0, 120))}` : ""}</div>
-          <button class="btn ghost pl-del" data-i="${realIdx}" aria-label="Delete session">Delete</button>
-        </li>`;
-      }).join("")
-    : `<li class="muted">No sessions logged yet.</li>`;
-  hist.querySelectorAll(".pl-del").forEach(b => on(b, "click", () => {
-    removePracticalSession(Number(b.dataset.i));
-  }));
-
-  // form defaults once
-  if ($("plDate") && !$("plDate").value) $("plDate").value = todayStr();
-}
-
-function buildPracticalForm() {
-  const chipRow = (host, values, set, key) => {
-    host.innerHTML = "";
-    for (const v of values) {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "chip";
-      b.textContent = v.replace(/-/g, " ");
-      b.setAttribute("aria-pressed", String(set.has(v)));
-      on(b, "click", () => {
-        set.has(v) ? set.delete(v) : set.add(v);
-        b.setAttribute("aria-pressed", String(set.has(v)));
-      });
-      host.appendChild(b);
-    }
-  };
-  chipRow($("plConditions"), Core.CONDITIONS, plFormState.conditions, "conditions");
-  chipRow($("plRoadTypes"), Core.ROAD_TYPES, plFormState.roadTypes, "roadTypes");
-
-  const sk = $("plSkills");
-  sk.innerHTML = "";
-  for (const comp of Core.COMPETENCIES) {
-    const block = document.createElement("div");
-    block.className = "pl-comp";
-    const title = document.createElement("div");
-    title.className = "pl-comp-name";
-    title.textContent = comp.name;
-    block.appendChild(title);
-    for (const skillId of comp.skills) {
-      const rowEl = document.createElement("div");
-      rowEl.className = "pl-skill-row";
-      const nameSpan = document.createElement("span");
-      nameSpan.className = "pl-skill-name";
-      nameSpan.textContent = skillId.replace(/-/g, " ");
-      rowEl.appendChild(nameSpan);
-      const seg = document.createElement("div");
-      seg.className = "seg3";
-      for (const [val, glyph] of [["good", "✓"], ["ok", "△"], ["poor", "✗"]]) {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.textContent = glyph;
-        btn.setAttribute("aria-label", `${skillId}: ${val}`);
-        btn.setAttribute("aria-pressed", String(plFormState.skills[skillId] === val));
-        on(btn, "click", () => {
-          if (plFormState.skills[skillId] === val) delete plFormState.skills[skillId];
-          else plFormState.skills[skillId] = val;
-          seg.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(plFormState.skills[skillId] === x.getAttribute("aria-label").split(": ")[1])));
-        });
-        seg.appendChild(btn);
-      }
-      rowEl.appendChild(seg);
-      block.appendChild(rowEl);
-    }
-    sk.appendChild(block);
-  }
-}
-
-function localDateFromDay(dayIso) {
-  if (!Core.validIsoDate(dayIso)) return null;
-  return new Date(Number(dayIso.slice(0, 4)), Number(dayIso.slice(5, 7)) - 1, Number(dayIso.slice(8, 10)), 12).getTime();
-}
-function removePracticalSession(index) {
-  const log = Core.practicalLog(state);
-  if (!Number.isInteger(index) || index < 0 || index >= log.length) return;
-  log.splice(index, 1);
-  save();
-  renderPractical();
-}
-function savePracticalSession() {
-  const minutes = parseInt($("plMinutes").value, 10);
-  const skills = Object.keys(plFormState.skills);
-  if (!skills.length) { alert("Rate at least one skill before saving."); return; }
-  const dateVal = $("plDate").value ? (localDateFromDay($("plDate").value) ?? Date.now()) : Date.now();
-  state.practical = { log: Core.practicalLog(state) };
-  state.practical.log = Core.appendPracticalSession(state.practical.log, {
-    date: isFinite(dateVal) ? dateVal : Date.now(),
-    minutes: isFinite(minutes) ? minutes : 45,
-    conditions: [...plFormState.conditions],
-    roadTypes: [...plFormState.roadTypes],
-    skills: { ...plFormState.skills },
-    notes: $("plNotes").value,
-  });
-  save();
-  plFormState.conditions.clear();
-  plFormState.roadTypes.clear();
-  plFormState.skills = {};
-  buildPracticalForm();
-  $("plNotes").value = "";
-  renderPractical();
-  toast("Session logged", "Next practice skill updated.", "car");
-}
 
 /* ---------------- learner study (research) ---------------- */
-function renderStudy() {
-  const intro = $("studyIntro"), body = $("studyBody");
-  if (!intro || !body) return;
-  const enrolled = !!state.study.enrolledAt;
-  intro.hidden = enrolled;
-  body.hidden = !enrolled;
-  if (!enrolled) return;
-  $("studyPid").textContent = state.study.participantId;
-
-  const m = Core.studyMetrics({
-    enrolledAt: state.study.enrolledAt, exams: state.exams, answered: state.answered,
-    timeStudied: state.timeStudied, study: state.study, nowMs: Date.now(),
-  });
-  const days = Math.max(1, m.daysSinceEnroll || 1);
-  $("studyDay").textContent = days;
-  $("studyMetrics").innerHTML =
-    `<div>Diagnostic <b>${m.diagnosticPct === null ? "–" : m.diagnosticPct + "%"}</b> · latest mock <b>${m.latestMockPct === null ? "–" : m.latestMockPct + "%"}</b> · improvement <b>${m.improvementPct === null ? "–" : (m.improvementPct > 0 ? "+" : "") + m.improvementPct + " pts"}</b></div>
-     <div class="outcome-meta">${m.questionsAnswered} questions · ${m.studyHours} h · mocks ${m.mockCount} · retention ${m.retentionAttempts ? Math.round(100 * m.retentionCorrect / m.retentionAttempts) + "% (" + m.retentionAttempts + ")" : "–"}</div>`;
-
-  // confidence survey until all topics rated
-  const survey = $("confidenceSurvey");
-  const rated = new Set(state.study.confidence.map(c => c.catId));
-  const missing = Object.keys(CATEGORIES).filter(c => !rated.has(c));
-  if (missing.length) {
-    survey.hidden = false;
-    survey.innerHTML = `<p class="outcome-meta" style="margin:0 0 6px;">Before studying: how confident are you per topic? (1 = no idea, 5 = very confident)</p>` +
-      missing.slice(0, 3).map(cat => {
-        const c = CATEGORIES[cat];
-        return `<div class="pl-skill-row"><span class="pl-skill-name">${c.name}</span><span class="seg3">` +
-          [1, 2, 3, 4, 5].map(l => `<button type="button" data-cat="${cat}" data-level="${l}" aria-label="${c.name}: ${l}" aria-pressed="false">${l}</button>`).join("") + `</span></div>`;
-      }).join("");
-    survey.querySelectorAll("button[data-cat]").forEach(b => on(b, "click", () => {
-      state.study.confidence.push({ catId: b.dataset.cat, level: Number(b.dataset.level) });
-      save(); renderStudy();
-    }));
-    if ($("btnDiagnostic")) $("btnDiagnostic").disabled = true;
-  } else {
-    survey.hidden = true;
-    if ($("btnDiagnostic")) $("btnDiagnostic").disabled = !!state.exams.some(e => e.tag === "diagnostic");
-    if ($("btnDiagnostic")) $("btnDiagnostic").textContent = state.exams.some(e => e.tag === "diagnostic") ? "Baseline recorded ✓" : "Baseline diagnostic exam";
-  }
-
-  // retention probes
-  const pool = Core.retentionProbePool(bank, state.qstats, state.study.retentionLog, Date.now());
-  $("btnRetentionProbes").hidden = pool.length === 0;
-  $("retentionHint").textContent = pool.length
-    ? `${pool.length} question${pool.length === 1 ? "" : "s"} from a week or more ago are ready for a memory check.`
-    : `Memory checks appear once you've mastered questions 7+ days ago.`;
-}
-
-function joinStudy() {
-  if (!confirm("Join the learner study?\n\n· Fully anonymous random ID — no account, no personal data\n· Data stays on this device until you export it\n· Free-text notes are never exported")) return;
-  const e = Core.createEnrollment(Date.now());
-  state.study.enrolledAt = e.enrolledAt;
-  state.study.participantId = e.participantId;
-  save(); renderStudy();
-}
-
-function startDiagnostic() {
-  quizBackTarget = "stats";
-  const qs = Core.assembleExam({ bank, n: 20, samplingMode: "fixed", seed: 0xD1A6 });
-  session = { mode: "exam", tag: "diagnostic", label: "Baseline Diagnostic", questions: qs, i: 0, correct: 0, answers: [], timeLeft: Core.timeLimitSecs(qs.length), endTs: 0, timerId: null };
-  beginQuiz();
-}
-
-function startRetentionProbes() {
-  const pool = Core.retentionProbePool(bank, state.qstats, state.study.retentionLog, Date.now());
-  if (!pool.length) return;
-  quizBackTarget = "stats";
-  session = { mode: "practice", tag: "retention", label: "Memory Check", questions: shuffle(pool), i: 0, correct: 0, answers: [], endTs: 0, timerId: null, marathon: false, requeued: {} };
-  beginQuiz();
-}
-
-function exportStudyData() {
-  const bundle = Core.buildStudyExport(state, bank, Date.now(), { appVersion: APP_VERSION });
-  const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `road-ready-study-${state.study.participantId}.json`;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-}
-
-/* ---------------- theme ---------------- */
-function applyTheme() {
-  document.documentElement.dataset.theme = state.settings.theme;
-  $("btnTheme").innerHTML = icon(state.settings.theme === "dark" ? "sun" : "moon", 17);
-}
 
 /* ---------------- HAZARD PERCEPTION ---------------- */
 const HZ = { V: 110, W: 360, H: 420, RL: 96, RR: 264, CARX: 158, CARY: 344 };
@@ -1687,6 +1544,12 @@ function hzResults() {
   on($("hzDone"), "click", () => { hz = null; renderHome(); showView("home"); });
 }
 
+/* ---------------- theme ---------------- */
+function applyTheme() {
+  document.documentElement.dataset.theme = state.settings.theme;
+  $("btnTheme").innerHTML = icon(state.settings.theme === "dark" ? "sun" : "moon", 17);
+}
+
 /* ---------------- ONBOARDING ---------------- */
 let obStep = 0;
 function initObStatePack() {
@@ -1861,7 +1724,7 @@ function init() {
       if (t === "practice") startSetup("practice");
       else if (t === "exam") startSetup("exam");
       else if (t === "flashcards") { renderFlashcards(); showView("flashcards"); }
-      else if (t === "guide") showView("guide");
+      else if (t === "guide") { renderStateFacts(); showView("guide"); }
       else if (t === "stats") { renderStats(); showView("stats"); }
       else { renderHome(); showView("home"); }
     });
@@ -1871,8 +1734,10 @@ function init() {
   on($("qaExam"), "click", () => startSetup("exam"));
   on($("qaCards"), "click", () => { renderFlashcards(); showView("flashcards"); });
   on($("qaPractical"), "click", () => { renderPractical(); showView("practical"); });
-  buildPracticalForm();
-  on($("btnSaveSession"), "click", savePracticalSession);
+  if (PracticalUI) {
+    PracticalUI.buildForm();
+    on($("btnSaveSession"), "click", () => PracticalUI.saveSession());
+  }
   on($("qaReview"), "click", () => {
     const m = missedQuestions();
     if (!m.length) { alert("Nothing missed yet — keep practicing!"); return; }
@@ -1881,7 +1746,7 @@ function init() {
   on($("btnPlanAction"), "click", e => {
     const action = e.currentTarget.dataset.action;
     if (action === "set-date") {
-      renderStats(); showView("stats");
+      showView("settings");
       setTimeout(() => { $("inpTestDate").scrollIntoView({ block: "center" }); $("inpTestDate").focus(); }, 0);
       return;
     }
@@ -1953,6 +1818,8 @@ function init() {
     toast("Pack: " + pack.name, scopeMsg, "car");
   });
   on($("btnExport"), "click", exportProgress);
+  on($("btnOpenSettings"), "click", () => showView("settings"));
+  on($("btnSettingsDone"), "click", () => { renderStats(); showView("stats"); });
   void initAccount();
   on($("btnOutcomePass"), "click", () => {
     let pending = pendingOutcomePrediction();
@@ -1969,10 +1836,10 @@ function init() {
     renderCalibration();
     toast("Prediction frozen", `Readiness ${p.readinessPct}% · coverage ${p.coveragePct}% · evidence ${p.evidenceClass}.`, "chart");
   });
-  on($("btnStudyJoin"), "click", joinStudy);
+  on($("btnStudyJoin"), "click", () => { if (StudyUI) StudyUI.join(); });
   on($("btnDiagnostic"), "click", startDiagnostic);
   on($("btnRetentionProbes"), "click", startRetentionProbes);
-  on($("btnStudyExport"), "click", exportStudyData);
+  on($("btnStudyExport"), "click", () => { if (StudyUI) StudyUI.exportData(); });
   on($("btnOutcomeFail"), "click", () => {
     let pending = pendingOutcomePrediction();
     if (!pending) pending = freezeOfficialPrediction();
@@ -2074,6 +1941,10 @@ function renderStateFacts() {
   const packId = Packs.PACK_IDS.includes(state.settings.statePack) ? state.settings.statePack : "generic";
   const pack = Packs.STATE_PACKS[packId];
   const source = Packs.packSource(packId);
+  const country = countryForPack(packId);
+  if (Guide && typeof Guide.apply === "function") {
+    Guide.apply({ country });
+  }
   const n = (pack.questions || []).length;
   const rows = Object.entries(pack.facts).map(([k, v]) => {
     const label = FACT_LABELS[k] || k.replace(/([A-Z])/g, " $1").replace(/^./, c => c.toUpperCase());
@@ -2091,12 +1962,54 @@ function renderStateFacts() {
     </div>`;
 }
 
-/* PWA: offline-first service worker */
+/* PWA: offline-first service worker with explicit update activation.
+ *
+ * sw.js uses a generated cache version, so any deployed change installs a new
+ * worker. When that worker finishes installing we ask it to skip waiting, and
+ * once it takes control we offer a Reload toast instead of silently mixing
+ * old markup with new cached assets. */
+function showUpdateToast() {
+  const host = document.getElementById("toasts");
+  if (!host || document.getElementById("swUpdateToast")) return;
+  const el = document.createElement("div");
+  el.id = "swUpdateToast";
+  el.className = "toast";
+  el.setAttribute("role", "status");
+  const text = document.createElement("span");
+  text.textContent = "Road Ready was updated — reload for the latest version.";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "btn ghost";
+  btn.textContent = "Reload";
+  on(btn, "click", () => location.reload());
+  el.append(text, btn);
+  host.appendChild(el);
+}
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
   // file:// has no SW; only register when served over http(s)
   if (!/^https?:$/.test(location.protocol)) return;
-  navigator.serviceWorker.register("sw.js").catch(err => console.warn("[road-ready] SW:", err));
+  const hadController = Boolean(navigator.serviceWorker.controller);
+  let updateAnnounced = false;
+  const activateNow = (worker) => { if (worker) worker.postMessage("skip-waiting"); };
+  navigator.serviceWorker.register("sw.js").then((reg) => {
+    // An update that finished installing while this tab was closed/open.
+    if (reg.waiting && navigator.serviceWorker.controller) activateNow(reg.waiting);
+    reg.addEventListener("updatefound", () => {
+      const installing = reg.installing;
+      if (!installing) return;
+      installing.addEventListener("statechange", () => {
+        // Take over only when a controller already exists: the very first
+        // install should activate quietly, without offering a pointless reload.
+        if (installing.state === "installed" && navigator.serviceWorker.controller) activateNow(installing);
+      });
+    });
+  }).catch(err => console.warn("[road-ready] SW:", err));
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!hadController || updateAnnounced) return;
+    updateAnnounced = true;
+    showUpdateToast();
+  });
 }
 
 init();
