@@ -5,6 +5,7 @@ const Core = window.RoadReadyCore;
 const Packs = window.RoadReadyPacks;
 const BLUEPRINTS = (window.RoadReadyBlueprints || {}).EXAM_BLUEPRINTS || {};
 const Jur = window.RoadReadyJurisdictions || {};
+const AccountUI = window.RoadReadyAccountUI;
 const FALLBACK_TERMS = {
   agencyShort: "DMV",
   examName: "knowledge test",
@@ -127,114 +128,20 @@ function importProgress(file) {
   reader.readAsText(file);
 }
 
-/* ---------------- account & sync ---------------- */
-/* Sync carries exactly the bundle Export/Import uses, so a downloaded copy
-   goes through the same Core.parseImport validation as a file the user picked
-   — one format, one restore path, one set of guarantees. */
-
-const Account = window.RoadReadyAccount;
-let accountState = { available: false, user: null };
-let accountRemoteAt = null;
-
-function setAccountNote(text) {
-  const note = document.getElementById("accountNote");
-  if (note) note.textContent = text || "";
-}
-
-function accountButton(label, onClick) {
-  const button = document.createElement("button");
-  button.className = "btn ghost";
-  button.textContent = label;
-  button.addEventListener("click", onClick);
-  return button;
-}
-
-async function uploadToAccount(force) {
-  setAccountNote("Saving…");
-  const result = await Account.push(Core.exportBundle(state), accountRemoteAt, force);
-  if (result.status === "ok") {
-    accountRemoteAt = result.updatedAt;
-    renderAccount();
-    setAccountNote("Saved to your account.");
-    return;
-  }
-  if (result.status === "conflict") {
-    // Never overwrite a copy this device has not seen without asking.
-    const when = result.remoteUpdatedAt ? new Date(result.remoteUpdatedAt).toLocaleString() : "unknown";
-    if (confirm("Another device saved at " + when + ". Overwrite it with this device's progress?")) {
-      await uploadToAccount(true);
-      return;
-    }
-    setAccountNote("Left the other device's copy alone.");
-    return;
-  }
-  setAccountNote(result.message || "Sync failed.");
-}
-
-async function downloadFromAccount() {
-  setAccountNote("Fetching…");
-  const result = await Account.pull();
-  if (result.status === "empty") { setAccountNote("Nothing has been saved to this account yet."); return; }
-  if (result.status !== "ok") { setAccountNote(result.message || "Sync failed."); return; }
-
-  const parsed = Core.parseImport(result.bundle, { packIds: Packs.PACK_IDS });
-  if (!parsed.ok) { setAccountNote("That saved copy could not be read (" + parsed.error + ")."); return; }
-  if (!confirm(parsed.warnings.length
-    ? "The saved copy is from another app version (" + parsed.warnings.join(", ") + "). Restore anyway?"
-    : "Replace current progress with the copy from your account?")) return;
-
-  state = parsed.state;
-  bank = Packs.filterBankForPack(ALL_QUESTIONS, state.settings.statePack);
-  save();
-  renderStateFacts();
-  renderHome(); renderStats(); renderFlashcards();
-  accountRemoteAt = result.updatedAt;
-  renderAccount();
-  setAccountNote("Restored from your account.");
-}
-
-function renderAccount() {
-  const panel = document.getElementById("accountPanel");
-  const actions = document.getElementById("accountActions");
-  if (!panel || !actions) return;
-  // Nothing to offer where accounts are not configured.
-  panel.hidden = !accountState.available;
-  if (!accountState.available) return;
-
-  actions.textContent = "";
-  if (!accountState.user) {
-    actions.appendChild(accountButton("Sign in with Google", () => Account.startGoogleSignIn()));
-    setAccountNote("Optional — Road Ready works fully offline without an account.");
-    return;
-  }
-
-  actions.appendChild(accountButton("Save", () => uploadToAccount(false)));
-  actions.appendChild(accountButton("Restore", downloadFromAccount));
-  actions.appendChild(accountButton("Sign out", async () => {
-    await Account.signOut();
-    accountState = { available: true, user: null };
-    accountRemoteAt = null;
-    renderAccount();
-    setAccountNote("Signed out. Your progress stays on this device.");
-  }));
-  actions.appendChild(accountButton("Delete copy", async () => {
-    if (!confirm("Delete the copy stored in your account? This device keeps its progress.")) return;
-    await Account.deleteRemote();
-    accountRemoteAt = null;
-    setAccountNote("Removed the copy from your account.");
-  }));
-
-  setAccountNote("Signed in as " + accountState.user.email
-    + (accountRemoteAt ? " — last saved " + new Date(accountRemoteAt).toLocaleDateString() : " — nothing saved yet") + ".");
-}
-
 async function initAccount() {
-  if (!Account) return;
-  const outcome = Account.consumeSignInOutcome();
-  accountState = await Account.fetchAccount();
-  if (accountState.user) accountRemoteAt = await Account.remoteUpdatedAt().catch(() => null);
-  renderAccount();
-  if (outcome) setAccountNote(outcome);
+  if (!AccountUI || !window.RoadReadyAccount) return;
+  await AccountUI.init({
+    account: window.RoadReadyAccount,
+    getBundle: () => Core.exportBundle(state),
+    parseBundle: (text) => Core.parseImport(text, { packIds: Packs.PACK_IDS }),
+    applyState: (nextState) => {
+      state = nextState;
+      bank = Packs.filterBankForPack(ALL_QUESTIONS, state.settings.statePack);
+      save();
+      renderStateFacts();
+      renderHome(); renderStats(); renderFlashcards();
+    },
+  });
 }
 
 /* ---------------- XP, levels & achievements ---------------- */
@@ -1113,7 +1020,7 @@ function renderStats() {
     ? state.exams.slice().reverse().map(e => {
         const d = new Date(e.date);
         return `<li class="${e.pass ? "pass" : "fail"}">
-          <span>${icon(e.pass ? "check-circle" : "x-circle", 15)} ${e.label || "Exam"}</span>
+          <span>${icon(e.pass ? "check-circle" : "x-circle", 15)} ${escapeHTML(e.label || "Exam")}</span>
           <span>${Math.round(e.pct * 100)}% (${e.correct}/${e.total})</span>
           <small>${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small></li>`;
       }).join("")
@@ -1219,8 +1126,8 @@ function renderCalibration() {
     const d = new Date(p.predictionCreatedAt);
     const res = p.outcome ? (p.outcome.result === "pass" ? "PASS" : p.outcome.result === "fail" ? "FAIL" : "?") : "PENDING";
     rows.push(`<div class="outcome-row">
-      <span>${d.toLocaleDateString()} · ${p.jurisdiction} · readiness ${p.readinessPct}% · mocks ${p.mockAvgPct}% · coverage ${p.coveragePct}%
-        <span class="outcome-meta">frozen prediction · ${p.evidenceClass} evidence</span></span>
+      <span>${d.toLocaleDateString()} · ${escapeHTML(p.jurisdiction)} · readiness ${p.readinessPct}% · mocks ${p.mockAvgPct}% · coverage ${p.coveragePct}%
+        <span class="outcome-meta">frozen prediction · ${escapeHTML(p.evidenceClass)} evidence</span></span>
       <b class="res-${p.outcome ? p.outcome.result : "pending"}">${res}</b>
     </div>`);
   });
@@ -1253,10 +1160,12 @@ function renderPractical() {
   const focus = Core.nextPracticeSkill
     ? Core.nextPracticeSkill(log)
     : Core.nextLessonFocus(log);
-  const focusName = focus.skillName || focus.name;
+  const focusName = escapeHTML(focus.skillName || focus.name || "Next skill");
+  const focusReason = escapeHTML(focus.reason || "Keep practising this skill");
+  const focusCompetency = focus.competencyName ? escapeHTML(focus.competencyName) : "";
   const focusExtra = focus.score === null || focus.score === undefined
-    ? `<b>${focusName}</b> — ${focus.reason}.`
-    : `<b>${focusName}</b> (${Math.round(focus.score * 100)}%) — ${focus.reason}${focus.competencyName ? ` · ${focus.competencyName}` : ""}.`;
+    ? `<b>${focusName}</b> — ${focusReason}.`
+    : `<b>${focusName}</b> (${Math.round(focus.score * 100)}%) — ${focusReason}${focusCompetency ? ` · ${focusCompetency}` : ""}.`;
   $("nextFocus").innerHTML = focusExtra;
 
   // history
@@ -1269,7 +1178,7 @@ function renderPractical() {
         const good = marks.filter(r => r === "good").length;
         const ok = marks.filter(r => r === "ok").length;
         const poor = marks.filter(r => r === "poor").length;
-        const tags = s.conditions.concat(s.roadTypes).join(" · ");
+        const tags = escapeHTML(s.conditions.concat(s.roadTypes).join(" · "));
         return `<li class="pl-session">
           <div class="pl-session-head">
             <span><b>${d}</b> · ${s.minutes} min</span>
@@ -1667,9 +1576,12 @@ function hzStartGame() {
   hz = { i: 0, scores: [], press: null, t0: 0, timer: null, running: false, marked: false };
   const sub = $("hazardSub");
   if (sub) {
-    sub.innerHTML = state.settings.statePack === "UK"
-      ? "Tap <b>SLOW</b> (or press <b>Space</b>) the moment a hazard starts to develop — before you'd need to brake hard. Earlier = more points. Core section of your theory test (real test: 14 clips, 44/75) — this trainer builds the same early-spotting skill."
-      : "Tap <b>SLOW</b> (or press <b>Space</b>) the moment a hazard starts to develop — before you'd need to brake hard. Earlier = more points. Bonus training: most U.S. knowledge exams don't include this, but the skill saves lives.";
+    const hzInfo = hazardInfoForPack();
+    const terms = termsForPack();
+    const base = "Tap <b>SLOW</b> (or press <b>Space</b>) the moment a hazard starts to develop — before you'd need to brake hard. Earlier = more points. ";
+    sub.innerHTML = hzInfo.includedInExam
+      ? `${base}Core section of your ${escapeHTML(terms.examName)}${hzInfo.officialFormat ? ` (real test: ${escapeHTML(hzInfo.officialFormat)})` : ""} — this trainer builds the same early-spotting skill.`
+      : `${base}Bonus training: your ${escapeHTML(terms.examName)} does not include this scored section, but the skill saves lives.`;
   }
   showView("hazard");
   hzIntro();
@@ -1871,8 +1783,10 @@ function finishOnboarding() {
   renderStateFacts();
   renderHome();
   const pack = Packs.STATE_PACKS[state.settings.statePack] || Packs.STATE_PACKS.generic;
-  const scopeNote = state.settings.statePack === "UK"
-    ? "Studying UK Highway Code rules for the DVSA car theory test. Start with Today's Set."
+  const terms = termsForPack();
+  const country = countryForPack();
+  const scopeNote = pack.includeUniversal === false
+    ? `Studying ${country ? country.name : pack.name} ${terms.rulesLabel.toLowerCase()} for the ${terms.agencyShort} ${terms.examName}. Start with Today's Set.`
     : `Studying ${pack.name} rules + universal rules. Start with Today's Set.`;
   toast("Welcome aboard", scopeNote, "car");
 }
@@ -2032,8 +1946,9 @@ function init() {
     const pack = Packs.STATE_PACKS[e.target.value] || Packs.STATE_PACKS.generic;
     const n = (pack.questions || []).length;
     const terms = termsForPack(e.target.value);
-    const scopeMsg = e.target.value === "UK"
-      ? `${n} ${terms.rulesLabel} questions · U.S. rules excluded · key rules updated`
+    const country = countryForPack(e.target.value);
+    const scopeMsg = pack.includeUniversal === false
+      ? `${n} ${terms.rulesLabel} questions · ${country ? country.name : pack.name} only · key rules updated`
       : n ? `${n} jurisdiction-specific questions added · key rules updated` : "Universal questions — confirm local details with official sources.";
     toast("Pack: " + pack.name, scopeMsg, "car");
   });

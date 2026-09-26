@@ -43,32 +43,47 @@
     }
   }
 
-  async function remoteUpdatedAt() {
+  async function remoteMeta() {
     const response = await fetch("/api/sync", { headers: { accept: "application/json" } });
-    if (!response.ok) return null;
+    if (!response.ok) return { updatedAt: null, revision: null };
     const body = await response.json();
-    return (body.state && body.state.updated_at) || null;
+    return {
+      updatedAt: (body.state && body.state.updated_at) || null,
+      revision: (body.state && body.state.revision) || null,
+    };
+  }
+
+  async function remoteUpdatedAt() {
+    return (await remoteMeta()).updatedAt;
   }
 
   /**
    * Uploads `bundleText` (the JSON string Core.exportBundle returns).
    *
-   * `expected` is the timestamp the caller believes is on the server; when the
-   * server has moved on the push is refused as a conflict rather than
-   * overwriting a copy this device has never seen. `force` overwrites after
-   * the user has been asked.
+   * `expectedRevision` is the exact revision the caller last observed. The
+   * server checks it atomically with the write; `force` is used only after the
+   * user explicitly chooses to overwrite a newer remote copy.
    */
-  async function push(bundleText, expected, force) {
-    if (!force) {
-      const actual = await remoteUpdatedAt();
-      if (actual !== expected) return { status: "conflict", remoteUpdatedAt: actual };
-    }
+  async function push(bundleText, expectedRevision, force) {
     const response = await fetch("/api/sync", {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ payload: { bundle: bundleText }, version: 1 }),
+      body: JSON.stringify({
+        payload: { bundle: bundleText },
+        version: 1,
+        expectedRevision: expectedRevision == null ? null : expectedRevision,
+        force: force === true,
+      }),
     });
     if (response.status === 401) return { status: "signed-out" };
+    if (response.status === 409) {
+      const body = await response.json().catch(() => ({}));
+      return {
+        status: "conflict",
+        remoteUpdatedAt: body.updated_at || null,
+        remoteRevision: body.revision || null,
+      };
+    }
     if (response.status === 503) {
       return { status: "unavailable", message: "Sync is not configured for this deployment." };
     }
@@ -77,7 +92,7 @@
       return { status: "error", message: body.error || "Sync failed (" + response.status + ")" };
     }
     const body = await response.json();
-    return { status: "ok", updatedAt: body.updated_at };
+    return { status: "ok", updatedAt: body.updated_at, revision: body.revision };
   }
 
   /** Downloads this account's bundle as text, for Core.parseImport to validate. */
@@ -92,7 +107,12 @@
     if (!body.state || !body.state.payload || typeof body.state.payload.bundle !== "string") {
       return { status: "empty" };
     }
-    return { status: "ok", bundle: body.state.payload.bundle, updatedAt: body.state.updated_at };
+    return {
+      status: "ok",
+      bundle: body.state.payload.bundle,
+      updatedAt: body.state.updated_at,
+      revision: body.state.revision || null,
+    };
   }
 
   /** Removes the account's copy. This device keeps its progress. */
@@ -100,6 +120,17 @@
     const response = await fetch("/api/sync", { method: "DELETE" });
     if (!response.ok) return { status: "error", message: "Delete failed (" + response.status + ")" };
     return { status: "empty" };
+  }
+
+  /** Deletes the signed-in account and its cloud snapshot. Local data remains. */
+  async function deleteAccount() {
+    const response = await fetch("/api/account", { method: "DELETE" });
+    if (response.status === 401) return { status: "signed-out" };
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      return { status: "error", message: body.error || "Account deletion failed (" + response.status + ")" };
+    }
+    return { status: "ok" };
   }
 
   /**
@@ -123,10 +154,12 @@
     fetchAccount,
     startGoogleSignIn,
     signOut,
+    remoteMeta,
     remoteUpdatedAt,
     push,
     pull,
     deleteRemote,
+    deleteAccount,
     consumeSignInOutcome,
   };
 })();

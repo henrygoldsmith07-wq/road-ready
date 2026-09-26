@@ -23,7 +23,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20, cache: npm }
       - run: npm ci --omit=dev
-      # zero runtime dependencies — this is the guard that keeps it that way
+      # Audit production/server dependencies separately from dev-only tooling.
       - run: npm audit --omit=dev --audit-level=high
 
   unit-and-content:

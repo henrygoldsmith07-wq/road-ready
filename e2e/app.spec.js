@@ -73,7 +73,9 @@ test.describe("mock exam", () => {
     await expect(page.locator("#view-quiz")).toHaveClass(/active/);
     await expect(page.locator("#qTimer")).toBeVisible();
     const timer = await page.locator("#qTimer").textContent();
-    expect(timer).toContain("10:00"); // 10 questions × 60 s
+    // The timer starts immediately, so a busy CI worker can observe the first
+    // tick before this assertion runs.
+    expect(timer).toMatch(/10:00|9:59/); // 10 questions × 60 s
 
     // answer all 10 by mashing "1" — auto-advance in exam mode
     for (let i = 0; i < 12 && !(await page.locator("#view-results").evaluate((el) => el.classList.contains("active"))); i++) {
@@ -192,6 +194,36 @@ test.describe("flashcards & settings", () => {
     page.once("dialog", (d) => d.accept());
     await page.locator("#fileImport").setInputFiles(path);
     await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("roadready.v1")).answered)).toBeGreaterThan(0);
+  });
+
+  test("imported text cannot become persistent markup", async ({ page }, testInfo) => {
+    await freshApp(page);
+    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    await page.locator('#bottomNav button[data-nav="stats"]').click();
+
+    const fs = await import("node:fs");
+    const path = testInfo.outputPath("malicious-backup.json");
+    const marker = '<img data-xss="1" src=x onerror="document.body.dataset.pwned=1">';
+    fs.writeFileSync(path, JSON.stringify({
+      app: "road-ready",
+      schema: 2,
+      exportedAt: new Date().toISOString(),
+      state: {
+        v: 2,
+        exams: [{ date: Date.now(), label: marker, pct: 0.5, correct: 5, total: 10, pass: false }],
+        practical: { log: [{
+          date: Date.now(), minutes: 20, conditions: ["dry", marker], roadTypes: ["urban", marker],
+          skills: {}, notes: marker,
+        }] },
+        settings: { statePack: "generic", theme: "dark" },
+      },
+    }));
+
+    page.once("dialog", (d) => d.accept());
+    await page.locator("#fileImport").setInputFiles(path);
+    await expect(page.locator("#historyList")).toContainText("<img");
+    await expect(page.locator('#historyList img[data-xss="1"]')).toHaveCount(0);
+    expect(await page.evaluate(() => document.body.dataset.pwned || "")).toBe("");
   });
 });
 

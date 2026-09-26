@@ -17,15 +17,16 @@ create table if not exists users (
 
 -- One row per user holding one backup bundle.
 --
--- Conflict handling is last-writer-wins on `updated_at`, decided by the client.
 -- The server does not merge: it cannot tell which of two study histories is
--- correct, and a wrong merge silently corrupts weeks of practice.
+-- correct. `revision` is an optimistic-concurrency token so a stale device
+-- cannot silently overwrite a newer snapshot.
 create table if not exists user_state (
   user_id uuid primary key references users (id) on delete cascade,
   payload jsonb not null,
   updated_at timestamptz not null default now(),
   -- Schema version of the snapshot, so a newer client can migrate an old one.
-  version integer not null default 1
+  version integer not null default 1,
+  revision bigint not null default 1
 );
 
 create index if not exists user_state_updated_idx on user_state (updated_at desc);

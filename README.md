@@ -1,16 +1,16 @@
 # Road Ready — Pass Your Driving Test
 
-A self-contained driving-theory study app. No build step, no dependencies, no internet needed — just open `index.html` in any browser. Optional Google sign-in adds cross-device sync where a deployment configures it; without it nothing changes.
+A self-contained driving-theory study app with no client build step and no internet requirement for normal study — just open `index.html` in any browser. Optional Google sign-in adds a small serverless sync backend where a deployment configures it; without that, the app remains fully local.
 
 ## What Road Ready is (product decision)
 
 **Jurisdiction-pluggable driving-theory trainer. Shipped with two jurisdiction modules: the United States** (universal bank + CA, TX, NY, FL, WA, PA region packs with official exam simulations) **and Great Britain** (England, Scotland and Wales; Highway Code car-theory pack with a 60-question verified bank feeding the DVSA 50/43-in-57-minutes official simulation; hazard perception is a core section there).
 
 The architecture grows by adding jurisdiction modules, not by
-special-casing content: concepts, terminology, signs, scoring and test formats are jurisdiction modules (`js/jurisdictions.js` defines the contract; `js/state-packs.js`, `js/exam-blueprints.js` and the source registry are each module's data). The content QA system enforces the contract — packs and blueprints must be registered regions or CI fails. Country packs are strictly scoped: the GB bank contains only GB-tagged Highway Code questions, so US rules (right-on-red, US BAC limits) never leak into UK study.
+special-casing content: concepts, terminology, signs, scoring and test formats are jurisdiction modules (`js/jurisdictions.js` defines the contract; `js/state-packs.js`, `js/exam-blueprints.js` and the source registry are each module's data). The content QA system enforces the contract — packs and blueprints must be registered regions or CI fails. Country packs are strictly scoped: the Great Britain bank contains only GB-scoped Highway Code questions, so U.S. rules (right-on-red, U.S. BAC limits) never leak into GB study.
 
 Two honest scoping calls that follow from this:
-- **Hazard Perception is labeled bonus training**, not "the real test" — most U.S. knowledge exams don't include it (it's a UK-style section). The trainer stays because early hazard spotting is universally valuable; when a jurisdiction module includes it in its exam (e.g., UK), its module declares `hazardPerception.includedInExam: true` and the UI copy updates itself.
+- **Hazard Perception is labeled bonus training** where the selected jurisdiction does not test it. The trainer stays because early hazard spotting is universally valuable; jurisdictions that include it declare that in `hazardPerception` metadata and the UI derives its wording from the module rather than a GB-specific application branch.
 - **"DMV" wording is jurisdiction terminology**, driven by `terminology` in the active country module — not a hardcoded assumption.
 
 **Design:** minimal, monochrome, icon-driven — a hand-drawn stroke icon set (no emojis), flat surfaces with hairline borders, inverted primary actions, and dark/light themes. Road signs keep their real-world colors because they're the teaching content.
@@ -25,7 +25,7 @@ Two honest scoping calls that follow from this:
 | Feature | What it does |
 |---|---|
 | Onboarding | A 4-step first-run intro: what's inside, theme + read-aloud setup, and how the daily habit works — skippable, shown once |
-| Adaptive Practice | 267 questions across 10 topics and 34 concepts, spanning 9 **question forms** — junction-priority road-layout diagrams, lane-selection scenarios, sign combinations, what-happens-next chains, prioritisation drills, multi-step ordering, photo-described scenes, deliberately similar alternatives, same-concept rewording variants, and classic recall; mastery aggregates per concept (coverage Ã depth), then topic, then overall score |
+| Adaptive Practice | 267 questions across 10 topics and 34 concepts, spanning 9 **question forms** — junction-priority road-layout diagrams, lane-selection scenarios, sign combinations, what-happens-next chains, prioritisation drills, multi-step ordering, photo-described scenes, deliberately similar alternatives, same-concept rewording variants, and classic recall; mastery aggregates per concept (coverage × depth), then topic, then overall score |
 | Marathon Mode | The full 267-question bank in one run — anything you miss comes back until you've seen it through |
 | Mock Exams | Quick Check (10), Standard (20), Full (46), or a Weak-Topics exam — timed practice with jurisdiction-aware exam terminology and no feedback until you submit |
 | Official Simulations | Pick a jurisdiction and the exam locks to its real published count, time and pass bar **only when the bank has enough unique questions**. Full pools run as locked official-format simulations; incomplete pools are explicitly labelled practice previews and cannot award an official-standard pass. Specs include CA 46/38, TX 30/21, NY 20/14, FL 50/40 in 60 min, WA 40/32, PA 18/15, GB 50/43 in 57 min (`js/exam-blueprints.js`, source-cited) |
@@ -49,14 +49,14 @@ Two honest scoping calls that follow from this:
 Exports carry `protocol: { protocolVersion: "rr-study-1.0", contentVersion, scoringVersion, masteryVersion, jurisdiction, appVersion }`. `contentVersion` fingerprints the question bank (size + id checksum), so any mid-study content or scoring change is detectable and cohorts stay comparable. Changing the bank, grading or mastery algorithm mid-study requires bumping `PROTOCOL_VERSION` in `js/core.js`; `scripts/study-report.mjs` warns when a cohort mixes versions and prints the pooled calibration curve.
 | Settings | Pass mark (75/80/85%), exam length, instant-feedback toggle, full progress reset |
 
-Everything is stored locally in your browser (localStorage) — nothing leaves your machine.
+By default, everything is stored locally in your browser (`localStorage`). If you explicitly sign in and press **Save**, Road Ready uploads the same export bundle used by manual backup/restore to your account; nothing is uploaded automatically.
 
 ## Keyboard shortcuts
 
 - `1`–`4` — answer the question
 - `Enter` — next question (practice) / flip flashcard
 - `F` — flag the current question
-- `←†`/`→` — flashcard navigation · `K` know it / `L` still learning
+- `←`/`→` — flashcard navigation · `K` know it / `L` still learning
 
 ## Content notes
 
@@ -70,6 +70,7 @@ Questions follow general U.S. rules of the road common across state DMV handbook
 - `js/questions.js` — the question bank (267 Qs with explanations, 9 question forms)
 - `js/signs.js` — SVG road-sign library (31 signs)
 - `js/core.js` — pure engine: scoring, readiness, adaptive selection, spaced scheduling, exam assembly/grading, hazard scoring, XP/levels, achievements, state migration, import/export
+- `js/account.js` / `js/account-ui.js` — optional account transport and isolated sync/settings controller
 - `js/state-packs.js` — state-specific content packs (CA, TX, NY, FL, WA, PA)
 - `js/app.js` — views and DOM wiring
 - `serve.js` — tiny static server for local testing
@@ -119,10 +120,11 @@ accessibility checks — on desktop Chrome plus iPhone and Pixel profiles.
 ## PWA / offline
 
 Installable (`manifest.webmanifest`) with a service worker (`sw.js`) that
-pre-caches the full shell and serves stale-while-revalidate — the whole app
+pre-caches the full static shell and serves static assets stale-while-revalidate — the whole app
 works offline after one visit. Progress lives in versioned localStorage
 (`v2` schema) with a migration pipeline; Settings can export/import it as a
-JSON backup.
+JSON backup. `/api/*` requests are explicitly excluded from Service Worker
+caching so account/session data and synced backups never enter Cache Storage.
 
 ## Jurisdiction packs
 
@@ -154,9 +156,16 @@ validation — including the version warnings — as a file you picked yourself,
 there is one format and one restore path to keep correct rather than two that
 can drift.
 
-Nothing is saved automatically. If another device saved since this one last
-looked, the push is refused and you are asked rather than silently overwriting.
+Nothing is saved automatically. Each server snapshot carries a monotonically
+increasing revision. A normal upload succeeds only if the revision this device
+last observed is still current; the database check and write are atomic. If
+another device saved first, the server returns a conflict and Road Ready asks
+before an explicit force overwrite.
 
-Apply `database/migrations/001_accounts_and_sync.sql` before first use, and use
+The account panel states what is stored remotely. **Delete copy** removes only
+the cloud snapshot. **Delete account & cloud data** removes the account row and
+its synced snapshot while leaving this browser's local progress untouched.
+
+Apply all SQL files in `database/migrations/` in numeric order before first use, and use
 `vercel dev` to exercise sign-in locally (`node serve.js` serves the static app
 only, without `api/`).

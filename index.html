@@ -518,7 +518,7 @@
           <span>Your jurisdiction pack</span>
           <select id="selStatePack" aria-describedby="statePackNote"></select>
         </label>
-        <p class="setting-note" id="statePackNote">Country packs adjust local rules (BAC/drink-drive limits, passing distances, speed limits). Generic covers common U.S. rules; UK uses only Highway Code questions.</p>
+        <p class="setting-note" id="statePackNote">Country packs adjust local rules, official sources and test format. Country-scoped packs never mix in rules from another jurisdiction.</p>
         <label class="setting-row">
           <span>Knowledge test date</span>
           <input type="date" id="inpTestDate" aria-describedby="testDateNote">
@@ -540,6 +540,7 @@
             <span class="data-actions" id="accountActions"></span>
           </div>
           <p class="setting-note" id="accountNote"></p>
+          <p class="setting-note">Account sync is optional and manual. When you press Save, Road Ready uploads your backup bundle — including practice/exam history, outcomes and any practical-session notes — plus your Google account email/profile metadata. API responses are never stored in the offline cache. Delete account &amp; cloud data removes the server copy; local browser progress stays on this device.</p>
         </div>
 
         <div class="danger-zone">
@@ -624,6 +625,7 @@
 <script src="js/questions.js"></script>
 <script src="js/core.js"></script>
 <script src="js/account.js"></script>
+<script src="js/account-ui.js"></script>
 <script src="js/jurisdictions.js"></script>
 <script src="js/state-packs.js"></script>
 <script src="js/exam-blueprints.js"></script>

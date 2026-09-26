@@ -39,6 +39,7 @@ const JURISDICTIONS = {
       // honesty note: most US states do NOT run a hazard-perception test
       includedInExam: false,
       positioning: "bonus training",
+      officialFormat: null,
     },
   },
   // Second shipped module: Great Britain (DVSA car theory test). Added only
@@ -61,6 +62,7 @@ const JURISDICTIONS = {
     hazardPerception: {
       includedInExam: true,
       positioning: "core section",
+      officialFormat: "14 clips, 44/75",
       trainingLabel: "Hazard identification training",
       officialLabel: "Official-test simulation unavailable",
       officialNote: "Road Ready uses original scenarios, not DVSA clips; this is training, not an official simulation.",

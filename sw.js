@@ -3,7 +3,7 @@
    network refresh (stale-while-revalidate) for same-origin GETs. */
 "use strict";
 
-const VERSION = "v6";
+const VERSION = "v7";
 const CACHE = `roadready-${VERSION}`;
 const SHELL = [
   "./",
@@ -19,6 +19,8 @@ const SHELL = [
   "js/icons.js",
   "js/questions.js",
   "js/signs.js",
+  "js/account.js",
+  "js/account-ui.js",
   "js/app.js",
 ];
 
@@ -41,6 +43,12 @@ self.addEventListener("fetch", (e) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== location.origin) return;
+
+  // API responses can contain signed-in account details and the user's full
+  // synced backup. They must always go directly to the network and must never
+  // enter Cache Storage, where a later account in the same browser could read
+  // a previous account's response.
+  if (url.pathname === "/api" || url.pathname.startsWith("/api/")) return;
 
   // Navigations: try network, fall back to cached shell (works offline).
   if (req.mode === "navigate") {

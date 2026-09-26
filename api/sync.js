@@ -1,9 +1,8 @@
 // Cross-device sync for the signed-in account: one snapshot document per user.
 //
-// Whole-document replace, last-writer-wins, with the comparison done by the
-// CLIENT. The server deliberately does not merge: it has no way to tell which
-// of two study histories is correct, and a wrong merge silently corrupts weeks
-// of practice. It reports `updated_at` and lets the client ask.
+// Whole-document replace with server-enforced optimistic concurrency. The
+// server deliberately does not merge: it has no way to tell which of two study
+// histories is correct, and a wrong merge silently corrupts weeks of practice.
 
 import { DatabaseNotConfigured, deleteState, findUserById, readState, writeState } from './_lib/db.js';
 import { MissingAuthSecret, readCookies, readSession, SESSION_COOKIE } from './_lib/session.js';
@@ -32,6 +31,13 @@ function crossOrigin(req) {
   } catch {
     return true;
   }
+}
+
+function revisionToken(value) {
+  if (value === null) return null;
+  if (Number.isInteger(value) && value >= 1) return String(value);
+  if (typeof value === 'string' && /^[1-9]\d*$/.test(value)) return value;
+  return undefined;
 }
 
 async function readBody(req) {
@@ -81,9 +87,25 @@ export default async function handler(req, res) {
         return json(res, 400, { error: 'payload must carry a backup bundle' });
       }
 
+      if (!Object.prototype.hasOwnProperty.call(body, 'expectedRevision')) {
+        return json(res, 400, { error: 'expectedRevision is required' });
+      }
+      const expectedRevision = revisionToken(body.expectedRevision);
+      if (expectedRevision === undefined) {
+        return json(res, 400, { error: 'expectedRevision must be null or a positive revision' });
+      }
+
       const version = Number.isInteger(body.version) ? body.version : 1;
-      const { updated_at } = await writeState(user.id, body.payload, version);
-      return json(res, 200, { updated_at });
+      const written = await writeState(user.id, body.payload, version, expectedRevision, body.force === true);
+      if (!written) {
+        const current = await readState(user.id);
+        return json(res, 409, {
+          error: 'The synced copy changed on another device',
+          updated_at: current ? current.updated_at : null,
+          revision: current ? current.revision : null,
+        });
+      }
+      return json(res, 200, { updated_at: written.updated_at, revision: written.revision });
     }
 
     if (req.method === 'DELETE') {

@@ -109,4 +109,23 @@ describe("state migration", () => {
     s.settings.testDate = "2026-02-31";
     expect(Core.migrateState(s).state.settings.testDate).toBe("");
   });
+
+  it("treats imported user-controlled strings as untrusted state", () => {
+    const s = Core.defaultState();
+    s.exams = [{
+      date: Date.now(), label: '<img src=x onerror=alert(1)>'.repeat(10), pct: 0.5,
+      correct: 10, total: 20, pass: false,
+    }];
+    s.practical = { log: [{
+      date: Date.now(), minutes: 30,
+      conditions: ["dry", '<img src=x onerror=alert(1)>'],
+      roadTypes: ["urban", '<svg onload=alert(1)>'],
+      skills: {}, notes: '<b>private note</b>',
+    }] };
+    const migrated = Core.migrateState(s).state;
+    expect(migrated.exams[0].label.length).toBeLessThanOrEqual(80);
+    expect(migrated.practical.log[0].conditions).toEqual(["dry"]);
+    expect(migrated.practical.log[0].roadTypes).toEqual(["urban"]);
+    expect(migrated.practical.log[0].notes).toBe('<b>private note</b>');
+  });
 });

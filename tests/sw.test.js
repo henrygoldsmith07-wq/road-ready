@@ -1,6 +1,6 @@
 /* Service-worker contract tests: precache list, old-cache cleanup,
    offline navigation fallback — driven through a stubbed SW environment. */
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
@@ -26,7 +26,7 @@ function loadSW() {
         const key = typeof req === "string" ? req : req.url;
         return stores[name].puts.find((e) => e.url === key || key.endsWith("index.html")) ? { ok: true } : undefined;
       },
-      put: async (req, res) => { stores[name].puts.push({ url: typeof req === "string" ? req : req.url }); },
+      put: async (req, _res) => { stores[name].puts.push({ url: typeof req === "string" ? req : req.url }); },
     }),
     keys: async () => Object.keys(stores),
     delete: async (k) => { deleted.push(k); return true; },
@@ -52,9 +52,9 @@ describe("service worker", () => {
   it("precaches the full app shell including core data files", async () => {
     const sw = loadSW();
     await sw.dispatch("install");
-    expect(sw.stores["roadready-v6"] || Object.values(sw.stores)[0]).toBeTruthy();
+    expect(sw.stores["roadready-v7"] || Object.values(sw.stores)[0]).toBeTruthy();
     const shell = Object.values(sw.stores)[0].added;
-    for (const required of ["index.html", "js/core.js", "js/state-packs.js", "js/exam-blueprints.js", "js/questions.js", "js/signs.js", "js/app.js", "css/styles.css"]) {
+    for (const required of ["index.html", "js/core.js", "js/state-packs.js", "js/exam-blueprints.js", "js/questions.js", "js/signs.js", "js/account.js", "js/account-ui.js", "js/app.js", "css/styles.css"]) {
       expect(shell.some((u) => u.includes(required)), required).toBe(true);
     }
   });
@@ -91,5 +91,18 @@ describe("service worker", () => {
       respondWith: (p) => { responded = p; },
     });
     expect(responded).toBe("unset"); // handler returned without responding
+  });
+
+  it("never intercepts or caches authenticated API GETs", async () => {
+    const sw = loadSW();
+    await sw.dispatch("install");
+    let responded = "unset";
+    await sw.dispatch("fetch", {
+      request: { method: "GET", url: "https://road.ready/api/sync" },
+      respondWith: (p) => { responded = p; },
+    });
+    expect(responded).toBe("unset");
+    const allPuts = Object.values(sw.stores).flatMap((store) => store.puts || []);
+    expect(allPuts.some((entry) => entry.url.includes("/api/"))).toBe(false);
   });
 });

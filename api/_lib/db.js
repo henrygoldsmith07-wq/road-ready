@@ -1,7 +1,7 @@
 // Postgres access for accounts and sync.
 //
 // The database is optional: with no DATABASE_URL the app runs exactly as it
-// always has — local-first on IndexedDB, no accounts, nothing server-side.
+// always has — local-first in browser storage, no accounts, nothing server-side.
 // Every helper throws DatabaseNotConfigured, which the routes turn into a
 // clear 503 rather than a stack trace.
 
@@ -78,29 +78,67 @@ export async function findUserById(id) {
 
 export async function readState(userId) {
   const rows = await queryRows(
-    'select payload, updated_at, version from user_state where user_id = $1',
+    'select payload, updated_at, version, revision from user_state where user_id = $1',
     [userId],
   );
   return rows[0] ?? null;
 }
 
 /**
- * Replaces this account's snapshot. Whole-document overwrite: the client owns
- * conflict resolution, because it is the only side that can compare the two
- * copies meaningfully.
+ * Replaces this account's snapshot using optimistic concurrency.
+ *
+ * expectedRevision is the exact revision the client last observed. A normal
+ * write succeeds only if that revision is still current; the check and write
+ * happen in one database statement, so two devices cannot both pass it.
+ * `force` is reserved for an explicit user-confirmed overwrite.
  */
-export async function writeState(userId, payload, version) {
-  const rows = await queryRows(
-    `insert into user_state (user_id, payload, version, updated_at)
-     values ($1, $2, $3, now())
-     on conflict (user_id) do update
-       set payload = excluded.payload, version = excluded.version, updated_at = now()
-     returning updated_at`,
-    [userId, JSON.stringify(payload), version],
+export async function writeState(userId, payload, version, expectedRevision, force = false) {
+  const encoded = JSON.stringify(payload);
+  let rows;
+
+  if (force) {
+    rows = await queryRows(
+      `insert into user_state (user_id, payload, version, updated_at, revision)
+       values ($1, $2, $3, now(), 1)
+       on conflict (user_id) do update
+         set payload = excluded.payload,
+             version = excluded.version,
+             updated_at = now(),
+             revision = user_state.revision + 1
+       returning updated_at, revision`,
+      [userId, encoded, version],
+    );
+    return rows[0] ?? null;
+  }
+
+  if (expectedRevision == null) {
+    // The client believes no remote snapshot exists. Do not overwrite one that
+    // appeared after its read.
+    rows = await queryRows(
+      `insert into user_state (user_id, payload, version, updated_at, revision)
+       values ($1, $2, $3, now(), 1)
+       on conflict (user_id) do nothing
+       returning updated_at, revision`,
+      [userId, encoded, version],
+    );
+    return rows[0] ?? null;
+  }
+
+  rows = await queryRows(
+    `update user_state
+        set payload = $2, version = $3, updated_at = now(), revision = revision + 1
+      where user_id = $1 and revision = $4::bigint
+      returning updated_at, revision`,
+    [userId, encoded, version, String(expectedRevision)],
   );
-  return rows[0];
+  return rows[0] ?? null;
 }
 
 export async function deleteState(userId) {
   await queryRows('delete from user_state where user_id = $1', [userId]);
+}
+
+/** Deletes the account row; user_state is removed by ON DELETE CASCADE. */
+export async function deleteUser(userId) {
+  await queryRows('delete from users where id = $1', [userId]);
 }

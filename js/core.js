@@ -103,7 +103,7 @@ function sanitizeState(s, opts) {
     s.exams = Array.isArray(s.exams)
       ? s.exams.filter((e) => e && typeof e === "object" && !Array.isArray(e)).slice(-MAX_EXAM_HISTORY).map((e) => ({
       date: num(e.date, Date.now(), 0, 8.64e15),
-      label: typeof e.label === "string" ? e.label : "Exam",
+      label: typeof e.label === "string" ? e.label.slice(0, 80) : "Exam",
       pct: num(e.pct, 0, 0, 1),
       correct: num(e.correct, 0, 0, 1e6),
       total: num(e.total, 0, 1, 1e6),
@@ -138,8 +138,8 @@ function sanitizeState(s, opts) {
         .map((x) => ({
           date: num(x.date, Date.now(), 0, 8.64e15),
           minutes: num(x.minutes, 0, 0, 1440),
-          conditions: Array.isArray(x.conditions) ? x.conditions.filter((c) => typeof c === "string").slice(0, 8) : [],
-          roadTypes: Array.isArray(x.roadTypes) ? x.roadTypes.filter((c) => typeof c === "string").slice(0, 8) : [],
+          conditions: Array.isArray(x.conditions) ? x.conditions.filter((c) => CONDITIONS.includes(c)).slice(0, 8) : [],
+          roadTypes: Array.isArray(x.roadTypes) ? x.roadTypes.filter((c) => ROAD_TYPES.includes(c)).slice(0, 8) : [],
           skills: (() => { const sk = plainObject(x.skills); const out = {}; for (const k of Object.keys(sk)) { if (PRACTICAL_RATINGS.includes(sk[k]) && skillIds().includes(k)) out[k] = sk[k]; } return out; })(),
           notes: typeof x.notes === "string" ? x.notes.slice(0, 2000) : "",
         }))
