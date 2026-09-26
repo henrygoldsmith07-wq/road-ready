@@ -12,6 +12,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="stylesheet" href="css/styles.css">
+<!-- The question bank is the largest script; warm it up before the deferred queue below. -->
+<link rel="preload" as="script" href="js/questions.js">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -77,7 +79,7 @@
           <h2>Test readiness <small class="beta-pill">uncalibrated</small></h2>
           <b id="rpBand" class="rp-band">–</b>
         </div>
-        <p id="rpCalLine" class="state-note" style="margin:6px 0 0;" hidden></p>
+        <p id="rpCalLine" class="state-note mt-6" hidden></p>
         <ul class="rp-list" id="rpList"></ul>
         <button class="btn primary rp-start" id="rpStart">Start today's set</button>
       </div>
@@ -212,14 +214,13 @@
 
       <div class="card" id="drivingReadinessCard">
         <div class="dr-head">
-          <span class="dr-label">Driving readiness</span>
-          <b id="drValue" class="dr-value">–</b>
+          <span class="dr-label">Training progress</span>
         </div>
         <div class="dr-parts">
           <span>Theory <b id="drTheory">–</b></span>
           <span>Practical <b id="drPractical">–</b></span>
         </div>
-        <p class="state-note" style="margin:8px 0 0;">Uncalibrated heuristic blend — not a pass prediction. Theory readiness alone never means ready for independent driving.</p>
+        <p class="state-note mt-8">Shown separately on purpose. These logs are not a pass prediction or a substitute for supervised instruction.</p>
       </div>
 
       <h2 class="section-title">Next practice skill</h2>
@@ -243,10 +244,11 @@
     <!-- ============ GUIDE: CHEAT SHEETS + ROAD TEST ============ -->
     <section class="view" id="view-guide">
       <h1 class="view-title">Study Guide</h1>
-      <p class="view-sub">Quick-reference cheat sheets for the written test, and a full walkthrough for the behind-the-wheel road test.</p>
+      <p class="view-sub" id="guideSubtitle">Quick-reference guidance for your selected jurisdiction.</p>
 
       <div id="stateFacts" hidden></div>
 
+      <div id="guideUs">
       <h2 class="section-title">Written test cheat sheets</h2>
 
       <details class="acc" open>
@@ -411,6 +413,29 @@
           </ul>
         </div>
       </details>
+      </div>
+
+      <div id="guideGb" hidden>
+        <h2 class="section-title">Great Britain theory guide</h2>
+        <div class="card">
+          <p class="state-note mb-10">Road Ready keeps this guide to source-backed Great Britain material. Use the selected-pack facts above, the GB question bank, The Highway Code and Know Your Traffic Signs rather than U.S.-specific cheat sheets.</p>
+          <div class="data-actions wrap">
+            <a class="btn ghost" href="https://www.gov.uk/guidance/the-highway-code" target="_blank" rel="noopener noreferrer">Open The Highway Code ↗</a>
+            <a class="btn ghost" href="https://www.gov.uk/government/publications/know-your-traffic-signs" target="_blank" rel="noopener noreferrer">Open Know Your Traffic Signs ↗</a>
+          </div>
+        </div>
+
+        <h2 class="section-title">DVSA practical test overview</h2>
+        <div class="card">
+          <ul class="ref">
+            <li>The car driving test includes an eyesight check, vehicle-safety questions, general driving including independent driving, and a reversing exercise.</li>
+            <li>The driving portion lasts around 35 minutes for a standard test.</li>
+            <li>Independent driving lasts roughly 20 to 35 minutes and follows a sat nav, traffic signs, or a combination chosen by the examiner.</li>
+            <li>You will be asked to complete one reversing exercise; Road Ready does not reuse the U.S. manoeuvre walkthrough because the test formats are different.</li>
+          </ul>
+          <a class="source-link state-source" id="gbPracticalSource" href="#" target="_blank" rel="noopener noreferrer">Open official practical-test guidance ↗</a>
+        </div>
+      </div>
     </section>
 
     <!-- ============ HAZARD PERCEPTION ============ -->
@@ -447,7 +472,7 @@
       <h2 class="section-title">Level</h2>
       <div class="card" id="xpCard">
         <div class="xp-row"><b id="xpLabel">Level 1</b><span id="xpCount">0 XP</span></div>
-        <div class="bar"><div class="bar-fill" id="xpBar" style="width:0%"></div></div>
+        <div class="bar"><div class="bar-fill" id="xpBar"></div></div>
       </div>
       <h2 class="section-title">Achievements</h2>
       <div class="ach-grid" id="achGrid"></div>
@@ -459,12 +484,15 @@
       <h2 class="section-title">Exam history</h2>
       <div class="card"><ul class="history-list" id="historyList"></ul></div>
 
+      <details class="acc advanced-research">
+        <summary>Advanced research &amp; calibration</summary>
+        <div class="acc-body">
       <h2 class="section-title">Official-test predictions <small class="beta-pill">calibration</small></h2>
       <div class="card" id="calibrationCard">
-        <p id="calibrationNarrative" class="focus-line" style="margin:0 0 10px;"></p>
-        <p class="state-note" style="margin:0 0 10px;" id="calibrationDisclaimer"></p>
+        <p id="calibrationNarrative" class="focus-line mb-10"></p>
+        <p class="state-note mb-10" id="calibrationDisclaimer"></p>
         <div id="outcomeList"></div>
-        <div class="data-actions" style="margin-top:10px; flex-wrap:wrap;">
+        <div class="data-actions mt-10 wrap">
           <button class="btn primary" id="btnFreezePrediction">Freeze pre-test prediction</button>
           <button class="btn ghost" id="btnOutcomePass">I passed my real test</button>
           <button class="btn ghost" id="btnOutcomeFail">I didn't pass</button>
@@ -474,23 +502,35 @@
       <h2 class="section-title">Learner study <small class="beta-pill">research</small></h2>
       <div class="card" id="studyCard">
         <div id="studyIntro">
-          <p class="state-note" style="margin:0 0 10px;">Help prove what works. Fully anonymous (random ID, no account), stored only on this device until you export it. Free-text notes are never included in study data.</p>
+          <p class="state-note mb-10">Help prove what works. Fully anonymous (random ID, no account), stored only on this device until you export it. Free-text notes are never included in study data.</p>
           <button class="btn primary" id="btnStudyJoin">Join anonymously</button>
         </div>
         <div id="studyBody" hidden>
-          <p class="outcome-meta" style="margin:0 0 8px;">Participant <b id="studyPid"></b> · day <span id="studyDay"></span></p>
+          <p class="outcome-meta mb-8">Participant <b id="studyPid"></b> · day <span id="studyDay"></span></p>
           <div id="confidenceSurvey" hidden></div>
-          <div id="studyMetrics" class="pl-session" style="border:0;"></div>
-          <div class="data-actions" style="margin-top:10px; flex-wrap:wrap;">
+          <div id="studyMetrics" class="pl-session borderless"></div>
+          <div class="data-actions mt-10 wrap">
             <button class="btn ghost" id="btnDiagnostic">Baseline diagnostic exam</button>
             <button class="btn ghost" id="btnRetentionProbes" hidden>Memory check</button>
             <button class="btn ghost" id="btnStudyExport">Export study data</button>
           </div>
-          <p class="outcome-meta" id="retentionHint" style="margin-top:8px;"></p>
+          <p class="outcome-meta mt-8" id="retentionHint"></p>
         </div>
       </div>
+        </div>
+      </details>
 
-      <h2 class="section-title">Settings</h2>
+      <h2 class="section-title">Settings &amp; data</h2>
+      <div class="card settings-launch">
+        <p class="state-note mb-10">Jurisdiction, test date, backup, account sync and reset controls live in their own settings screen.</p>
+        <button class="btn ghost" id="btnOpenSettings">Open settings</button>
+      </div>
+    </section>
+
+    <!-- ============ SETTINGS ============ -->
+    <section class="view" id="view-settings">
+      <h1 class="view-title">Settings &amp; Data</h1>
+      <p class="view-sub">Study preferences, jurisdiction, backups and account controls.</p>
       <div class="card settings-card">
         <label class="setting-row">
           <span>Extra practice pass mark</span>
@@ -520,7 +560,7 @@
         </label>
         <p class="setting-note" id="statePackNote">Country packs adjust local rules, official sources and test format. Country-scoped packs never mix in rules from another jurisdiction.</p>
         <label class="setting-row">
-          <span>Knowledge test date</span>
+          <span>Test date</span>
           <input type="date" id="inpTestDate" aria-describedby="testDateNote">
         </label>
         <p class="setting-note" id="testDateNote">Used only on this device to build your daily study plan.</p>
@@ -547,6 +587,7 @@
           <button class="btn ghost" id="btnResetAll">Reset all progress</button>
         </div>
       </div>
+      <button class="btn ghost mt-12" id="btnSettingsDone">Back to progress</button>
     </section>
 
   </main>
@@ -619,16 +660,23 @@
   </div>
 </div>
 
-<script>window.addEventListener("error", function (e) { window.__lastError = (e.message || "error") + " @ " + (e.filename || "") + ":" + (e.lineno || 0); });</script>
-<script src="js/signs.js"></script>
-<script src="js/icons.js"></script>
-<script src="js/questions.js"></script>
-<script src="js/core.js"></script>
-<script src="js/account.js"></script>
-<script src="js/account-ui.js"></script>
-<script src="js/jurisdictions.js"></script>
-<script src="js/state-packs.js"></script>
-<script src="js/exam-blueprints.js"></script>
-<script src="js/app.js"></script>
+<!-- window.__lastError is read by e2e/app.spec.js after a fresh page.open(). -->
+<script src="js/boot-error.js"></script>
+<!-- Data + logic load in the same order the classic app expects, but deferred:
+     parsing happens in parallel instead of blocking first paint. The execution
+     order of deferred scripts is still document order, so app.js boots last. -->
+<script src="js/signs.js" defer></script>
+<script src="js/icons.js" defer></script>
+<script src="js/questions.js" defer></script>
+<script src="js/core.js" defer></script>
+<script src="js/account.js" defer></script>
+<script src="js/account-ui.js" defer></script>
+<script src="js/practical-ui.js" defer></script>
+<script src="js/study-ui.js" defer></script>
+<script src="js/guide.js" defer></script>
+<script src="js/jurisdictions.js" defer></script>
+<script src="js/state-packs.js" defer></script>
+<script src="js/exam-blueprints.js" defer></script>
+<script src="js/app.js" defer></script>
 </body>
 </html>
