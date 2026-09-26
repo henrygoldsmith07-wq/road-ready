@@ -765,7 +765,8 @@ function reviewSched(sched, right, nowMs, quality) {
    * test's topic mix; weakBias reserves ~60% of seats for the 3 weakest topics.
    * @param {{bank: Array, n: number, qstats?: object, weakBias?: boolean, rand?: Function,
    *     nowMs?: number, flags?: object, weights?: object|null,
-   *     samplingMode?: "adaptive"|"representative"|"fixed", seed?: number}} opts
+   *     samplingMode?: "adaptive"|"representative"|"fixed", seed?: number,
+   *     recentlySeen?: object, recentWindowMs?: number}} opts
    */
   function assembleExam(opts) {
     const bank = opts.bank, n = Math.min(opts.n, bank.length), qstats = opts.qstats || {};
@@ -802,6 +803,23 @@ function reviewSched(sched, right, nowMs, quality) {
     }
 
     const chosen = [];
+    // Optional anti-repetition: `recentlySeen` maps question id -> last-seen
+    // timestamp (or the qstats map itself). Within a topic stratum, questions
+    // seen inside `recentWindowMs` are only used when the stratum has run out
+    // of fresh items. Topic weighting is untouched — this only reorders WHICH
+    // items a stratum contributes, so consecutive mocks train breadth instead
+    // of recognition. Fixed (seeded study) forms ignore it: determinism first.
+    const recentWindowMs = opts.recentWindowMs == null ? 72 * 3600 * 1000 : opts.recentWindowMs;
+    const lastSeenOf = (id) => {
+      if (!opts.recentlySeen || mode === "fixed") return 0;
+      const v = opts.recentlySeen[id];
+      if (typeof v === "object" && v !== null) return v.lastSeen || 0;
+      return typeof v === "number" ? v : 0;
+    };
+    const isRecent = (q) => {
+      const t = lastSeenOf(q.id);
+      return t > 0 && nowMs - t < recentWindowMs;
+    };
     alloc.forEach(({ cat, take }) => {
       let pool;
       if (mode === "adaptive") {
@@ -811,7 +829,19 @@ function reviewSched(sched, right, nowMs, quality) {
         // learner history is deliberately invisible to the assessment.
         pool = shuffle(byCat[cat], rand).map((q) => ({ q, w: 1 }));
       }
-      chosen.push(...pickWeighted(pool, Math.min(take, pool.length), rand));
+      const want = Math.min(take, pool.length);
+      if (opts.recentlySeen && mode !== "fixed" && want > 0) {
+        // Fresh items first (pool order already random/weighted); recent ones
+        // only top up a stratum that cannot supply enough fresh items.
+        const fresh = pool.filter((e) => !isRecent(e.q));
+        const stale = pool.filter((e) => isRecent(e.q));
+        chosen.push(...pickWeighted(fresh, Math.min(want, fresh.length), rand));
+        if (fresh.length < want) {
+          chosen.push(...pickWeighted(stale, want - fresh.length, rand));
+        }
+        return;
+      }
+      chosen.push(...pickWeighted(pool, want, rand));
     });
 
     // Top up if some category ran dry.

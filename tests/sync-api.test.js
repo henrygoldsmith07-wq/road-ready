@@ -55,6 +55,8 @@ function request(method, body, extraHeaders = {}) {
     host: "road.ready",
     origin: "https://road.ready",
     cookie: "roadready_session=token",
+    // js/account.js always uploads as JSON; tests override when misbehaving.
+    "content-type": "application/json",
     ...extraHeaders,
   };
   return req;
@@ -82,7 +84,7 @@ describe("sync API optimistic concurrency", () => {
     }), res);
 
     expect(res.statusCode).toBe(409);
-    expect(db.writeState).toHaveBeenCalledWith("user-1", { bundle: "{}" }, 1, "7", false);
+    expect(db.writeState).toHaveBeenCalledWith("user-1", { bundle: "{}" }, 1, "7");
     expect(jsonBody(res)).toMatchObject({ revision: "8" });
   });
 
@@ -105,14 +107,67 @@ describe("sync API optimistic concurrency", () => {
     expect(db.writeState).not.toHaveBeenCalled();
   });
 
-  it("allows a force overwrite only when the client explicitly sends force", async () => {
-    db.writeState.mockResolvedValue({ updated_at: "2026-09-26T12:02:00.000Z", revision: "9" });
+  it("never exposes an unconditional overwrite path", async () => {
+    db.writeState.mockResolvedValue(null);
+    db.readState.mockResolvedValue({ updated_at: "2026-09-26T12:02:00.000Z", revision: "9" });
     const res = response();
     await syncHandler(request("PUT", {
       payload: { bundle: "{}" }, version: 1, expectedRevision: "2", force: true,
     }), res);
-    expect(db.writeState).toHaveBeenCalledWith("user-1", { bundle: "{}" }, 1, "2", true);
+    expect(db.writeState).toHaveBeenCalledWith("user-1", { bundle: "{}" }, 1, "2");
+    expect(res.statusCode).toBe(409);
+  });
+
+  it("rejects non-JSON uploads before buffering them", async () => {
+    const req = request("PUT", { payload: { bundle: "{}" }, version: 1, expectedRevision: null });
+    req.headers["content-type"] = "text/plain";
+    const res = response();
+    await syncHandler(req, res);
+    expect(res.statusCode).toBe(415);
+    expect(db.writeState).not.toHaveBeenCalled();
+  });
+
+  it("accepts a null expectedRevision for a first save against an empty account", async () => {
+    db.writeState.mockResolvedValue({ updated_at: "2026-09-26T12:05:00.000Z", revision: "1" });
+    const res = response();
+    await syncHandler(request("PUT", {
+      payload: { bundle: "{}" }, version: 1, expectedRevision: null,
+    }), res);
+    expect(db.writeState).toHaveBeenCalledWith("user-1", { bundle: "{}" }, 1, null);
     expect(res.statusCode).toBe(200);
+  });
+
+  it("refuses malformed revision tokens instead of coercing them", async () => {
+    const res = response();
+    await syncHandler(request("PUT", {
+      payload: { bundle: "{}" }, version: 1, expectedRevision: "007-or-junk",
+    }), res);
+    expect(res.statusCode).toBe(400);
+    expect(db.writeState).not.toHaveBeenCalled();
+  });
+
+  it("answers GET with the stored snapshot for the signed-in user", async () => {
+    db.readState.mockResolvedValue({
+      payload: { bundle: "{\"v\":1}" }, updated_at: "2026-09-26T12:00:00.000Z", version: 1, revision: "3",
+    });
+    const res = response();
+    await syncHandler(request("GET", null), res);
+    expect(res.statusCode).toBe(200);
+    expect(jsonBody(res).state.revision).toBe("3");
+  });
+
+  it("degrades to 503 when the database is not configured", async () => {
+    const { DatabaseNotConfigured } = await import("../api/_lib/db.js");
+    db.findUserById.mockRejectedValue(new DatabaseNotConfigured());
+    const res = response();
+    await syncHandler(request("GET", null), res);
+    expect(res.statusCode).toBe(503);
+  });
+
+  it("rejects unexpected HTTP methods", async () => {
+    const res = response();
+    await syncHandler(request("PATCH", { payload: { bundle: "{}" } }), res);
+    expect(res.statusCode).toBe(405);
   });
 });
 

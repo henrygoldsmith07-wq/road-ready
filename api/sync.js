@@ -6,6 +6,7 @@
 
 import { DatabaseNotConfigured, deleteState, findUserById, readState, writeState } from './_lib/db.js';
 import { MissingAuthSecret, readCookies, readSession, SESSION_COOKIE } from './_lib/session.js';
+import { isCrossOriginRequest } from './_lib/config.js';
 
 /** A full study history is well under this; past it is abuse, not use. */
 const MAX_PAYLOAD_BYTES = 4 * 1024 * 1024;
@@ -15,22 +16,6 @@ function json(res, status, body) {
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Cache-Control', 'no-store');
   res.end(JSON.stringify(body));
-}
-
-/**
- * Mutating requests must be same-origin. The session cookie is SameSite=Lax,
- * which already stops cross-site POSTs carrying it; this refuses anything that
- * arrives with a foreign Origin as well.
- */
-function crossOrigin(req) {
-  const origin = req.headers.origin;
-  if (!origin) return false;
-  try {
-    const host = req.headers['x-forwarded-host'] || req.headers.host;
-    return new URL(origin).host !== host;
-  } catch {
-    return true;
-  }
 }
 
 function revisionToken(value) {
@@ -65,7 +50,12 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'PUT') {
-      if (crossOrigin(req)) return json(res, 403, { error: 'Cross-origin request refused' });
+      if (isCrossOriginRequest(req)) return json(res, 403, { error: 'Cross-origin request refused' });
+      // Cheap rejection of non-JSON uploads before buffering the body.
+      const contentType = String(req.headers['content-type'] || '');
+      if (!contentType.includes('application/json')) {
+        return json(res, 415, { error: 'Content-Type must be application/json' });
+      }
 
       let raw;
       try {
@@ -96,7 +86,7 @@ export default async function handler(req, res) {
       }
 
       const version = Number.isInteger(body.version) ? body.version : 1;
-      const written = await writeState(user.id, body.payload, version, expectedRevision, body.force === true);
+      const written = await writeState(user.id, body.payload, version, expectedRevision);
       if (!written) {
         const current = await readState(user.id);
         return json(res, 409, {
@@ -109,7 +99,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'DELETE') {
-      if (crossOrigin(req)) return json(res, 403, { error: 'Cross-origin request refused' });
+      if (isCrossOriginRequest(req)) return json(res, 403, { error: 'Cross-origin request refused' });
       await deleteState(user.id);
       return json(res, 200, { ok: true });
     }
