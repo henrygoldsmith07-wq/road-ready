@@ -90,26 +90,10 @@ export async function readState(userId) {
  * expectedRevision is the exact revision the client last observed. A normal
  * write succeeds only if that revision is still current; the check and write
  * happen in one database statement, so two devices cannot both pass it.
- * `force` is reserved for an explicit user-confirmed overwrite.
  */
-export async function writeState(userId, payload, version, expectedRevision, force = false) {
+export async function writeState(userId, payload, version, expectedRevision) {
   const encoded = JSON.stringify(payload);
   let rows;
-
-  if (force) {
-    rows = await queryRows(
-      `insert into user_state (user_id, payload, version, updated_at, revision)
-       values ($1, $2, $3, now(), 1)
-       on conflict (user_id) do update
-         set payload = excluded.payload,
-             version = excluded.version,
-             updated_at = now(),
-             revision = user_state.revision + 1
-       returning updated_at, revision`,
-      [userId, encoded, version],
-    );
-    return rows[0] ?? null;
-  }
 
   if (expectedRevision == null) {
     // The client believes no remote snapshot exists. Do not overwrite one that

@@ -25,9 +25,9 @@
       return el;
     }
 
-    async function upload(force) {
+    async function upload() {
       setNote("Saving…");
-      const result = await account.push(getBundle(), remoteRevision, force);
+      const result = await account.push(getBundle(), remoteRevision);
       if (result.status === "ok") {
         remoteAt = result.updatedAt;
         remoteRevision = result.revision || remoteRevision;
@@ -38,7 +38,12 @@
       if (result.status === "conflict") {
         const when = result.remoteUpdatedAt ? new Date(result.remoteUpdatedAt).toLocaleString() : "unknown";
         if (confirm("Another device saved at " + when + ". Overwrite it with this device's progress?")) {
-          await upload(true);
+          // Consent applies to the exact revision shown to the user. Retry as a
+          // normal CAS against it; if a third device saves meanwhile, the user
+          // sees another conflict rather than silently overwriting unseen data.
+          remoteRevision = result.remoteRevision || null;
+          remoteAt = result.remoteUpdatedAt || remoteAt;
+          await upload();
           return;
         }
         setNote("Left the other device's copy alone.");
@@ -80,7 +85,7 @@
         return;
       }
 
-      actions.appendChild(button("Save", () => upload(false)));
+      actions.appendChild(button("Save", upload));
       actions.appendChild(button("Restore", restore));
       actions.appendChild(button("Sign out", async () => {
         await account.signOut();

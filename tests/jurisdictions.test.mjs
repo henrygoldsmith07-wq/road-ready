@@ -18,6 +18,7 @@ describe("jurisdiction module contract", () => {
         expect(typeof c.terminology[key]).toBe("string");
       }
       expect(typeof c.hazardPerception.includedInExam).toBe("boolean");
+      expect(["us", "gb"]).toContain(c.guide.scope);
     }
   });
 
@@ -31,6 +32,7 @@ describe("jurisdiction module contract", () => {
     expect(data.JURISDICTIONS.us.terminology.regionLabel).toBe("state");
     expect(data.JURISDICTIONS.us.terminology.rulesLabel).toBe("State Rules");
     expect(data.JURISDICTIONS.uk.hazardPerception.includedInExam).toBe(true);
+    expect(data.JURISDICTIONS.uk.guide.scope).toBe("gb");
   });
 
   it("resolves packs to country modules without GB-specific application branches", () => {

@@ -10,6 +10,7 @@ import {
   readSession,
   SESSION_COOKIE,
 } from './_lib/session.js';
+import { isCrossOriginRequest } from './_lib/config.js';
 
 function json(res, status, body) {
   res.statusCode = status;
@@ -18,23 +19,12 @@ function json(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
-function crossOrigin(req) {
-  const origin = req.headers.origin;
-  if (!origin) return false;
-  try {
-    const host = req.headers['x-forwarded-host'] || req.headers.host;
-    return new URL(origin).host !== host;
-  } catch {
-    return true;
-  }
-}
-
 export default async function handler(req, res) {
   if (req.method !== 'DELETE') {
     res.setHeader('Allow', 'DELETE');
     return json(res, 405, { error: 'Method not allowed' });
   }
-  if (crossOrigin(req)) return json(res, 403, { error: 'Cross-origin request refused' });
+  if (isCrossOriginRequest(req)) return json(res, 403, { error: 'Cross-origin request refused' });
 
   try {
     const userId = readSession(readCookies(req)[SESSION_COOKIE]);

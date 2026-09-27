@@ -61,10 +61,9 @@
    * Uploads `bundleText` (the JSON string Core.exportBundle returns).
    *
    * `expectedRevision` is the exact revision the caller last observed. The
-   * server checks it atomically with the write; `force` is used only after the
-   * user explicitly chooses to overwrite a newer remote copy.
+   * server checks it atomically with the write.
    */
-  async function push(bundleText, expectedRevision, force) {
+  async function push(bundleText, expectedRevision) {
     const response = await fetch("/api/sync", {
       method: "PUT",
       headers: { "content-type": "application/json" },
@@ -72,7 +71,6 @@
         payload: { bundle: bundleText },
         version: 1,
         expectedRevision: expectedRevision == null ? null : expectedRevision,
-        force: force === true,
       }),
     });
     if (response.status === 401) return { status: "signed-out" };

@@ -56,6 +56,7 @@ const SOURCE_REGISTRY = {
     jurisdiction: "*", agency: "Multiple state DMVs (composite)",
     title: "U.S. state driver handbooks — commonly taught rules",
     edition: "2025–2026 editions", verified: "2026-08-23",
+    citationLabel: "Reference basis",
     note: "Cites the universal bank: rules taught consistently across state handbooks. State exceptions live in jurisdiction packs.",
   },
 };

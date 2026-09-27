@@ -25,24 +25,25 @@ Two honest scoping calls that follow from this:
 | Feature | What it does |
 |---|---|
 | Onboarding | A 4-step first-run intro: what's inside, theme + read-aloud setup, and how the daily habit works — skippable, shown once |
-| Adaptive Practice | 267 questions across 10 topics and 34 concepts, spanning 9 **question forms** — junction-priority road-layout diagrams, lane-selection scenarios, sign combinations, what-happens-next chains, prioritisation drills, multi-step ordering, photo-described scenes, deliberately similar alternatives, same-concept rewording variants, and classic recall; mastery aggregates per concept (coverage × depth), then topic, then overall score |
-| Marathon Mode | The full 267-question bank in one run — anything you miss comes back until you've seen it through |
+| Adaptive Practice | 267 universal U.S. questions plus jurisdiction packs (365 verified questions total) across 10 topics and 34 concepts, spanning 9 **question forms** — junction-priority road-layout diagrams, lane-selection scenarios, sign combinations, what-happens-next chains, prioritisation drills, multi-step ordering, photo-described scenes, deliberately similar alternatives, same-concept rewording variants, and classic recall; mastery aggregates per concept (coverage × depth), then topic, then overall score |
+| Marathon Mode | The full active-jurisdiction bank in one run — anything you miss comes back until you've seen it through |
 | Mock Exams | Quick Check (10), Standard (20), Full (46), or a Weak-Topics exam — timed practice with jurisdiction-aware exam terminology and no feedback until you submit |
 | Official Simulations | Pick a jurisdiction and the exam locks to its real published count, time and pass bar **only when the bank has enough unique questions**. Full pools run as locked official-format simulations; incomplete pools are explicitly labelled practice previews and cannot award an official-standard pass. Specs include CA 46/38, TX 30/21, NY 20/14, FL 50/40 in 60 min, WA 40/32, PA 18/15, GB 50/43 in 57 min (`js/exam-blueprints.js`, source-cited) |
 | Hazard Perception | Interactive trainer with 6 animated scenarios (children, doors, deer, cyclists…) — labeled bonus training where exams don't include it (most U.S. states) and a core section where they do (GB DVSA test: 14 clips, 44/75); jurisdiction modules declare this via `hazardPerception.includedInExam` |
 | Sign Flashcards | 31 hand-drawn SVG road signs with flip animation and known/still-learning tracking |
-| Study Guide | Cheat sheets (sign system, markings, right-of-way, emergencies, hill parking, key numbers) plus a full behind-the-wheel road test guide |
+| Study Guide | Jurisdiction-native guidance. U.S. packs show the U.S. cheat sheets/road-test material; Great Britain hides those sections and relies on its verified GB fact card and theory question bank instead |
 | Read Aloud | Text-to-speech for questions, choices, and explanations — great for commutes and accessibility |
 | XP & Achievements | Earn XP for every answer, climb levels, and unlock 12 achievements from First Steps to Hawk Eye |
 | Review Missed | Every question you've ever missed, with the correct answer and why — plus one-tap drills |
 | Progress | Study-progress score, per-topic mastery, accuracy, day streak, daily goal, study time, exam history |
 | Answer Fluency *(new)* | How fast you answered, not just whether you were right. A question answered **fast and wrong** is a misconception you don't know you hold — invisible to a wrong-count, and surfaced first in practice and Review Missed. One answered **slow and right** is knowledge that isn't automatic yet, which is what slips under exam time pressure. Thresholds are your own percentiles, never a fixed stopwatch, and nothing is classified until you've answered enough for them to mean anything |
 | Drive Log *(new)* | Log supervised sessions (duration, conditions, road types, ✓/△/✗ per skill, instructor notes); skills roll up into 7 competencies (Observation, Vehicle control, Junctions, Roundabouts, Lane discipline, Parking, Independent driving) with a next-lesson-focus recommendation |
-| Driving Readiness | Theory progress + practical competency blend into one heuristic score — clearly labeled as uncalibrated until real outcome data exists |
+| Training Progress | Theory progress and practical-session evidence stay separate in the UI; Road Ready does not combine them into a single driving-readiness/pass score |
 | Outcome Journal *(beta)* | The progress % is an **uncalibrated heuristic**, not a predicted pass probability. Log your real test result (opt-in, on-device only) — progress %, mock average, **coverage**, **stability**, questions seen and study time are snapshotted with the outcome to ground a future P(pass) model |
 | Calibration | Pooled outcome exports feed a **calibration curve** (progress bucket → observed pass rate). Buckets with fewer than 8 outcomes report "insufficient" — the app never states a probability it hasn't measured, and never implies theory readiness means safe independent practical driving |
 | Test Day Plan | Save your knowledge-test date and get an adaptive daily question target plus the best next action; private and fully offline |
 | Official Sources | Jurisdiction-rule explanations and Study Guide facts link directly to the issuing authority's source; dedicated local-rules drills keep cited material together |
+| Settings & Data | Separate screen for jurisdiction, practice preferences, test date, backups, optional account sync and reset controls; research/calibration is collapsed under an advanced section on Progress |
 
 ## Study protocol (frozen)
 
@@ -71,9 +72,13 @@ Questions follow general U.S. rules of the road common across state DMV handbook
 - `js/signs.js` — SVG road-sign library (31 signs)
 - `js/core.js` — pure engine: scoring, readiness, adaptive selection, spaced scheduling, exam assembly/grading, hazard scoring, XP/levels, achievements, state migration, import/export
 - `js/account.js` / `js/account-ui.js` — optional account transport and isolated sync/settings controller
+- `js/practical-ui.js` / `js/study-ui.js` — practical-log and learner-study UI modules (dependency-injected, no shared globals)
+- `js/guide.js` — jurisdiction-native guide visibility/source controller
 - `js/state-packs.js` — state-specific content packs (CA, TX, NY, FL, WA, PA)
-- `js/app.js` — views and DOM wiring
-- `serve.js` — tiny static server for local testing
+- `js/app.js` — orchestration: router, quiz engine, shared state, view wiring
+- `serve.js` — tiny static server for local testing (serves the production CSP)
+- `docs/DEPLOYMENT.md` — deploy targets, security headers, migrations, rollback
+- `scripts/update-sw.mjs` — generates `sw.js`'s cache VERSION from shell content
 
 ## Development
 
@@ -102,10 +107,13 @@ answers within a question, topic-balance floor, broken-explanation heuristics
 (placeholders, answer echoes), sign-data completeness + balanced SVG markup.
 
 **Provenance is factual QA, not change tracking.** Every question must resolve
-to a registered official source (`SOURCE_REGISTRY` in `js/state-packs.js` —
+to a registered source (`SOURCE_REGISTRY` in `js/state-packs.js` —
 issuing agency, document title, URL on an approved `.gov`-class host,
 verification date); universal questions resolve through explicit per-category
-defaults. CI fails when: a question has no resolvable source; a source's
+defaults. Direct jurisdiction sources are labelled **Official source** in the UI;
+the synthetic multi-handbook U.S. composite is deliberately labelled
+**Reference basis** rather than being presented as a single official document.
+CI fails when: a question has no resolvable source; a source's
 jurisdiction doesn't cover the question; verification goes stale (>365 days);
 or a state-specific answer/explanation contradicts the pack's fact table
 (numbers compared numerically — "four" == "4", BAC decimals exact).
@@ -126,6 +134,11 @@ works offline after one visit. Progress lives in versioned localStorage
 JSON backup. `/api/*` requests are explicitly excluded from Service Worker
 caching so account/session data and synced backups never enter Cache Storage.
 
+The service worker's cache VERSION is **generated** from a content hash of the
+precached shell (`npm run sw:version`, verified in CI), so a deployed change can
+never leave users on a stale cache. When an updated worker takes control, the
+app offers an explicit Reload toast instead of silently switching mid-session.
+
 ## Jurisdiction packs
 
 Settings → "Your jurisdiction pack" selects a jurisdiction pack (CA, TX, NY, FL, WA, PA, or GB).
@@ -145,10 +158,11 @@ Road Ready is still a self-contained app. Opening `index.html` from disk, or
 serving it statically, hits no API at all and the account panel never appears —
 the offline story in this README is unchanged.
 
-Where it *is* deployed to a host that runs the serverless functions in `api/`
-(and `DATABASE_URL`, `AUTH_SECRET`, `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET`
-are set), **Settings → Account & sync** offers Google sign-in so your progress
-follows you between devices.
+Where it *is* deployed to a host that runs the serverless functions in `api/`,
+the account UI appears only when the complete stack is configured:
+`DATABASE_URL`, `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, plus a
+canonical HTTPS `AUTH_URL` in production. Production OAuth redirects never use
+the incoming Host header as their authority.
 
 Sync carries exactly the backup bundle Export/Import already produces. A copy
 downloaded from your account goes through the same `Core.parseImport`
@@ -160,7 +174,21 @@ Nothing is saved automatically. Each server snapshot carries a monotonically
 increasing revision. A normal upload succeeds only if the revision this device
 last observed is still current; the database check and write are atomic. If
 another device saved first, the server returns a conflict and Road Ready asks
-before an explicit force overwrite.
+before retrying against the exact conflicting revision the user was shown. The
+server has no unconditional force-write path; if a third device saves during
+confirmation, another conflict is returned instead of silently losing data.
+
+Vercel deployments also send no-store headers for API routes plus a strict
+Content-Security-Policy (no inline scripts, no `unsafe-eval`, `frame-ancestors
+'none'`), `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` and
+`X-Frame-Options` from `vercel.json`. `serve.js` serves the identical policy
+locally, and a contract test (`tests/security-headers.test.js`) keeps the two
+in lock-step. Google id_tokens are verified end to end — RS256 signature
+against Google's published JWKS, issuer, audience/`azp`, expiry, verified
+email and the OIDC nonce bound to each authorization request — and session
+tokens are versioned HMAC payloads with timestamp-range validation.
+
+See `docs/DEPLOYMENT.md` for deployment, migration and rollback procedures.
 
 The account panel states what is stored remotely. **Delete copy** removes only
 the cloud snapshot. **Delete account & cloud data** removes the account row and

@@ -16,7 +16,7 @@ function harness(account, confirmImpl = () => true) {
   };
 }
 
-const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+const tick = () => Promise.resolve();
 
 function baseAccount(overrides = {}) {
   return {
@@ -43,7 +43,7 @@ describe("account UI controller", () => {
     expect(h.note()).toContain("fully offline");
   });
 
-  it("uses the observed revision and force-overwrites only after confirmation", async () => {
+  it("uses the conflict revision for a confirmed retry rather than forcing", async () => {
     const push = vi.fn()
       .mockResolvedValueOnce({ status: "conflict", remoteUpdatedAt: "2026-09-26T12:00:00Z", remoteRevision: "8" })
       .mockResolvedValueOnce({ status: "ok", updatedAt: "2026-09-26T12:01:00Z", revision: "9" });
@@ -56,8 +56,8 @@ describe("account UI controller", () => {
     await h.ui.init({ account, getBundle: () => "bundle-v1", parseBundle: vi.fn(), applyState: vi.fn() });
     [...h.actions().querySelectorAll("button")].find((b) => b.textContent === "Save").click();
     await tick(); await tick();
-    expect(push).toHaveBeenNthCalledWith(1, "bundle-v1", "7", false);
-    expect(push).toHaveBeenNthCalledWith(2, "bundle-v1", "7", true);
+    expect(push).toHaveBeenNthCalledWith(1, "bundle-v1", "7");
+    expect(push).toHaveBeenNthCalledWith(2, "bundle-v1", "8");
     expect(h.note()).toBe("Saved to your account.");
   });
 

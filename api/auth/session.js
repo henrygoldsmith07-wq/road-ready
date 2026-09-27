@@ -2,16 +2,21 @@
 // is a normal state, not an error the client has to special-case.
 
 import { DatabaseNotConfigured, findUserById } from '../_lib/db.js';
-import { isGoogleConfigured } from '../_lib/google.js';
 import { MissingAuthSecret, readCookies, readSession, SESSION_COOKIE } from '../_lib/session.js';
+import { isAccountsConfigured } from '../_lib/config.js';
 
 export default async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Cache-Control', 'no-store');
+  if (req.method !== 'GET') {
+    res.statusCode = 405;
+    res.setHeader('Allow', 'GET');
+    return res.end(JSON.stringify({ error: 'Method not allowed' }));
+  }
 
   // `available` lets the UI hide sign-in entirely on a deployment that has no
   // accounts configured, rather than offering a button that cannot work.
-  const available = isGoogleConfigured();
+  const available = isAccountsConfigured();
 
   try {
     const userId = readSession(readCookies(req)[SESSION_COOKIE]);

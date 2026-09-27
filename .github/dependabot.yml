@@ -1,0 +1,22 @@
+# Dependency-update automation.
+#
+# The production attack surface is intentionally tiny (one serverless
+# dependency + dev tooling), so weekly grouped updates keep the tree fresh
+# without flooding review. CI runs the production-only audit
+# (`npm audit --omit=dev --audit-level=high`) on every PR.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      dev-tooling:
+        dependency-type: development
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3

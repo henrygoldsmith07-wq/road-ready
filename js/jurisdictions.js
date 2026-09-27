@@ -41,6 +41,10 @@ const JURISDICTIONS = {
       positioning: "bonus training",
       officialFormat: null,
     },
+    guide: {
+      scope: "us",
+      subtitle: "Quick-reference U.S. cheat sheets plus behind-the-wheel road-test guidance. State-specific facts appear first.",
+    },
   },
   // Second shipped module: Great Britain (DVSA car theory test). Added only
   // because a learner here will sit that test — never as a tease.
@@ -66,6 +70,10 @@ const JURISDICTIONS = {
       trainingLabel: "Hazard identification training",
       officialLabel: "Official-test simulation unavailable",
       officialNote: "Road Ready uses original scenarios, not DVSA clips; this is training, not an official simulation.",
+    },
+    guide: {
+      scope: "gb",
+      subtitle: "Great Britain theory guidance without U.S.-specific practical-test instructions.",
     },
   },
 };
@@ -105,6 +113,7 @@ function jurisdictionTree(registries) {
       name: c.name,
       terminology: c.terminology,
       hazardPerception: c.hazardPerception,
+      guide: c.guide,
       regions: (c.regions || []).map((rid) => {
         const pack = STATE_PACKS[rid];
         const bp = EXAM_BLUEPRINTS[rid];
