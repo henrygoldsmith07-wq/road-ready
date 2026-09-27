@@ -2,6 +2,7 @@
 "use strict";
 
 const Core = window.RoadReadyCore;
+const Format = window.RoadReadyFormat || {};
 const Packs = window.RoadReadyPacks;
 const BLUEPRINTS = (window.RoadReadyBlueprints || {}).EXAM_BLUEPRINTS || {};
 const Jur = window.RoadReadyJurisdictions || {};
@@ -19,7 +20,6 @@ if (PracticalUI) {
     save: () => save(),
     render: () => renderPractical(),
     toast,
-    escapeHTML,
     todayStr: () => todayStr(),
     readiness: () => readiness(),
   });
@@ -205,7 +205,19 @@ function toast(title, sub, ic) {
   const t = document.createElement("div");
   t.className = "toast";
   t.setAttribute("role", "status");
-  t.innerHTML = `${icon(ic || "award", 17)}<div><b>${title}</b>${sub ? `<small>${sub}</small>` : ""}</div>`;
+  const box = document.createElement("div");
+  const head = document.createElement("b");
+  head.textContent = title;
+  box.appendChild(head);
+  if (sub) {
+    const small = document.createElement("small");
+    small.textContent = sub;
+    box.appendChild(small);
+  }
+  // icon() emits trusted static SVG; title/sub are user-visible strings and
+  // are set via textContent so they can never become markup.
+  t.innerHTML = `${icon(ic || "award", 17)}`;
+  t.appendChild(box);
   host.appendChild(t);
   setTimeout(() => t.classList.add("out"), 3200);
   setTimeout(() => t.remove(), 3700);
@@ -342,7 +354,12 @@ function renderReadinessPanel() {
   const { strong, risk } = Core.strongAndRiskTopics(topics);
   const spreadPts = (() => { const sp = Core.mockStability(state.exams, 3); return sp == null ? null : Math.round(sp * 100); })();
   const predictionSamples = predictionCalibrationSamples();
-  rpCalNarrative = Core.readinessNarrative({ readinessPct: theoryPct, curve: Core.calibrationCurve(predictionSamples), riskTopics: risk.map((t) => t.name), stabilitySpread: spreadPts });
+  rpCalNarrative = Core.readinessNarrative(Object.assign({
+    readinessPct: theoryPct,
+    curve: buildCalibrationCurve(predictionSamples),
+    riskTopics: risk.map((t) => t.name),
+    stabilitySpread: spreadPts,
+  }, CALIBRATION_CONTEXT()));
 
   let daysLeft = null;
   if (state.settings.testDate) {
@@ -371,7 +388,7 @@ function renderReadinessPanel() {
   risk.forEach((t) => items.push(`<li class="rp-risk"><span class="rp-glyph">△</span> Risk: ${t.name.toLowerCase()}</li>`));
   if (!items.length) items.push('<li class="muted">Answer a few questions and your strong/risk areas will appear here.</li>');
   if (recPlan.questions > 0) items.push(`<li class="rp-rec">Recommended today: <b>${recPlan.questions} questions</b>${daysLeft ? ` (test in ${daysLeft} day${daysLeft === 1 ? "" : "s"})` : ""}</li>`);
-  else items.push('<li class="rp-rec"><b>Bank mastered</b> — keep sharp with mock exams.</li>');
+  else items.push('<li class="rp-rec"><b>Bank mastered</b> — stay sharp with a mock exam.</li>');
   $("rpList").innerHTML = items.join("");
 
   on($("rpStart"), "click", () => {
@@ -439,9 +456,13 @@ function renderHome() {
   if (!validTestDate()) {
     $("planTitle").textContent = `${rec.questions} questions today`;
     $("planDetail").textContent = `${rec.estimatedMinutes} min · adaptive mix${rec.focusConcepts.length ? ` · ${rec.focusConcepts.slice(0, 2).join(" + ")}` : ""}`;
-    $("planMeta").textContent = "Add your test date for a paced plan";
+    $("planMeta").textContent = rec.rationale.length ? "Why this session" : "Adaptive mix — a bit of everything you need next";
     rationaleEl.hidden = !rec.rationale.length;
-    rationaleEl.innerHTML = rec.rationale.map(r => `<li>${r}</li>`).join("");
+    rationaleEl.replaceChildren(...rec.rationale.map((r) => {
+      const li = document.createElement("li");
+      li.textContent = r;
+      return li;
+    }));
     planBtn.textContent = "Set test date";
     planBtn.dataset.action = "set-date";
   } else if (plan.status === "past") {
@@ -457,7 +478,11 @@ function renderHome() {
     $("planDetail").textContent = `${rec.estimatedMinutes} min · ${rec.action === "exam" ? "representative mock" : rec.reviewDue ? "reviews + weak concepts" : "adaptive practice"}${rec.focusConcepts.length ? ` · ${rec.focusConcepts.slice(0, 2).join(" + ")}` : ""}`;
     $("planMeta").textContent = `${plan.unseen} unseen · ${plan.weak} weak · ${rec.reviewDue} due · ${plan.dailyTarget}/day`;
     rationaleEl.hidden = !rec.rationale.length;
-    rationaleEl.innerHTML = rec.rationale.map(r => `<li>${r}</li>`).join("");
+    rationaleEl.replaceChildren(...rec.rationale.map((r) => {
+      const li = document.createElement("li");
+      li.textContent = r;
+      return li;
+    }));
     planBtn.dataset.action = plan.status === "today" ? "review" : rec.action;
     planBtn.textContent = plan.status === "today"
       ? "Short confidence review"
@@ -738,7 +763,7 @@ function renderQuiz() {
   updateFlagBtn();
   speak(q.q + ". " + q.choices.map((c, i) => (i + 1) + ". " + c).join(" "));
 }
-function escapeHTML(s) { return s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function escapeHTML(s) { return Format.escapeHTML ? Format.escapeHTML(s) : s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 
 function sourceCitationHTML(q) {
   const source = Packs.sourceForQuestion(q);
@@ -1127,7 +1152,12 @@ function renderStats() {
   const calNarrative = $("calibrationNarrative");
   if (calNarrative) {
     const samples = predictionCalibrationSamples();
-    const narrative = Core.readinessNarrative({ readinessPct: Math.round(readiness() * 100), curve: Core.calibrationCurve(samples), riskTopics: [], stabilitySpread: null });
+    const narrative = Core.readinessNarrative(Object.assign({
+      readinessPct: Math.round(readiness() * 100),
+      curve: buildCalibrationCurve(samples),
+      riskTopics: [],
+      stabilitySpread: null,
+    }, CALIBRATION_CONTEXT()));
     calNarrative.textContent = narrative.text;
     $("calibrationDisclaimer").textContent = narrative.disclaimer;
   }
@@ -1179,32 +1209,59 @@ function freezeOfficialPrediction() {
   save();
   return prediction;
 }
+/**
+ * Calibration samples must never mix engines silently. The ACTIVE jurisdiction
+ * and the CURRENT readiness/mastery engine version are always applied here, at
+ * the single point where calibration data is consumed, so the curve cannot mix
+ * samples from another jurisdiction or an older engine by accident.
+ */
+const CALIBRATION_CONTEXT = () => ({
+  jurisdiction: state.settings.statePack,
+  engineVersion: Core.MASTERY_VERSION,
+});
+function buildCalibrationCurve(samples) {
+  return Core.calibrationCurve(samples, CALIBRATION_CONTEXT());
+}
 function pendingOutcomePrediction() {
-  return (state.predictions || []).find((p) => !p.outcome) || null;
+  // The pending row shown to the learner is the one the resolver will match an
+  // outcome against — attempt identity lives in Core.resolveAttemptPrediction.
+  return Core.resolveAttemptPrediction(state.predictions, { jurisdiction: state.settings.statePack });
 }
 function logOutcome(result) {
-  const pending = pendingOutcomePrediction();
-  if (pending) {
-    const idx = state.predictions.findIndex((p) => p.id === pending.id);
-    state.predictions[idx] = Core.attachOutcome(pending, result, state.settings.testDate, Date.now());
-  }
+  const jurisdiction = state.settings.statePack;
   const snapshot = predictionSnapshot();
-  state.outcomes = Core.appendOutcome(state.outcomes, {
-    progressPct: snapshot.readinessPct,
-    mockAvgPct: snapshot.mockAvgPct,
-    coveragePct: snapshot.coveragePct,
-    stabilitySpread: snapshot.stabilitySpread ?? 0,
-    diagnosticPct: snapshot.diagnosticPct ?? undefined,
-    jurisdiction: state.settings.statePack,
-    readinessEngineVersion: Core.MASTERY_VERSION,
-    questionsSeen: snapshot.questionsSeen,
-    studyMinutes: snapshot.studyMinutes,
-    result,
+  const recorded = Core.recordOfficialOutcome(state.predictions, state.outcomes, result, {
+    jurisdiction,
+    officialTestDate: Core.validIsoDate(state.settings.testDate) ? state.settings.testDate : null,
+    nowMs: Date.now(),
+    snapshot: {
+      progressPct: snapshot.readinessPct,
+      mockAvgPct: snapshot.mockAvgPct,
+      coveragePct: snapshot.coveragePct,
+      stabilitySpread: snapshot.stabilitySpread ?? 0,
+      diagnosticPct: snapshot.diagnosticPct ?? undefined,
+      jurisdiction,
+      questionsSeen: snapshot.questionsSeen,
+      studyMinutes: snapshot.studyMinutes,
+    },
   });
+  if (recorded.duplicate) {
+    toast("Outcome already recorded", "This result was already saved against the frozen prediction.", "chart");
+    return;
+  }
+  state.predictions = recorded.predictions;
+  state.outcomes = recorded.outcomes;
   save();
   renderCalibration();
   renderHome();
-  toast("Outcome logged", "Frozen prediction preserved. Stored only on this device.", "chart");
+  // Honest confirmation copy: say what actually happened to the frozen
+  // prediction. When nothing attached, this is a retrospective journal entry
+  // only — never imply a snapshot was preserved.
+  if (recorded.attached) {
+    toast("Outcome logged", "Recorded against your frozen prediction. Stored only on this device.", "chart");
+  } else {
+    toast("Outcome saved to journal", "No frozen prediction matched this attempt, so it was kept as a retrospective entry.", "chart");
+  }
 }
 function renderCalibration() {
   const host = $("outcomeList");
@@ -1215,22 +1272,48 @@ function renderCalibration() {
   predictions.slice().reverse().forEach((p) => {
     const d = new Date(p.predictionCreatedAt);
     const res = p.outcome ? (p.outcome.result === "pass" ? "PASS" : p.outcome.result === "fail" ? "FAIL" : "?") : "PENDING";
-    rows.push(`<div class="outcome-row">
-      <span>${d.toLocaleDateString()} · ${escapeHTML(p.jurisdiction)} · readiness ${p.readinessPct}% · mocks ${p.mockAvgPct}% · coverage ${p.coveragePct}%
-        <span class="outcome-meta">frozen prediction · ${escapeHTML(p.evidenceClass)} evidence</span></span>
-      <b class="res-${p.outcome ? p.outcome.result : "pending"}">${res}</b>
-    </div>`);
+    const row = document.createElement("div");
+    row.className = "outcome-row";
+    const left = document.createElement("span");
+    left.textContent = `${d.toLocaleDateString()} · ${p.jurisdiction} · readiness ${p.readinessPct}% · mocks ${p.mockAvgPct}% · coverage ${p.coveragePct}% `;
+    const meta = document.createElement("span");
+    meta.className = "outcome-meta";
+    meta.textContent = `frozen prediction · attempt ${p.attemptNumber} · ${p.evidenceClass} evidence`;
+    left.appendChild(meta);
+    const right = document.createElement("b");
+    right.className = `res-${p.outcome ? p.outcome.result : "pending"}`;
+    right.textContent = res;
+    row.append(left, right);
+    rows.push(row);
   });
   retrospectives.slice().reverse().forEach((o) => {
     const d = new Date(o.date);
     const resLabel = o.result === "pass" ? "PASS" : o.result === "fail" ? "FAIL" : "?";
-    rows.push(`<div class="outcome-row">
-      <span>${d.toLocaleDateString()} · ${o.progressPct}% progress · mock avg ${o.mockAvgPct}% · ${o.questionsSeen} questions
-        <span class="outcome-meta">retrospective journal</span></span>
-      <b class="res-${o.result}">${resLabel}</b>
-    </div>`);
+    const row = document.createElement("div");
+    row.className = "outcome-row";
+    const left = document.createElement("span");
+    left.textContent = `${d.toLocaleDateString()} · ${o.progressPct}% progress · mock avg ${o.mockAvgPct}% · ${o.questionsSeen} questions `;
+    const meta = document.createElement("span");
+    meta.className = "outcome-meta";
+    meta.textContent = "retrospective journal";
+    left.appendChild(meta);
+    const right = document.createElement("b");
+    right.className = `res-${o.result}`;
+    right.textContent = resLabel;
+    row.append(left, right);
+    rows.push(row);
   });
-  host.innerHTML = rows.length ? rows.join("") : `<p class="muted mx0">No outcomes logged yet.</p>`;
+  host.textContent = "";
+  if (!rows.length) {
+    const p = document.createElement("p");
+    p.className = "muted mx0";
+    p.textContent = "No outcomes logged yet.";
+    host.appendChild(p);
+    return;
+  }
+  const frag = document.createDocumentFragment();
+  rows.forEach((r) => frag.appendChild(r));
+  host.appendChild(frag);
 }
 
 

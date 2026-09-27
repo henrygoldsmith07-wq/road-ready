@@ -2,6 +2,8 @@ interface Window {
   /** Set by js/boot-error.js for the E2E console-error check. */
   __lastError?: string;
   RoadReadyCore: any;
+  /** Present only when js/format.js has loaded before app.js. */
+  RoadReadyFormat: any;
   RoadReadyPacks: any;
   RoadReadyBlueprints: any;
   RoadReadyJurisdictions: any;

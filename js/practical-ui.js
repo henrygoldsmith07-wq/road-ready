@@ -125,7 +125,7 @@
   }
 
   function render() {
-    const { Core, getState, escapeHTML, todayStr } = ctx;
+    const { Core, getState, todayStr } = ctx;
     if (!$("view-practical")) return;
     const state = getState();
     const log = Core.practicalLog(state);
@@ -137,17 +137,24 @@
     $("drTheory").textContent = theoryPct + "%";
     $("drPractical").textContent = practical === null ? "no sessions yet" : Math.round(practical * 100) + "%";
 
-    // One next practice skill — not seven competency charts.
+    // One next practice skill — not seven competency charts. All text below
+    // is inserted via textContent (no HTML string construction), so session
+    // notes and labels can never become executable markup.
     const focus = Core.nextPracticeSkill
       ? Core.nextPracticeSkill(log)
       : Core.nextLessonFocus(log);
-    const focusName = escapeHTML(focus.skillName || focus.name || "Next skill");
-    const focusReason = escapeHTML(focus.reason || "Keep practising this skill");
-    const focusCompetency = focus.competencyName ? escapeHTML(focus.competencyName) : "";
-    const focusExtra = focus.score === null || focus.score === undefined
-      ? `<b>${focusName}</b> — ${focusReason}.`
-      : `<b>${focusName}</b> (${Math.round(focus.score * 100)}%) — ${focusReason}${focusCompetency ? ` · ${focusCompetency}` : ""}.`;
-    $("nextFocus").innerHTML = focusExtra;
+    const focusName = focus.skillName || focus.name || "Next skill";
+    const focusReason = focus.reason || "Keep practising this skill";
+    const focusCompetency = focus.competencyName || "";
+    const focusExtra = document.createElement("b");
+    focusExtra.textContent = focusName;
+    const focusHost = $("nextFocus");
+    focusHost.textContent = "";
+    focusHost.append(focusExtra, document.createTextNode(
+      focus.score === null || focus.score === undefined
+        ? ` — ${focusReason}.`
+        : ` (${Math.round(focus.score * 100)}%) — ${focusReason}${focusCompetency ? ` · ${focusCompetency}` : ""}.`
+    ));
 
     // history
     const hist = $("sessionList");
@@ -198,7 +205,7 @@
   }
 
   window.RoadReadyPracticalUI = {
-    /** @param {{Core, form, getState, save, render, toast, escapeHTML, todayStr, readiness}} deps */
+    /** @param {{Core, form, getState, save, render, toast, todayStr, readiness}} deps */
     init(deps) { ctx = deps; },
     render,
     buildForm,

@@ -875,6 +875,8 @@ function reviewSched(sched, right, nowMs, quality) {
    * can be fit against observed data.
    */
   const OUTCOME_RESULT_VALUES = ["pass", "fail"];
+  /** Re-recording for the same attempt within this window is a double-tap, not a correction. */
+  const OUTCOME_DUPLICATE_WINDOW_MS = 60 * 60 * 1000;
 
   /** Pure append with clamping. */
   function appendOutcome(outcomes, entry, nowMs) {
@@ -1533,6 +1535,43 @@ function reviewSched(sched, right, nowMs, quality) {
     return (predictions || []).filter((p) => p.participantId === participantId).length + 1;
   }
 
+  /**
+   * Resolve WHICH pending prediction an official outcome belongs to.
+   *
+   * A learner can hold several unresolved predictions at once (a date that
+   * keeps slipping, a rebook after a cancellation), so "the first unresolved
+   * prediction" is not an identity. Matching is explicit and ranked:
+   *   1. same jurisdiction   (a CA outcome can never settle a GB prediction)
+   *   2. same intended test date, when the outcome carries one
+   *   3. earliest unresolved prediction created AFTER the last resolved one —
+   *      the next attempt in sequence — falling back to the earliest
+   *      unresolved overall for legacy data with no resolved history.
+   * Returns null when nothing matches; the caller must NOT invent an
+   * attachment for an outcome that does not correspond to a frozen snapshot.
+   *
+   * Pure. Exported for UI and regression tests.
+   */
+  function resolveAttemptPrediction(predictions, opts) {
+    const o = opts || {};
+    const list = (Array.isArray(predictions) ? predictions : []).filter(
+      (p) => p && !p.outcome && (p.jurisdiction || "generic") === (o.jurisdiction || "generic")
+    );
+    if (!list.length) return null;
+    if (validIsoDate(o.officialTestDate)) {
+      const dated = list.filter((p) => p.intendedTestDate === o.officialTestDate);
+      if (dated.length) return dated[0];
+    }
+    const resolved = (Array.isArray(predictions) ? predictions : []).filter(
+      (p) => p && p.outcome && (p.jurisdiction || "generic") === (o.jurisdiction || "generic")
+    );
+    const lastResolvedAt = resolved.length ? Math.max(...resolved.map((p) => p.predictionCreatedAt)) : null;
+    if (lastResolvedAt != null) {
+      const afterLast = list.filter((p) => p.predictionCreatedAt > lastResolvedAt);
+      if (afterLast.length) return afterLast[0];
+    }
+    return list[0];
+  }
+
   /** Freeze the current state into an immutable prediction. Pure. */
   function freezePrediction(predictions, participantId, jurisdiction, snapshot, opts) {
     const o = opts || {};
@@ -1581,6 +1620,59 @@ function reviewSched(sched, right, nowMs, quality) {
     if (!["pass", "fail"].includes(result)) return prediction;
     const out = { result, officialTestDate: validIsoDate(officialTestDate) ? officialTestDate : null, recordedAt: nowMs(recordedAtMs) };
     return Object.assign({}, prediction, { outcome: out });
+  }
+
+  /**
+   * Record an official outcome against the CORRECT pending prediction, or as a
+   * standalone retrospective entry when no frozen snapshot matches. Duplicate
+   * results for an already-resolved attempt are ignored (idempotent), so a
+   * double-tap or an accidental second submit cannot rewrite history.
+   *
+   * Returns {{ attached: object|null, duplicate: boolean, prediction: object|null }}:
+   *   attached  — the prediction object with its outcome set, or null when the
+   *               outcome did NOT attach to any frozen prediction (callers must
+   *               surface that honestly, never claim one was preserved)
+   *   duplicate — true when an identical outcome already existed on the matched
+   *               prediction and nothing changed
+   *   prediction— the resolved pending prediction, when one existed
+   * Pure: inputs are never mutated; returns fresh arrays.
+   */
+  function recordOfficialOutcome(predictions, outcomes, result, opts) {
+    const o = opts || {};
+    const now = nowMs(o.nowMs);
+    const testDate = validIsoDate(o.officialTestDate) ? o.officialTestDate : null;
+    const basePredictions = Array.isArray(predictions) ? predictions.slice() : [];
+    const pending = resolveAttemptPrediction(predictions, { jurisdiction: o.jurisdiction, officialTestDate: testDate });
+    const journalEntry = () => Object.assign({}, o.snapshot, {
+      jurisdiction: o.jurisdiction || (o.snapshot && o.snapshot.jurisdiction),
+      date: now,
+      result,
+    });
+    if (!pending) {
+      // Duplicate guard: re-recording for the attempt most recently resolved in
+      // this jurisdiction (same test date) within a short window is a double-tap
+      // or accidental re-submission — a no-op, never a second journal entry and
+      // never a rewrite of the frozen outcome. Without this, one official
+      // attempt could silently inflate the retrospective pool it later pools
+      // with. A deliberate correction (later, or for a different attempt) is
+      // still recorded.
+      const resolved = (Array.isArray(predictions) ? predictions : [])
+        .filter((p) => p && p.outcome && (p.jurisdiction || "generic") === (o.jurisdiction || "generic"))
+        .sort((a, b) => b.outcome.recordedAt - a.outcome.recordedAt);
+      const last = resolved[0];
+      if (last && (last.outcome.officialTestDate || null) === testDate
+        && now - last.outcome.recordedAt < OUTCOME_DUPLICATE_WINDOW_MS) {
+        return { attached: last, duplicate: true, prediction: last, outcomes: Array.isArray(outcomes) ? outcomes.slice() : [], predictions: basePredictions };
+      }
+      const nextOutcomes = appendOutcome(outcomes, journalEntry(), now);
+      return { attached: null, duplicate: false, prediction: null, outcomes: nextOutcomes, predictions: basePredictions };
+    }
+    const attached = attachOutcome(pending, result, testDate, now);
+    // The returned list must carry the outcome — returning the old object here
+    // is how an attachment gets silently lost between record and save.
+    const nextPredictions = basePredictions.map((p) => (p === pending ? attached : p));
+    const nextOutcomes = appendOutcome(outcomes, journalEntry(), now);
+    return { attached, duplicate: false, prediction: pending, outcomes: nextOutcomes, predictions: nextPredictions };
   }
   function nowMs(ms) { return typeof ms === "number" && isFinite(ms) ? ms : Date.now(); }
 
@@ -1635,7 +1727,7 @@ function reviewSched(sched, right, nowMs, quality) {
     PROTOCOL_VERSION, SCORING_VERSION, MASTERY_VERSION, bankFingerprint,
     readinessBand, strongAndRiskTopics, recommendedToday, dailyStudyRecommendation,
     MIN_BUCKET_N, MAX_INTERVAL_WIDTH, CALIBRATION_BUCKETS, mockStability, bankCoverage,
-    freezePrediction, attachOutcome,
+    freezePrediction, attachOutcome, resolveAttemptPrediction, recordOfficialOutcome,
     wilsonInterval, bucketFor, calibrationCurve, calibrationRowFor, readinessNarrative, confidenceCalibration,
     MIN_RT_SAMPLES, MAX_RT_SAMPLES, MIN_RT_MS, MAX_RT_MS,
     normalizeRt, pushRtSample, rtPercentiles, classifyResponse, applyFluency, answerFluency,

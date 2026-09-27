@@ -303,7 +303,8 @@ test.describe("official simulation", () => {
     await official.click();
     await expect(page.locator("#view-quiz")).toHaveClass(/active/);
     await expect(page.locator("#qTimer")).toBeVisible();
-    await expect(page.locator("#qTimer")).toContainText("46:00");
+    // Same tick-race as the GB test: the timer may have counted its first second.
+    await expect(page.locator("#qTimer")).toContainText(/46:00|45:59/);
 
     // submit immediately: unanswered questions count wrong → fails the official bar
     page.once("dialog", (d) => d.accept());
@@ -333,7 +334,9 @@ test.describe("official simulation", () => {
 
     await official.click();
     await expect(page.locator("#view-quiz")).toHaveClass(/active/);
-    await expect(page.locator("#qTimer")).toContainText("57:00");
+    // The DVSA timer starts immediately, so a busy worker can observe the first
+    // tick before this assertion runs — assert the boundary, not one instant.
+    await expect(page.locator("#qTimer")).toContainText(/57:00|56:59/);
     await expect(page.locator("#qCounter")).toContainText("/50");
   });
 });
