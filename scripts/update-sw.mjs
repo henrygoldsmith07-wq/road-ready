@@ -12,7 +12,6 @@
 // check so a commit whose service worker was not regenerated cannot go green.
 import { readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
-import { fileURLToPath } from "node:url";
 
 const swPath = new URL("../sw.js", import.meta.url);
 

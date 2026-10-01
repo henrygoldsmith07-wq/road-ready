@@ -8,7 +8,6 @@ import { fileURLToPath } from "node:url";
 
 const data = loadContent();
 const base = () => runChecks(data);
-const errorsOf = (r) => r.errors;
 const hasRule = (r, rule, re) => r.errors.some((e) => e.rule === rule && (!re || re.test(e.msg)));
 
 describe("provenance resolution (hard requirement)", () => {

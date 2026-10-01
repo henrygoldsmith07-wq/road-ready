@@ -92,13 +92,12 @@ const APP_VERSION = "1.1.0";
 const STORE_KEY = "roadready.v1";
 /** @returns {any} element by id — vanilla app, DOM types vary per caller */
 const $ = (id) => document.getElementById(id);
-const qsa = /** @returns {NodeListOf<HTMLElement>} */(sel) => document.querySelectorAll(sel);
 const on = (el, ev, fn) => el.addEventListener(ev, fn);
 
 /* ---------------- state ---------------- */
 let storageOk = true;
   try { localStorage.setItem("roadready.probe", "1"); localStorage.removeItem("roadready.probe"); }
-  catch (e) { storageOk = false; }
+  catch { storageOk = false; }
 if (!storageOk) setTimeout(() => showPersistenceWarning("unavailable"), 0);
 const memStore = {};
 const rawGet = (k) => storageOk ? localStorage.getItem(k) : (memStore[k] ?? null);
@@ -147,10 +146,6 @@ function touchStreak() {
   const t = todayStr();
   state.streak = Core.touchStreak(state.streak, t, yesterdayStr());
 }
-function todayAnswered() {
-  return Core.dailyCount(state.daily, todayStr());
-}
-
 /* ---------------- import / export ---------------- */
 function exportProgress() {
   const blob = new Blob([Core.exportBundle(state)], { type: "application/json" });
@@ -275,7 +270,7 @@ function speak(text) {
     const u = new SpeechSynthesisUtterance(text);
     u.rate = 1.02;
     speechSynthesis.speak(u);
-  } catch (e) { /* speech unavailable — silently ignore */ }
+  } catch { /* speech unavailable — silently ignore */ }
 }
 function stopSpeaking() {
   if (ttsSupported()) { try { speechSynthesis.cancel(); } catch (e) { console.warn("[road-ready] speech:", e); } }
@@ -306,7 +301,6 @@ const catQ = (cat) => bank.filter(q => q.cat === cat);
 const shuffle = (arr) => Core.shuffle(arr);
 
 /* mastery: 0 (unseen) .. 1 (nailed) */
-const qMastery = (q) => Core.qMastery(state.qstats[q.id]);
 const readiness = () => Core.readiness(bank, state.qstats, state.exams);
 const missedQuestions = () => Core.missedQuestions(bank, state.qstats);
 const catAccuracy = (cat) => Core.catAccuracy(catQ(cat), state.qstats);

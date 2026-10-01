@@ -4,6 +4,9 @@
   "private": true,
   "description": "Offline-first jurisdiction-aware driving-theory study PWA (vanilla JS, no build step)",
   "type": "commonjs",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "serve": "node serve.js",
     "test": "npm run test:unit && npm run validate && npm run hygiene",
@@ -15,9 +18,11 @@
     "provenance:update": "node scripts/validate-content.mjs --update-manifest",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "type-check": "npm run typecheck",
     "sw:version": "node scripts/update-sw.mjs",
     "audit": "npm audit --omit=dev --audit-level=high",
-    "hygiene": "node scripts/check-hygiene.mjs"
+    "hygiene": "node scripts/check-hygiene.mjs",
+    "verify": "npm run lint && npm run typecheck && npm run sw:version -- --check && npm test"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

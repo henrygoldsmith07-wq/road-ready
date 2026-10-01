@@ -277,6 +277,8 @@ const SIGNS = {
   },
 };
 
+/* Consumed as globals by app.js (classic scripts, one shared scope). */
+/* exported SIGNS, signSVG */
 function signSVG(id, size) {
   const s = SIGNS[id];
   if (!s) return "";

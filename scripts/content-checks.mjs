@@ -203,7 +203,7 @@ export function runChecks(data, opts = {}) {
       list.push(i);
       counts.set(c, list);
     });
-    for (const [c, idxs] of counts.entries()) {
+    for (const [, idxs] of counts.entries()) {
       if (idxs.length > 1) err("dup-answer", `[${q.id}] identical choices at positions ${idxs.join(", ")}: "${String(q.choices[idxs[0]]).slice(0, 50)}"`);
     }
     if (Number.isInteger(q.a) && q.choices[q.a] != null) {
@@ -247,7 +247,7 @@ export function runChecks(data, opts = {}) {
     const evidence = `${Number.isInteger(q.a) && Array.isArray(q.choices) ? String(q.choices[q.a] ?? "") : ""} ${q.why || ""}`;
     const evidenceDigits = digitsOf(evidence);
     const evidenceKeywords = keywordsOf(evidence);
-    const corroborates = candidates.some(([k, v]) => {
+    const corroborates = candidates.some(([, v]) => {
       const nums = digitsOf(v);
       if (nums.size) return [...nums].some((n) => evidenceDigits.has(n));
       return sharesKeyword(keywordsOf(v), evidenceKeywords);

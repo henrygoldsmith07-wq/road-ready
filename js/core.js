@@ -229,7 +229,7 @@ function sanitizeState(s, opts) {
     let parsed = raw;
     const warnings = [];
     if (typeof raw === "string") {
-      try { parsed = JSON.parse(raw); } catch (e) {
+      try { parsed = JSON.parse(raw); } catch {
         return { state: defaultState(), fromVersion: null, warnings: ["corrupt-json"] };
       }
     }
@@ -1696,7 +1696,7 @@ function reviewSched(sched, right, nowMs, quality) {
   function parseImport(text, opts) {
     if (typeof text !== "string" || !text.trim()) return { ok: false, error: "empty" };
     let bundle;
-    try { bundle = JSON.parse(text); } catch (e) { return { ok: false, error: "not-json" }; }
+    try { bundle = JSON.parse(text); } catch { return { ok: false, error: "not-json" }; }
     if (!bundle || typeof bundle !== "object" || Array.isArray(bundle)) return { ok: false, error: "not-object" };
     if (bundle.app !== EXPORT_APP_ID) return { ok: false, error: "wrong-app" };
     if (typeof bundle.schema !== "number") return { ok: false, error: "missing-schema" };

@@ -91,7 +91,7 @@ describe("study metrics", () => {
   });
 
   it("untagged legacy exams never fabricate a baseline (strict protocol)", () => {
-    const exams = stateLike.exams.map(({ tag, ...e }) => e);
+    const exams = stateLike.exams.map(({ tag: _tag, ...e }) => e);
     const m = Core.studyMetrics({ ...stateLike, exams });
     // no tagged diagnostic → no baseline, no improvement measurement
     expect(m.diagnosticPct).toBe(null);
