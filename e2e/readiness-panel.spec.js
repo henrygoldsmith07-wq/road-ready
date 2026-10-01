@@ -13,9 +13,11 @@ test.describe("readiness panel", () => {
     if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
     await expect(page.locator("#readinessPanel")).toBeVisible();
     await expect(page.locator("#rpBand")).toContainText("Not Started");
-    const list = await page.locator("#rpList").textContent();
-    expect(list).toContain("Recommended today:");
-    expect(list).toMatch(/\d+ questions/);
+    /* The single next action must live in the Today Plan card, not be restated
+     * by a second control in the progress panel. */
+    const title = await page.locator("#planTitle").textContent();
+    expect(title).toMatch(/\d+ questions today|Set your test date|Set test date/);
+    await expect(page.locator("#rpStart")).toHaveCount(0);
   });
 
   test("seeded mastery upgrades the band and lists strong topics", async ({ page }) => {

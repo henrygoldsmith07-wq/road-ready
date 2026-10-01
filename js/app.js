@@ -326,7 +326,16 @@ function showView(name) {
 }
 
 
-/* ---------------- readiness panel (home) ---------------- */
+/* ---------------- readiness panel (home) ----------------
+ *
+ * Status only, by design. The single next action for today lives in the Today
+ * Plan card above this panel, which already states the question count, the
+ * reason behind it and carries the one primary Start button. This panel used
+ * to restate the recommendation and offer a second Start control, so the home
+ * screen gave two competing answers to "what should I do today". It now shows
+ * only where the learner stands: the band, the calibration caveat, and which
+ * topics are strong and which are at risk.
+ */
 let rpCalNarrative = null;
 function renderReadinessPanel() {
   const host = $("readinessPanel");
@@ -355,16 +364,6 @@ function renderReadinessPanel() {
     stabilitySpread: spreadPts,
   }, CALIBRATION_CONTEXT()));
 
-  let daysLeft = null;
-  if (state.settings.testDate) {
-    const diff = Core.daysBetweenLocalDates(todayStr(), state.settings.testDate);
-    if (diff != null && diff > 0) daysLeft = diff;
-  }
-  const recPlan = Core.dailyStudyRecommendation({
-    bank, qstats: state.qstats, exams: state.exams, daily: state.daily,
-    testDate: state.settings.testDate, today: todayStr(), nowMs: Date.now(),
-  });
-
   const calEl = $("rpCalLine");
   if (calEl) {
     // Readiness stays labelled uncalibrated until real results exist.
@@ -381,15 +380,7 @@ function renderReadinessPanel() {
   strong.forEach((t) => items.push(`<li class="rp-strong"><span class="rp-glyph">✓</span> Strong: ${t.name.toLowerCase()}</li>`));
   risk.forEach((t) => items.push(`<li class="rp-risk"><span class="rp-glyph">△</span> Risk: ${t.name.toLowerCase()}</li>`));
   if (!items.length) items.push('<li class="muted">Answer a few questions and your strong/risk areas will appear here.</li>');
-  if (recPlan.questions > 0) items.push(`<li class="rp-rec">Recommended today: <b>${recPlan.questions} questions</b>${daysLeft ? ` (test in ${daysLeft} day${daysLeft === 1 ? "" : "s"})` : ""}</li>`);
-  else items.push('<li class="rp-rec"><b>Bank mastered</b> — stay sharp with a mock exam.</li>');
   $("rpList").innerHTML = items.join("");
-
-  on($("rpStart"), "click", () => {
-    const n = Math.max(5, Math.min(recPlan.questions || Core.DAILY_GOAL, bank.length));
-    const qs = pickWeighted(adaptivePool(), n);
-    if (qs.length) startPractice(qs, "Today's Set", "home");
-  });
 }
 
 /* ---------------- HOME ---------------- */

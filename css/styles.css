@@ -719,6 +719,5 @@ kbd {
 .rp-glyph { width: 16px; text-align: center; flex-shrink: 0; }
 .rp-strong .rp-glyph, .rp-strong b { color: #1a9134; }
 .rp-risk .rp-glyph, .rp-risk b { color: #c1272d; }
-.rp-rec { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 4px; }
-.rp-start { width: 100%; margin-top: 12px; }
+/* .rp-rec and .rp-start were the duplicated recommendation row and its second Start button. The Today Plan card owns the single next action now, so both styles went with the markup they served. */
 @media (min-width: 721px) { .readiness-panel { max-width: 640px; } }
