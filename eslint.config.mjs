@@ -17,7 +17,7 @@ const browserGlobals = {
 // identifiers defined across our own classic scripts (loaded in order)
 const sharedScriptGlobals = {
   QUESTIONS: "readonly", CATEGORIES: "readonly", SIGNS: "readonly",
-  STATE_PACKS: "readonly", SOURCE_REGISTRY: "readonly", UNIVERSAL_DEFAULTS: "readonly",
+  STATE_PACKS: "readonly", SOURCE_REGISTRY: "readonly", UNIVERSAL_DEFAULTS: "readonly", UK_PACK: "readonly", ROADREADY_UK_PACK: "readonly", require: "readonly",
   CONCEPT_FACT_KEYS: "readonly", VERIFICATION_MAX_AGE_DAYS: "readonly",
   EXAM_BLUEPRINTS: "readonly", JURISDICTIONS: "readonly", ACTIVE_COUNTRY: "readonly",
   RoadReadyCore: "readonly", RoadReadyPacks: "readonly", RoadReadyBlueprints: "readonly", RoadReadyJurisdictions: "readonly",

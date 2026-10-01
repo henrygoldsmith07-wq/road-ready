@@ -1,3 +1,8 @@
+/** Global lexical binding created by js/packs/uk.js when it is loaded as a
+ *  classic <script> before js/state-packs.js. Declared for the type checker;
+ *  under Node the require() fallback in state-packs.js resolves it instead. */
+declare const ROADREADY_UK_PACK: any;
+
 interface Window {
   /** Set by js/boot-error.js for the E2E console-error check. */
   __lastError?: string;
