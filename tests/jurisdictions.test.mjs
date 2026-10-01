@@ -59,7 +59,10 @@ describe("jurisdiction module contract", () => {
     const uk = data.STATE_PACKS.UK;
     expect(uk.name).toContain("Great Britain");
     expect(uk.includeUniversal).toBe(false);
-    expect(uk.questions).toHaveLength(60);
+    // The official DVSA car mock is 50 questions, so the bank must be far larger
+    // than one mock: a learner sitting several mocks in a row should not keep
+    // meeting the same items, and a 50-question draw needs real topic headroom.
+    expect(uk.questions.length).toBeGreaterThanOrEqual(300);
     expect(uk.questions.every((q) => q.jurisdiction.includes("UK"))).toBe(true);
     expect(data.EXAM_BLUEPRINTS.UK.sourceId).toBe("uk-theory-test-format");
     expect(data.SOURCE_REGISTRY["uk-theory-test-format"].agency).toBe("DVSA");
