@@ -32,7 +32,7 @@ test.describe("readiness panel", () => {
     await page.reload();
     if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
     const band = (await page.locator("#rpBand").textContent()).trim();
-    expect(["Ready", "Nearly Ready"].some((label) => band.startsWith(label))).toBe(true);
+    expect(["Strong", "On Track"].some((label) => band.startsWith(label))).toBe(true);
     const list = await page.locator("#rpList").textContent();
     expect(list).toContain("Strong:");
   });

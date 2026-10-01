@@ -1215,13 +1215,37 @@ function reviewSched(sched, right, nowMs, quality) {
   }
 
   /* ---------------- readiness panel (home) ---------------- */
+  /**
+   * The road signs a bank's questions actually use.
+   *
+   * Jurisdiction isolation: the artwork library is shared, but most signs are
+   * specific to one country's rules. Deriving the flashcard deck from the
+   * questions in the ACTIVE bank means a Great Britain learner is never drilled
+   * on US-only artwork (deer crossings, divided-highway beginnings, work-zone
+   * flagger signs) and a US learner never sees GB-only signs. Pure function -
+   * no DOM, no pack lookups - so it stays testable on its own.
+   */
+  function signIdsInBank(bank) {
+    const ids = new Set();
+    for (const q of bank || []) {
+      if (!q) continue;
+      if (q.signId) ids.add(q.signId);
+      if (Array.isArray(q.signIds)) for (const s of q.signIds) if (s) ids.add(s);
+    }
+    return [...ids].sort();
+  }
+
   /** Band labels for the combined readiness heuristic. */
   function readinessBand(pct) {
     const p = num(pct, 0, 0, 100);
-    if (p >= 90) return { label: "Ready", tone: "ready" };
-    if (p >= 75) return { label: "Nearly Ready", tone: "nearly" };
-    if (p >= 55) return { label: "Getting There", tone: "getting" };
-    if (p > 0) return { label: "Early Days", tone: "early" };
+    /* Bands describe STUDY PROGRESS, never a probability of passing. The engine is
+       heuristic and only becomes a measured pass-rate estimate once enough verified
+       real-test outcomes exist to calibrate it (see readinessNarrative/calibration),
+       so a learner must never be able to read "Ready" as "you will pass". */
+    if (p >= 90) return { label: "Strong", tone: "ready" };
+    if (p >= 75) return { label: "On Track", tone: "nearly" };
+    if (p >= 55) return { label: "Building", tone: "getting" };
+    if (p > 0) return { label: "Getting Started", tone: "early" };
     return { label: "Not Started", tone: "early" };
   }
 
@@ -1726,6 +1750,7 @@ function reviewSched(sched, right, nowMs, quality) {
     retentionProbePool, studyMetrics, buildStudyExport,
     PROTOCOL_VERSION, SCORING_VERSION, MASTERY_VERSION, bankFingerprint,
     readinessBand, strongAndRiskTopics, recommendedToday, dailyStudyRecommendation,
+    signIdsInBank,
     MIN_BUCKET_N, MAX_INTERVAL_WIDTH, CALIBRATION_BUCKETS, mockStability, bankCoverage,
     freezePrediction, attachOutcome, resolveAttemptPrediction, recordOfficialOutcome,
     wilsonInterval, bucketFor, calibrationCurve, calibrationRowFor, readinessNarrative, confidenceCalibration,

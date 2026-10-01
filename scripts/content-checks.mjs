@@ -365,7 +365,17 @@ export function runChecks(data, opts = {}) {
   }
 
 /* ---------- 6. sign-data validation ---------- */
-  const referenced = new Set(QUESTIONS.filter((q) => q.signId).map((q) => q.signId));
+  /* Reference scan must cover the jurisdiction packs too, not just the global
+   * bank: the GB pack is a separate module, so a sign used only by GB questions
+   * would otherwise be reported as dead artwork. */
+  const allQuestions = QUESTIONS.concat(
+    Object.values(STATE_PACKS).flatMap((p) => (p && p.questions) || [])
+  );
+  const referenced = new Set();
+  for (const q of allQuestions) {
+    if (q.signId) referenced.add(q.signId);
+    if (Array.isArray(q.signIds)) for (const sid of q.signIds) referenced.add(sid);
+  }
   for (const [id, s] of Object.entries(SIGNS)) {
     if (!s.name || typeof s.name !== "string") err("sign-data", `[sign:${id}] missing name`);
     if (!s.family || typeof s.family !== "string") warn("sign-data", `[sign:${id}] missing family`);
@@ -378,6 +388,21 @@ export function runChecks(data, opts = {}) {
       const selfClosing = (s.svg.match(/\/>/g) || []).length;
       if (open !== close + selfClosing) err("sign-data", `[sign:${id}] svg tags unbalanced (${open} open, ${close} closed, ${selfClosing} self-closing)`);
       if (/NaN|undefined|\$\{/.test(s.svg)) err("sign-data", `[sign:${id}] svg contains template leakage`);
+    }
+    /* Jurisdiction variants override the name/meaning shown to that jurisdiction.
+     * A variant with a missing field would silently fall back mid-card. */
+    if (s.alt != null && (typeof s.alt !== "object" || Array.isArray(s.alt))) {
+      err("sign-data", `[sign:${id}] alt must be a jurisdiction map`);
+    } else if (s.alt) {
+      for (const [jur, v] of Object.entries(s.alt)) {
+        if (!v || typeof v !== "object") { err("sign-data", `[sign:${id}] alt.${jur} must be an object`); continue; }
+        if (!v.name || typeof v.name !== "string") err("sign-data", `[sign:${id}] alt.${jur} missing name`);
+        if (!v.meaning || typeof v.meaning !== "string") err("sign-data", `[sign:${id}] alt.${jur} missing meaning`);
+        else if (v.meaning.trim().length < 30) warn("sign-data", `[sign:${id}] alt.${jur} meaning very short`);
+        if (!(jur in STATE_PACKS) && jur !== "generic") {
+          warn("sign-data", `[sign:${id}] alt targets unknown jurisdiction "${jur}"`);
+        }
+      }
     }
   }
   const unusedSigns = Object.keys(SIGNS).filter((id) => !referenced.has(id));
