@@ -20,7 +20,7 @@ describe("content manifest stays development-side", () => {
   });
 
   it("is not referenced by any browser-loaded script", () => {
-    const browserScripts = ["app.js", "core.js", "account.js", "account-ui.js", "practical-ui.js", "guide.js", "icons.js", "signs.js", "jurisdictions.js", "state-packs.js", "exam-blueprints.js"];
+    const browserScripts = ["app.js", "core.js", "account.js", "account-ui.js", "practical-ui.js", "guide.js", "icons.js", "signs.js", "jurisdictions.js", "packs/uk.js", "state-packs.js", "exam-blueprints.js"];
     for (const file of browserScripts) {
       const src = readFileSync(`${ROOT}js/${file}`, "utf8");
       expect(src.includes("content-manifest.json"), file).toBe(false);

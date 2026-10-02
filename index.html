@@ -46,7 +46,7 @@
               <circle class="ring-bg" cx="60" cy="60" r="52"></circle>
               <circle class="ring-fg" cx="60" cy="60" r="52" id="ringFg"></circle>
             </svg>
-            <div class="ring-label"><span id="ringPct">0%</span><small>progress · uncalibrated</small></div>
+            <div class="ring-label"><span id="ringPct">0%</span><small>study progress</small></div>
           </div>
         </div>
       </div>
@@ -76,12 +76,11 @@
 
       <div class="card readiness-panel" id="readinessPanel" hidden>
         <div class="rp-head">
-          <h2>Test readiness <small class="beta-pill">uncalibrated</small></h2>
+          <h2>Study progress <small class="beta-pill">not a pass prediction</small></h2>
           <b id="rpBand" class="rp-band">–</b>
         </div>
         <p id="rpCalLine" class="state-note mt-6" hidden></p>
         <ul class="rp-list" id="rpList"></ul>
-        <button class="btn primary rp-start" id="rpStart">Start today's set</button>
       </div>
 
       <button class="card feature-card" id="fcHazard">
@@ -170,8 +169,9 @@
     <!-- ============ FLASHCARDS ============ -->
     <section class="view" id="view-flashcards">
       <h1 class="view-title">Road Sign Flashcards</h1>
+      <p class="view-sub" id="fcScope"></p>
       <div class="fc-meta">
-        <span class="pill" id="fcCounter">1 / 28</span>
+        <span class="pill" id="fcCounter">1 / 1</span>
         <span class="pill" id="fcKnownPill"></span>
         <span class="flex-spacer"></span>
         <button class="pill" id="btnFcShuffle"><span data-icon="shuffle" data-size="13"></span>Shuffle</button>
@@ -622,7 +622,7 @@
         <h1>How you'll study</h1>
         <div class="ob-row"><span class="ob-row-ico" data-icon="book" data-size="20"></span><div><b>Daily set</b><small>Sized to your test date — what to study each day, not the whole bank at once</small></div></div>
         <div class="ob-row"><span class="ob-row-ico" data-icon="clipboard" data-size="20"></span><div><b>Official mock exam</b><small>Matches the published question count, time limit and pass mark for your selected test</small></div></div>
-        <div class="ob-row"><span class="ob-row-ico" data-icon="layers" data-size="20"></span><div><b>Flashcards &amp; study guide</b><small>31 road signs plus cheat sheets and a road-test walkthrough</small></div></div>
+        <div class="ob-row"><span class="ob-row-ico" data-icon="layers" data-size="20"></span><div><b>Flashcards &amp; study guide</b><small>Sign cards for the signs your test actually uses, plus cheat sheets and a road-test walkthrough</small></div></div>
         <div class="ob-row"><span class="ob-row-ico" data-icon="eye" data-size="20"></span><div><b>Hazard perception</b><small>Bonus training beyond the written exam — early spotting saves lives</small></div></div>
       </div>
       <div class="ob-step" data-step="2">
@@ -676,6 +676,7 @@
 <script src="js/study-ui.js" defer></script>
 <script src="js/guide.js" defer></script>
 <script src="js/jurisdictions.js" defer></script>
+<script src="js/packs/uk.js" defer></script>
 <script src="js/state-packs.js" defer></script>
 <script src="js/exam-blueprints.js" defer></script>
 <script src="js/app.js" defer></script>

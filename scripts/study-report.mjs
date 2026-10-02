@@ -45,8 +45,6 @@ console.log("protocol: " + participants[0].protocol.protocolVersion
   + " · scoring " + participants[0].protocol.scoringVersion
   + " · mastery " + participants[0].protocol.masteryVersion);
 
-const pct = (v) => (v == null ? "–" : `${Math.round(v * 100)}%`);
-
 console.log(`\nLearner study — ${participants.length} participant(s)\n`);
 console.log("id        day  diag  latest  Δpts  mocks  questions  hours  retention");
 const rows = [];

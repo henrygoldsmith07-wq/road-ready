@@ -43,16 +43,19 @@ const SIGNS = {
   stop: {
     name: "Stop", family: "Regulatory — octagon",
     meaning: "Come to a COMPLETE stop at the stop line, crosswalk, or before the intersection if there is no line. Yield to pedestrians and cross traffic. Go only when it is safe.",
+    alt: { UK: { name: "Stop", meaning: "Come to a complete stop at the stop line, or before the junction and the crossing if there is no line. Give priority to anyone on the crossing and to traffic approaching from your right. Move off only when it is safe." } },
     svg: `<polygon points="30,4 70,4 96,30 96,70 70,96 30,96 4,70 4,30" fill="${RED}" stroke="#fff" stroke-width="4"/>${txt(50, 56, "STOP", 25, "#fff")}`
   },
   yield: {
     name: "Yield", family: "Regulatory — inverted triangle",
     meaning: "Slow down and give the right of way to traffic and pedestrians ahead. Stop if necessary; only proceed when you won't interfere with cross traffic.",
+    alt: { UK: { name: "Give Way", meaning: "Give priority to traffic and people crossing or approaching from your right. You may proceed without stopping, but only where it is safe to do so." } },
     svg: `<polygon points="6,8 94,8 50,92" fill="#fff" stroke="${RED}" stroke-width="9"/>${txt(50, 32, "YIELD", 15, RED)}`
   },
   doNotEnter: {
     name: "Do Not Enter", family: "Regulatory",
     meaning: "Do not enter this road or ramp. Used for one-way streets, exit ramps, and restricted roads — entering means driving against traffic.",
+    alt: { UK: { name: "No Entry", meaning: "Do not enter this road or slip road. It stands at the wrong end of a one-way street and at motorway slip roads, so going against it puts you into a head-on conflict with traffic using the road correctly." } },
     svg: `<circle cx="50" cy="50" r="46" fill="${RED}" stroke="#fff" stroke-width="4"/><rect x="12" y="41" width="76" height="18" fill="#fff"/>`
   },
   wrongWay: {
@@ -68,6 +71,7 @@ const SIGNS = {
   oneWay: {
     name: "One Way", family: "Regulatory",
     meaning: "Traffic flows only in the direction of the arrow. Never turn against it.",
+    alt: { UK: { name: "One Way", meaning: "Traffic may travel only in the direction the arrow shows. Turning against it is an offence and puts you into a head-on conflict." } },
     svg: `<rect x="5" y="30" width="90" height="40" rx="4" fill="#111"/>${arrow(50, 62, 24, "up", "#fff", 12)}${txt(50, 24, "ONE WAY", 14, "#111")}`
   },
   noUturn: {
@@ -99,9 +103,18 @@ const SIGNS = {
   keepRight: {
     name: "Keep Right", family: "Regulatory",
     meaning: "Keep to the right of the island, median, or obstruction ahead.",
-    svg: `<rect x="6" y="6" width="88" height="88" rx="8" fill="#fff" stroke="#111" stroke-width="4"/>
-      <line x1="50" y1="88" x2="50" y2="46" stroke="#111" stroke-width="8" stroke-linecap="round"/>
-      <polygon points="38,48 62,48 50,26" fill="#111"/>`
+    alt: { UK: { name: "Keep Right", meaning: "Pass to the right of the island, bollard or obstruction ahead. On a road where you drive on the left this keeps you clear of the island without crossing the centre line." } },
+    svg: `<circle cx="50" cy="50" r="45" fill="#1c4e9c"/>` +
+      `<line x1="34" y1="28" x2="60" y2="58" stroke="#fff" stroke-width="9" stroke-linecap="round"/>` +
+      `<polyline points="72,42 72,60 54,60" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>`
+  },
+  keepLeft: {
+    name: "Keep Left", family: "Mandatory",
+    meaning: "Pass to the left of the island, bollard or obstruction ahead.",
+    alt: { UK: { name: "Keep Left", meaning: "Pass to the left of the island, bollard or obstruction ahead. On a road where you drive on the left this keeps you clear of the island without crossing the centre line." } },
+    svg: `<circle cx="50" cy="50" r="45" fill="#1c4e9c"/>` +
+      `<line x1="66" y1="28" x2="40" y2="58" stroke="#fff" stroke-width="9" stroke-linecap="round"/>` +
+      `<polyline points="28,42 28,60 46,60" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>`
   },
   noPassingZone: {
     name: "No Passing Zone (pennant)", family: "Warning — pennant",
@@ -111,6 +124,7 @@ const SIGNS = {
   railCrossing: {
     name: "Railroad Crossing Ahead", family: "Warning — round",
     meaning: "You are approaching a railroad crossing. Slow down, look and listen for trains, and be prepared to stop. Never stop on the tracks.",
+    alt: { UK: { name: "Level Crossing Ahead", meaning: "A level crossing is ahead. Obey the lights, gates or barriers without exception, never stop on the crossing, and never rely on being able to see or hear a train approaching." } },
     svg: `<circle cx="50" cy="50" r="46" fill="${YEL}" stroke="#111" stroke-width="4"/>
       <text x="27" y="36" font-family="${FONT}" font-weight="900" font-size="26" fill="#111">R</text>
       <text x="56" y="36" font-family="${FONT}" font-weight="900" font-size="26" fill="#111">R</text>
@@ -125,12 +139,14 @@ const SIGNS = {
   schoolZone: {
     name: "School Zone", family: "Warning — pentagon (school)",
     meaning: "A school crossing area ahead. Slow to the posted school limit, watch for children, and obey crossing guards. Fluorescent yellow-green pentagon = school.",
+    alt: { UK: { name: "School Zone", meaning: "A school or crossing patrol area is ahead. Slow to the signed limit, watch for children on the pavement and at the kerb, and obey the crossing patrol." } },
     svg: `<polygon points="50,4 95,36 78,94 22,94 5,36" fill="${YGR}" stroke="#111" stroke-width="3.5"/>
       ${person(36, 58, 0.9, "#111")}${person(60, 58, 0.9, "#111")}`
   },
   schoolCrossing: {
     name: "School Crossing", family: "Warning — pentagon (school)",
     meaning: "Children cross the road here, often with a crossing guard. Slow down, stop for children in the crosswalk, and never pass another vehicle stopped for the crossing.",
+    alt: { UK: { name: "School Crossing", meaning: "Children cross here, often with a crossing patrol. Slow right down, stop for anyone on the crossing, and never pass a vehicle that has stopped for it." } },
     svg: `<polygon points="50,4 95,36 78,94 22,94 5,36" fill="${YGR}" stroke="#111" stroke-width="3.5"/>
       ${person(36, 52, 0.85, "#111")}${person(60, 52, 0.85, "#111")}
       <line x1="16" y1="72" x2="84" y2="72" stroke="#111" stroke-width="5"/>
@@ -201,6 +217,7 @@ const SIGNS = {
   workZone: {
     name: "Road Work Ahead", family: "Warning — orange = construction",
     meaning: "Orange signs mark a temporary work zone. Slow down, increase following distance, obey flaggers, and watch for workers — fines are often doubled.",
+    alt: { UK: { name: "Road Works Ahead", meaning: "Temporary signs mark a works area on this road. Slow down, leave room for the works and any workers on foot, and obey any temporary signals and speed limits in force." } },
     svg: diamond("#f28c1b",
       `<g stroke="#111" stroke-width="6" stroke-linecap="round">
         <circle cx="40" cy="28" r="6" fill="#111" stroke="none"/>
@@ -225,6 +242,7 @@ const SIGNS = {
   signalAhead: {
     name: "Signal Ahead", family: "Warning",
     meaning: "A traffic signal is just ahead (often hidden by a curve or hill). Be ready to stop — check your mirror and ease off the gas.",
+    alt: { UK: { name: "Signals Ahead", meaning: "Traffic signals are just ahead, often hidden by a bend or a brow. Ease off the accelerator and be ready to stop." } },
     svg: diamond(YEL,
       `<rect x="38" y="16" width="24" height="52" rx="6" fill="#111"/>
       <circle cx="50" cy="28" r="6" fill="${RED}"/>
@@ -235,12 +253,14 @@ const SIGNS = {
   stopAhead: {
     name: "Stop Sign Ahead", family: "Warning",
     meaning: "A stop sign is ahead and may be hard to see. Start slowing now and prepare to come to a complete stop.",
+    alt: { UK: { name: "Stop Sign Ahead", meaning: "A stop sign is ahead and may be hard to see over a brow or round a bend. Start slowing now and be ready to come to a complete stop." } },
     svg: diamond(YEL,
       `<polygon points="38,26 62,26 74,38 74,62 62,74 38,74 26,62 26,38" fill="${RED}"/>${txt(50, 54, "STOP", 13, "#fff")}`)
   },
   bikeCrossing: {
     name: "Bicycle Crossing", family: "Warning",
     meaning: "Bicyclists cross or share the road ahead. Slow down, check for riders, and give at least 3 feet when passing.",
+    alt: { UK: { name: "Cycle Route Ahead", meaning: "Pedal cycles cross or share the road ahead. Slow down, check for riders on both sides, and leave at least 1.5 metres when you pass a cyclist, more at higher speeds." } },
     svg: diamond(YEL,
       `<g fill="none" stroke="#111" stroke-width="5" stroke-linecap="round">
         <circle cx="32" cy="66" r="12"/><circle cx="68" cy="66" r="12"/>
@@ -256,6 +276,7 @@ const SIGNS = {
   chevron: {
     name: "Chevron (sharp curve)", family: "Warning — alignment",
     meaning: "A sharp curve bends in the direction of the chevron (here: right). Slow down BEFORE the curve, keep right, and don't brake mid-curve.",
+    alt: { UK: { name: "Chevron (sharp bend)", meaning: "A sharp bend follows in the direction the chevrons point. Slow down before the bend, keep left of the markers, and do not brake while turning through it." } },
     svg: `<rect x="24" y="4" width="52" height="92" rx="6" fill="${YEL}" stroke="#111" stroke-width="4"/>
       <g fill="none" stroke="#111" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
         <path d="M38,28 L58,50 L38,72"/>
@@ -277,9 +298,11 @@ const SIGNS = {
   },
 };
 
-function signSVG(id, size) {
+/* Consumed as globals by app.js (classic scripts, one shared scope). */
+/* exported SIGNS, signSVG */
+function signSVG(id, size, label) {
   const s = SIGNS[id];
   if (!s) return "";
   const px = size ? ` width="${size}" height="${size}"` : "";
-  return `<svg viewBox="0 0 100 100"${px} role="img" aria-label="${s.name} sign">${s.svg}</svg>`;
+  return `<svg viewBox="0 0 100 100"${px} role="img" aria-label="${label || s.name} sign">${s.svg}</svg>`;
 }

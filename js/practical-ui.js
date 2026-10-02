@@ -99,7 +99,7 @@
   }
 
   function saveSession() {
-    const { Core, getState, form, save, render, toast, escapeHTML } = ctx;
+    const { Core, getState, form, save, render, toast } = ctx;
     const state = getState();
     const minutes = parseInt($("plMinutes").value, 10);
     const skills = Object.keys(form.skills);

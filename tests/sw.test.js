@@ -122,10 +122,17 @@ describe("service worker", () => {
 
   it("VERSION follows the content hash of the shell (no stale-cache deploys)", async () => {
     // Regenerate what the shell's current bytes would produce and require the
-    // checked-in VERSION to match it exactly.
+    // checked-in VERSION to match it exactly. Spawning a child node process is
+    // far slower than any in-process assertion, and CI runners are routinely
+    // slower still, so this test gets an explicit budget rather than relying on
+    // vitest's 5s default. The assertion itself is unchanged: a stale VERSION
+    // still fails, because update-sw.mjs --check exits non-zero.
     const { execFileSync } = await import("node:child_process");
-    execFileSync(process.execPath, ["scripts/update-sw.mjs", "--check"], { cwd: fileURLToPath(new URL("..", import.meta.url)) });
-  });
+    execFileSync(process.execPath, ["scripts/update-sw.mjs", "--check"], {
+      cwd: fileURLToPath(new URL("..", import.meta.url)),
+      timeout: 60_000,
+    });
+  }, 60_000);
 
   it("cache name derives from the generated VERSION", async () => {
     const version = SRC.match(/^const VERSION = "([^"]*)";$/m);

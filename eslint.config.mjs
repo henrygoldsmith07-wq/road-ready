@@ -17,7 +17,7 @@ const browserGlobals = {
 // identifiers defined across our own classic scripts (loaded in order)
 const sharedScriptGlobals = {
   QUESTIONS: "readonly", CATEGORIES: "readonly", SIGNS: "readonly",
-  STATE_PACKS: "readonly", SOURCE_REGISTRY: "readonly", UNIVERSAL_DEFAULTS: "readonly",
+  STATE_PACKS: "readonly", SOURCE_REGISTRY: "readonly", UNIVERSAL_DEFAULTS: "readonly", UK_PACK: "readonly", ROADREADY_UK_PACK: "readonly", require: "readonly",
   CONCEPT_FACT_KEYS: "readonly", VERIFICATION_MAX_AGE_DAYS: "readonly",
   EXAM_BLUEPRINTS: "readonly", JURISDICTIONS: "readonly", ACTIVE_COUNTRY: "readonly",
   RoadReadyCore: "readonly", RoadReadyPacks: "readonly", RoadReadyBlueprints: "readonly", RoadReadyJurisdictions: "readonly",
@@ -31,10 +31,21 @@ export default [
   js.configs.recommended,
   {
     files: ["js/**/*.js"],
-    languageOptions: { globals: { ...browserGlobals, ...sharedScriptGlobals } },
+    // These are classic <script> files sharing one global lexical scope (no
+    // build step, no bundler). Declaring sourceType "script" makes the lint
+    // model match the runtime, so the cross-file identifiers listed in
+    // sharedScriptGlobals and the /* exported */ markers in the defining
+    // files are honoured instead of being reported as dead code.
+    languageOptions: { sourceType: "script", globals: { ...browserGlobals, ...sharedScriptGlobals } },
     rules: {
       "no-unused-vars": ["warn", { args: "none" }],
       "no-empty": ["warn", { allowEmptyCatch: true }],
+      // Every file here is loaded as a classic <script> into ONE global scope,
+      // so a name defined in signs.js and *used* in app.js is declared in both
+      // the globals list above and the defining file. That is the intended
+      // architecture, not a redeclaration bug — ESLint cannot check collisions
+      // across files, and there is no build step that would surface them.
+      "no-redeclare": "off",
     },
   },
   {

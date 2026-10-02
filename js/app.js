@@ -92,13 +92,12 @@ const APP_VERSION = "1.1.0";
 const STORE_KEY = "roadready.v1";
 /** @returns {any} element by id — vanilla app, DOM types vary per caller */
 const $ = (id) => document.getElementById(id);
-const qsa = /** @returns {NodeListOf<HTMLElement>} */(sel) => document.querySelectorAll(sel);
 const on = (el, ev, fn) => el.addEventListener(ev, fn);
 
 /* ---------------- state ---------------- */
 let storageOk = true;
   try { localStorage.setItem("roadready.probe", "1"); localStorage.removeItem("roadready.probe"); }
-  catch (e) { storageOk = false; }
+  catch { storageOk = false; }
 if (!storageOk) setTimeout(() => showPersistenceWarning("unavailable"), 0);
 const memStore = {};
 const rawGet = (k) => storageOk ? localStorage.getItem(k) : (memStore[k] ?? null);
@@ -147,10 +146,6 @@ function touchStreak() {
   const t = todayStr();
   state.streak = Core.touchStreak(state.streak, t, yesterdayStr());
 }
-function todayAnswered() {
-  return Core.dailyCount(state.daily, todayStr());
-}
-
 /* ---------------- import / export ---------------- */
 function exportProgress() {
   const blob = new Blob([Core.exportBundle(state)], { type: "application/json" });
@@ -247,7 +242,7 @@ function achievementSnapshot(sessionAnswers) {
     hazardBest: state.hazardBest,
     hazardPct: state.hazardBest ? state.hazardBest / (HZ_SCENARIOS.length * 5) : 0,
     readinessPct: Math.round(readiness() * 100),
-    allSignsKnown: Object.keys(SIGNS).every(id => state.fcKnown[id]),
+    allSignsKnown: fcIds().every(id => state.fcKnown[id]),
     perfectRun: !!(session && session.perfectRun),
     sessionAnswers: sessionAnswers != null ? sessionAnswers : (session && session.answers ? session.answers.length : 0),
   };
@@ -275,7 +270,7 @@ function speak(text) {
     const u = new SpeechSynthesisUtterance(text);
     u.rate = 1.02;
     speechSynthesis.speak(u);
-  } catch (e) { /* speech unavailable — silently ignore */ }
+  } catch { /* speech unavailable — silently ignore */ }
 }
 function stopSpeaking() {
   if (ttsSupported()) { try { speechSynthesis.cancel(); } catch (e) { console.warn("[road-ready] speech:", e); } }
@@ -306,7 +301,6 @@ const catQ = (cat) => bank.filter(q => q.cat === cat);
 const shuffle = (arr) => Core.shuffle(arr);
 
 /* mastery: 0 (unseen) .. 1 (nailed) */
-const qMastery = (q) => Core.qMastery(state.qstats[q.id]);
 const readiness = () => Core.readiness(bank, state.qstats, state.exams);
 const missedQuestions = () => Core.missedQuestions(bank, state.qstats);
 const catAccuracy = (cat) => Core.catAccuracy(catQ(cat), state.qstats);
@@ -332,7 +326,16 @@ function showView(name) {
 }
 
 
-/* ---------------- readiness panel (home) ---------------- */
+/* ---------------- readiness panel (home) ----------------
+ *
+ * Status only, by design. The single next action for today lives in the Today
+ * Plan card above this panel, which already states the question count, the
+ * reason behind it and carries the one primary Start button. This panel used
+ * to restate the recommendation and offer a second Start control, so the home
+ * screen gave two competing answers to "what should I do today". It now shows
+ * only where the learner stands: the band, the calibration caveat, and which
+ * topics are strong and which are at risk.
+ */
 let rpCalNarrative = null;
 function renderReadinessPanel() {
   const host = $("readinessPanel");
@@ -361,16 +364,6 @@ function renderReadinessPanel() {
     stabilitySpread: spreadPts,
   }, CALIBRATION_CONTEXT()));
 
-  let daysLeft = null;
-  if (state.settings.testDate) {
-    const diff = Core.daysBetweenLocalDates(todayStr(), state.settings.testDate);
-    if (diff != null && diff > 0) daysLeft = diff;
-  }
-  const recPlan = Core.dailyStudyRecommendation({
-    bank, qstats: state.qstats, exams: state.exams, daily: state.daily,
-    testDate: state.settings.testDate, today: todayStr(), nowMs: Date.now(),
-  });
-
   const calEl = $("rpCalLine");
   if (calEl) {
     // Readiness stays labelled uncalibrated until real results exist.
@@ -387,15 +380,7 @@ function renderReadinessPanel() {
   strong.forEach((t) => items.push(`<li class="rp-strong"><span class="rp-glyph">✓</span> Strong: ${t.name.toLowerCase()}</li>`));
   risk.forEach((t) => items.push(`<li class="rp-risk"><span class="rp-glyph">△</span> Risk: ${t.name.toLowerCase()}</li>`));
   if (!items.length) items.push('<li class="muted">Answer a few questions and your strong/risk areas will appear here.</li>');
-  if (recPlan.questions > 0) items.push(`<li class="rp-rec">Recommended today: <b>${recPlan.questions} questions</b>${daysLeft ? ` (test in ${daysLeft} day${daysLeft === 1 ? "" : "s"})` : ""}</li>`);
-  else items.push('<li class="rp-rec"><b>Bank mastered</b> — stay sharp with a mock exam.</li>');
   $("rpList").innerHTML = items.join("");
-
-  on($("rpStart"), "click", () => {
-    const n = Math.max(5, Math.min(recPlan.questions || Core.DAILY_GOAL, bank.length));
-    const qs = pickWeighted(adaptivePool(), n);
-    if (qs.length) startPractice(qs, "Today's Set", "home");
-  });
 }
 
 /* ---------------- HOME ---------------- */
@@ -724,8 +709,8 @@ function renderQuiz() {
   $("signFrame").hidden = !signIds.length;
   if (signIds.length) {
     $("signFrame").innerHTML = signIds.length > 1
-      ? `<div class="sign-row">${signIds.map(id => signSVG(id, 104)).join("")}</div>`
-      : signSVG(signIds[0], 150);
+      ? `<div class="sign-row">${signIds.map(id => signArt(id, 104)).join("")}</div>`
+      : signArt(signIds[0], 150);
   }
   const sceneHost = $("qScene");
   if (q.scene) {
@@ -986,7 +971,7 @@ function showResults(r) {
     ? missed.map(a => {
         const q = byId[a.qid];
         return `<div class="review-item card">
-          ${q.signId ? `<div class="sign-frame small">${signSVG(q.signId, 70)}</div>` : ""}
+          ${q.signId ? `<div class="sign-frame small">${signArt(q.signId, 70)}</div>` : ""}
           <div>
             <div class="ri-q">${escapeHTML(q.q)}</div>
              <div class="ri-a ok">${icon("check", 14)} ${escapeHTML(q.choices[q.a])}</div>
@@ -1004,23 +989,47 @@ function showResults(r) {
 }
 
 /* ---------------- FLASHCARDS ---------------- */
+/* Sign ARTWORK is shared across jurisdictions, but the WORDING attached to a sign
+ * is not: GB says level crossing and 1.5 m when passing a cyclist, where the US
+ * text says railroad and 3 feet. A sign that appears in more than one
+ * jurisdiction's bank carries a per-jurisdiction variant under `alt`, which wins.
+ */
+function signCopy(id) {
+  const s = SIGNS[id];
+  if (!s) return { name: "", meaning: "" };
+  const alt = s.alt && s.alt[state.settings.statePack];
+  return alt ? { name: alt.name || s.name, meaning: alt.meaning || s.meaning } : s;
+}
+function signArt(id, size) {
+  return signSVG(id, size, signCopy(id).name);
+}
+
 let fcIndex = 0;
 function fcIds() {
-  const ids = Object.keys(SIGNS);
+  /* Deck is scoped to the signs this jurisdiction's questions actually use, so
+     a GB learner is never drilled on US-only artwork (and vice versa). Falls
+     back to the full library only if the bank references no signs at all. */
+  const used = Core.signIdsInBank(bank).filter((id) => SIGNS[id]);
+  const ids = used.length ? used : Object.keys(SIGNS);
   if (state.fcOrder && state.fcOrder.length === ids.length &&
-      state.fcOrder.every(id => SIGNS[id])) return state.fcOrder;
+      state.fcOrder.every((id) => ids.includes(id))) return state.fcOrder;
   return ids;
 }
 function renderFlashcards() {
   const ids = fcIds();
   fcIndex = Math.min(fcIndex, ids.length - 1);
   const id = ids[fcIndex];
-  const s = SIGNS[id];
-  $("fcSign").innerHTML = signSVG(id, 200);
-  $("fcName").textContent = s.name;
-  $("fcMeaning").textContent = s.meaning;
+  const copy = signCopy(id);
+  $("fcSign").innerHTML = signArt(id, 200);
+  $("fcName").textContent = copy.name;
+  $("fcMeaning").textContent = copy.meaning;
   $("fcCounter").textContent = `${fcIndex + 1} / ${ids.length}`;
-  const known = Object.keys(state.fcKnown).filter(k => SIGNS[k]).length;
+  const scope = $("fcScope");
+  if (scope) {
+    const t = termsForPack();
+    scope.textContent = `${ids.length} signs used in your ${t.regionLabel} pack \u2014 cards for signs that appear in that jurisdiction's questions, not the whole shared library.`;
+  }
+  const known = ids.filter((k) => state.fcKnown[k]).length;
   $("fcKnownPill").innerHTML = `${icon("check", 13)} ${known}/${ids.length} known`;
   const card = $("flashcard");
   card.classList.remove("flipped");
@@ -1033,7 +1042,7 @@ function fcMark(known) {
   const id = fcIds()[fcIndex];
   if (known) state.fcKnown[id] = true; else delete state.fcKnown[id];
   save();
-  if (Object.keys(SIGNS).every(s => state.fcKnown[s])) unlock("signs");
+  if (fcIds().every(s => state.fcKnown[s])) unlock("signs");
   fcMove(1);
 }
 
@@ -1866,7 +1875,7 @@ function init() {
   on($("btnFcYes"), "click", () => fcMark(true));
   on($("btnFcNo"), "click", () => fcMark(false));
   on($("btnFcShuffle"), "click", () => {
-    state.fcOrder = shuffle(Object.keys(SIGNS));
+    state.fcOrder = shuffle(fcIds());
     fcIndex = 0; save(); renderFlashcards();
   });
   on($("btnFcReset"), "click", () => {

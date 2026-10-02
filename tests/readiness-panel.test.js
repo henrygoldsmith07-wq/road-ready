@@ -5,10 +5,19 @@ import Core from "../js/core.js";
 describe("readinessBand", () => {
   it("maps percentages to honest bands", () => {
     expect(Core.readinessBand(0).label).toBe("Not Started");
-    expect(Core.readinessBand(30).label).toBe("Early Days");
-    expect(Core.readinessBand(60).label).toBe("Getting There");
-    expect(Core.readinessBand(80).label).toBe("Nearly Ready");
-    expect(Core.readinessBand(95).label).toBe("Ready");
+    expect(Core.readinessBand(30).label).toBe("Getting Started");
+    expect(Core.readinessBand(60).label).toBe("Building");
+    expect(Core.readinessBand(80).label).toBe("On Track");
+    expect(Core.readinessBand(95).label).toBe("Strong");
+  });
+
+  it("never labels the top band in terms of passing the test", () => {
+    /* The engine is heuristic. Band names must describe study progress only, so
+       a learner cannot read the top band as a prediction that they will pass. */
+    for (const pct of [0, 10, 30, 55, 75, 90, 100]) {
+      const label = Core.readinessBand(pct).label;
+      expect(label).not.toMatch(/\bready\b|\bpass/i);
+    }
   });
 });
 

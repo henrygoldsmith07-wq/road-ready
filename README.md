@@ -25,11 +25,11 @@ Two honest scoping calls that follow from this:
 | Feature | What it does |
 |---|---|
 | Onboarding | A 4-step first-run intro: what's inside, theme + read-aloud setup, and how the daily habit works — skippable, shown once |
-| Adaptive Practice | 267 universal U.S. questions plus jurisdiction packs (365 verified questions total) across 10 topics and 34 concepts, spanning 9 **question forms** — junction-priority road-layout diagrams, lane-selection scenarios, sign combinations, what-happens-next chains, prioritisation drills, multi-step ordering, photo-described scenes, deliberately similar alternatives, same-concept rewording variants, and classic recall; mastery aggregates per concept (coverage × depth), then topic, then overall score |
+| Adaptive Practice | 267 universal U.S. questions plus jurisdiction packs (605 verified questions total) across 10 topics — the Great Britain pack alone is 300 questions across 302 concepts, spanning 9 **question forms** — junction-priority road-layout diagrams, lane-selection scenarios, sign combinations, what-happens-next chains, prioritisation drills, multi-step ordering, photo-described scenes, deliberately similar alternatives, same-concept rewording variants, and classic recall; mastery aggregates per concept (coverage × depth), then topic, then overall score |
 | Marathon Mode | The full active-jurisdiction bank in one run — anything you miss comes back until you've seen it through |
-| Mock Exams | Quick Check (10), Standard (20), Full (46), or a Weak-Topics exam — timed practice with jurisdiction-aware exam terminology and no feedback until you submit |
+| Mock Exams | An **Official Simulation** locked to the selected jurisdiction's real published count, time limit and pass bar (e.g. DVSA car: 50 questions, 43 to pass, 57 minutes), plus two clearly-labelled extras: **Quick Check** (10 questions) and **Weak Topics Exam** (20 questions weighted toward your lowest categories) — timed, with no feedback until you submit |
 | Official Simulations | Pick a jurisdiction and the exam locks to its real published count, time and pass bar **only when the bank has enough unique questions**. Full pools run as locked official-format simulations; incomplete pools are explicitly labelled practice previews and cannot award an official-standard pass. Specs include CA 46/38, TX 30/21, NY 20/14, FL 50/40 in 60 min, WA 40/32, PA 18/15, GB 50/43 in 57 min (`js/exam-blueprints.js`, source-cited) |
-| Hazard Perception | Interactive trainer with 6 animated scenarios (children, doors, deer, cyclists…) — labeled bonus training where exams don't include it (most U.S. states) and a core section where they do (GB DVSA test: 14 clips, 44/75); jurisdiction modules declare this via `hazardPerception.includedInExam` |
+| Hazard Perception | Interactive trainer with 12 animated scenarios (children, doors, deer, cyclists…) — labeled bonus training where exams don't include it (most U.S. states) and a core section where they do (GB DVSA test: 14 clips, 44/75); jurisdiction modules declare this via `hazardPerception.includedInExam` |
 | Sign Flashcards | 31 hand-drawn SVG road signs with flip animation and known/still-learning tracking |
 | Study Guide | Jurisdiction-native guidance. U.S. packs show the U.S. cheat sheets/road-test material; Great Britain hides those sections and relies on its verified GB fact card and theory question bank instead |
 | Read Aloud | Text-to-speech for questions, choices, and explanations — great for commutes and accessibility |
@@ -69,7 +69,7 @@ Questions follow general U.S. rules of the road common across state DMV handbook
 - `css/styles.css` — monochrome dark/light theming, minimal component styles
 - `js/icons.js` — stroke icon set (~34 icons, currentColor)
 - `js/questions.js` — the question bank (267 Qs with explanations, 9 question forms)
-- `js/signs.js` — SVG road-sign library (31 signs)
+- `js/signs.js` — SVG road-sign library (32 signs)
 - `js/core.js` — pure engine: scoring, readiness, adaptive selection, spaced scheduling, exam assembly/grading, hazard scoring, XP/levels, achievements, state migration, import/export
 - `js/account.js` / `js/account-ui.js` — optional account transport and isolated sync/settings controller
 - `js/practical-ui.js` / `js/study-ui.js` — practical-log and learner-study UI modules (dependency-injected, no shared globals)

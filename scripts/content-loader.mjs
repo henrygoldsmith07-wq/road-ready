@@ -5,10 +5,20 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-function loadClassicScriptFrom(root, relPath, exportNames) {
-  const src = readFileSync(path.join(root, relPath), "utf8");
+function runClassicScript(sources, exportNames) {
+  const src = sources.join("\n");
   const fn = new Function(`${src}\n;return {${exportNames.map((n) => `${n}: typeof ${n} !== "undefined" ? ${n} : undefined`).join(",")}};`);
   return fn();
+}
+
+function loadClassicScriptFrom(root, relPath, exportNames) {
+  return runClassicScript([readFileSync(path.join(root, relPath), "utf8")], exportNames);
+}
+
+/** Concatenated classic scripts — for modules that reference each other, e.g.
+ *  the jurisdiction pack data (js/packs/uk.js) referenced by js/state-packs.js. */
+function loadClassicScriptGroup(root, relPaths, exportNames) {
+  return runClassicScript(relPaths.map((p) => readFileSync(path.join(root, p), "utf8")), exportNames);
 }
 
 export function loadContent(rootDir) {
@@ -16,7 +26,7 @@ export function loadContent(rootDir) {
   const q = loadClassicScriptFrom(root, "js/questions.js", ["QUESTIONS", "CATEGORIES"]);
   const s = loadClassicScriptFrom(root, "js/signs.js", ["SIGNS"]);
   let p = {};
-  try { p = loadClassicScriptFrom(root, "js/state-packs.js", ["STATE_PACKS", "SOURCE_REGISTRY", "UNIVERSAL_DEFAULTS", "CONCEPT_FACT_KEYS", "VERIFICATION_MAX_AGE_DAYS"]); } catch { /* packs optional */ }
+  try { p = loadClassicScriptGroup(root, ["js/packs/uk.js", "js/state-packs.js"], ["STATE_PACKS", "SOURCE_REGISTRY", "UNIVERSAL_DEFAULTS", "CONCEPT_FACT_KEYS", "VERIFICATION_MAX_AGE_DAYS", "UK_PACK"]); } catch { /* packs optional */ }
   let bp = {};
   try { bp = loadClassicScriptFrom(root, "js/exam-blueprints.js", ["EXAM_BLUEPRINTS"]); } catch { /* blueprints optional */ }
   let j = {};
