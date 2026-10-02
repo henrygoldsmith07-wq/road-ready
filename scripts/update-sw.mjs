@@ -34,7 +34,14 @@ for (const entry of shell) {
   const file = entry === "./" ? "index.html" : entry.replace(/^\.\//, "");
   hash.update(file);
   try {
-    hash.update(readFileSync(new URL(`../${file}`, import.meta.url)));
+    // Normalise line endings before hashing. The same committed file is checked
+    // out as CRLF on Windows and LF on a Linux runner, so hashing raw bytes made
+    // the VERSION depend on which machine generated it - a service worker
+    // regenerated locally was always reported stale by CI, and vice versa.
+    // Normalising keeps the check strict about real content changes while making
+    // the result reproducible on every platform.
+    const bytes = readFileSync(new URL(`../${file}`, import.meta.url), "utf8").replace(/\r\n/g, "\n");
+    hash.update(bytes);
   } catch {
     console.error(`update-sw: shell file missing on disk: ${file}`);
     process.exit(1);
