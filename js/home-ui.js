@@ -138,10 +138,35 @@
       coverage: "Coverage",
       stable: "Maintenance",
     };
+    // Plain-English coaching copy: what Road Ready noticed, why it matters,
+    // what to do, and what result counts as improvement (js/explain.js).
+    const explain = (ctx.Explain && rec) ? ctx.Explain.explainRecommendation(rec, {
+      conceptName: rec.conceptKeys.length ? Coach.conceptLabel(rec.conceptKeys[0]) : null,
+      errors: rec.evidence && rec.evidence.length ? rec.evidence[0].errors : null,
+      fastWrong: rec.evidence && rec.evidence.length ? rec.evidence[0].fastWrong : null,
+      overdue: rec.evidence ? rec.evidence.reduce((t, e) => t + (e.overdue || 0), 0) : null,
+      coverage: bank.length ? bank.filter((q) => state.qstats[q.id] && state.qstats[q.id].seen).length / bank.length : 0,
+      untestedConcepts: rec.issueKind === "coverage" ? Core.groupByConcept(bank).size - new Set(bank.filter((q) => state.qstats[q.id] && state.qstats[q.id].seen).map((q) => Core.conceptKeyOf(q))).size : null,
+      bankSize: bank.length,
+      slowCount: rec.evidence ? rec.evidence.reduce((t, e) => t + (e.slowRight || 0), 0) : null,
+      topicName: rec.topicId ? (CATEGORIES[rec.topicId] || {}).name : null,
+      mastery: rec.evidence && rec.evidence.length ? rec.evidence[0].mastery : null,
+      encounters: rec.evidence && rec.evidence.length ? rec.evidence[0].encounters : null,
+      daysLeft: plan.daysLeft,
+      scopeLabel: "current",
+    }) : null;
+
     const renderCoachPlan = (r) => {
-      const size = r.questionCount ? `${r.questionCount} questions` : r.minutes ? `${r.minutes} min` : "";
       $("planTitle").textContent = r.title;
-      $("planDetail").textContent = [size, r.detail].filter(Boolean).join(" · ");
+      $("planDetail").textContent = r.detail || "";
+      const amountEl = $("planAmount");
+      if (amountEl) { amountEl.hidden = !(explain && explain.amount); amountEl.textContent = explain ? explain.amount : ""; }
+      const noticedEl = $("planNoticed");
+      if (noticedEl) { noticedEl.hidden = !(explain && explain.noticed); noticedEl.textContent = explain ? explain.noticed : ""; }
+      const whyEl = $("planWhy");
+      if (whyEl) { whyEl.hidden = !(explain && explain.matters); whyEl.textContent = explain ? explain.matters : ""; }
+      const goalEl2 = $("planGoal");
+      if (goalEl2) { goalEl2.hidden = !(explain && explain.success); goalEl2.textContent = explain ? `Goal: ${explain.success}` : ""; }
       if (kindEl) {
         kindEl.hidden = !ISSUE_LABELS[r.issueKind];
         kindEl.textContent = ISSUE_LABELS[r.issueKind] ? `What's behind it: ${ISSUE_LABELS[r.issueKind].toLowerCase()}` : "";
@@ -156,6 +181,26 @@
         li.textContent = line;
         return li;
       }));
+      // Advanced evidence stays collapsed — conclusion first, details on demand.
+      const evDetails = $("planEvidence");
+      const evList = $("planEvidenceList");
+      if (evDetails && evList) {
+        const evidence = (r.evidence || []).map((e) => {
+          const bits = [];
+          if (e.errors) bits.push(`${e.errors} wrong answer${e.errors === 1 ? "" : "s"}`);
+          if (e.fastWrong) bits.push(`${e.fastWrong} answered quickly`);
+          if (e.overdue) bits.push(`${e.overdue} overdue review${e.overdue === 1 ? "" : "s"}`);
+          if (e.slowRight) bits.push(`${e.slowRight} slow but correct`);
+          if (e.mastery != null) bits.push(`${Math.round(e.mastery * 100)}% mastery`);
+          return bits.length ? `${Coach.conceptLabel(e.key || e.topicId || "")}: ${bits.join(", ")}` : null;
+        }).filter(Boolean);
+        evDetails.hidden = !evidence.length;
+        evList.replaceChildren(...evidence.map((line) => {
+          const li = document.createElement("li");
+          li.textContent = line;
+          return li;
+        }));
+      }
       planBtn.textContent = r.type === Coach.REC_TYPES.TAKE_MOCK ? "Take a mock"
         : r.type === Coach.REC_TYPES.LIGHT_REVIEW ? "Start light review"
         : r.questionCount ? `Start ${r.questionCount}-question session`
@@ -184,6 +229,29 @@
       $("planMeta").textContent = `${plan.unseen} unseen · ${plan.weak} weak · ${plan.dailyTarget}/day`;
       planBtn.dataset.action = plan.status === "today" ? "review" : "coach";
       if (plan.status === "today") planBtn.textContent = "Short confidence review";
+      // Near the test the plan shows its COMPONENTS, not one bare activity:
+      // the split shifts with the phase (far = coverage, final = weaknesses).
+      const planList = $("planRationale");
+      const days = plan.daysLeft;
+      const components = [];
+      if (days != null && days >= 0 && days <= 14) {
+        components.push(`${Math.max(5, Math.round(rec.questionCount * 0.6))} mixed questions`);
+        if (plan.weak > 0) components.push("1 weak-concept drill");
+        if (days <= 7 && rec.type !== Coach.REC_TYPES.LIGHT_REVIEW) components.push("2 hazard scenarios");
+      }
+      if (components.length) {
+        planList.hidden = false;
+        const existing = [...planList.querySelectorAll("li")].map((li) => li.textContent);
+        planList.replaceChildren(...components.map((line) => {
+          const li = document.createElement("li");
+          li.textContent = line;
+          return li;
+        }), ...existing.map((line) => {
+          const li = document.createElement("li");
+          li.textContent = line;
+          return li;
+        }));
+      }
     }
     // The date picker is a secondary control — the plan's own action stays the
     // single primary button. Shown only while the plan is undated.

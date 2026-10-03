@@ -1,6 +1,6 @@
 /* Road Ready — hazard-perception scenario bank + SVG scene builders.
  *
- * 25 ORIGINAL training scenes plus the lightweight SVG string builders that
+ * 35 ORIGINAL training scenes plus the lightweight SVG string builders that
  * draw them. Nothing here is official DVSA content: the scenes are ours, the
  * score scale is ours, and no copy may ever claim official scoring or
  * official clips. Business rules (scoring, analytics, summary) live in
@@ -11,12 +11,26 @@
  * js/packs/uk.js pattern, so tests can require() this file directly.
  *
  * Scenario shape:
- *   { name, category, road, tint, win:[startSec,endSec], max, hazard,
- *     clues[], response, tip, objs(t), decoys? }
+ *   { name, category, road, tint, phases, win:[startSec,endSec], max, hazard,
+ *     clues[], response, tip, objs(t), decoys?, multi? }
+ *   - phases: { potential: [startSec, endSec] } — the "potential" phase of the
+ *     perception arc (Core.hazardPhaseAt semantics): early clues are visible
+ *     but nothing is directed at your path yet. potential[1] === win[0]
+ *     exactly (tests enforce this), so the arc reads background -> potential
+ *     -> developing (win[0]) -> critical (win[1]). Long potential windows
+ *     train the discipline of WAITING: a click there is early anticipation,
+ *     a click before potential[0] is a false positive.
  *   - win: the developing window. The hazard begins to threaten your path at
  *     win[0] and is fully under way by win[1]. Always 0 <= win[0] < win[1]
  *     <= max (tests enforce this).
  *   - max: scenario length in seconds.
+ *   - category: one of the training skill categories (children,
+ *     parked-vehicles, traffic, animals, pedestrians, cyclists,
+ *     motorcyclists, junctions, roundabouts, merging, concealed, roadworks,
+ *     emergency, rain, darkness, country-roads, buses, delivery-vehicles,
+ *     multiple-hazards). Tests assert every scenario's category is in this
+ *     set; js/hazard-ui.js rolls skill rows up from it via
+ *     Core.hazardCategorySkill.
  *   - road: scene geometry — "straight" | "residential" | "rural" | "bend"
  *     | "roundabout" | "hatched".
  *   - tint: colour grading — null | "rain" | "dark" | "wet" | "fog".
@@ -25,6 +39,10 @@
  *     screen — they stay harmless while exactly one hazard develops. Judging
  *     which one is the decision-uncertainty training; the test suite asserts
  *     every multi-hazard scene declares them.
+ *   - distractorScene: true on a scene whose everyday look is pure scenery —
+ *     nothing on screen ever develops except the one declared hazard late in
+ *     the scene. These train the discipline of not clicking at a watched
+ *     scene; the test suite asserts at least one exists.
  */
 /* exported RoadReadyHazardScenarios */
 "use strict";
@@ -141,6 +159,28 @@
   }
   function hzSign(x, y, fill) {
     return hzPoly([[x, y], [x - 13, y + 16], [x + 13, y + 16]], fill || "#c1272d") + hzRR(x - 2, y + 16, 4, 14, "#8b8b93", 1);
+  }
+  function hzLights(x, y, phase) {
+    const col = phase === "red" ? "#c1272d" : phase === "amber" ? "#e07b18" : "#3fae5a";
+    return hzRR(x - 12, y, 24, 58, "#222229", 6) + hzRR(x - 2, y + 58, 4, 14, "#8b8b93", 1)
+      + hzC(x, y + 12, 7, phase === "red" ? col : "#3a3a44")
+      + hzC(x, y + 30, 7, phase === "amber" ? col : "#3a3a44")
+      + hzC(x, y + 48, 7, phase === "green" ? col : "#3a3a44");
+  }
+  function hzSpray(x, y) {
+    let s = "";
+    for (let i = 0; i < 5; i++) s += hzC(x - 26 + i * 13, y + (i % 2) * 6, 6 + (i % 3) * 3, "rgba(215,225,240,0.28)");
+    return s;
+  }
+  function hzGlare(x, y) {
+    let s = hzC(x, y, 16, "rgba(240,230,190,0.32)") + hzC(x, y, 9, "rgba(240,230,190,0.55)") + hzC(x, y, 4, "#f0e6c8");
+    s += hzPoly([[x - 3, y], [x + 3, y], [x + 2, y + 70], [x - 2, y + 70]], "rgba(240,230,190,0.16)");
+    return s;
+  }
+  function hzFence(x, y, w) {
+    let s = hzRR(x, y, w, 6, "#3c3327", 2);
+    for (let i = 0; i <= w; i += 18) s += hzRR(x + i - 2, y - 12, 5, 30, "#3c3327", 1);
+    return s;
   }
 
   /* ---------------- scene geometry ---------------- */
@@ -279,7 +319,7 @@
   const HZ_SCENARIOS = [
     {
       name: "Ball & child", category: "children", road: "residential", tint: null,
-      win: [2.6, 6.0], max: 7.6,
+      win: [2.6, 6.0], max: 7.6, phases: { potential: [1.1, 2.6] },
       hazard: "A child runs out from between parked vehicles while chasing a ball.",
       clues: ["A ball rolls into the road", "Parked vehicles block the view", "Residential street"],
       response: "Ease off immediately and prepare to stop; a child may follow the ball.",
@@ -293,7 +333,7 @@
     },
     {
       name: "Parked car door", category: "parked-vehicles", road: "residential", tint: null,
-      win: [3.0, 5.6], max: 7.2,
+      win: [3.0, 5.6], max: 7.2, phases: { potential: [1.5, 3.0] },
       hazard: "A door opens from a parked vehicle into your path.",
       clues: ["A silhouette appears in the parked vehicle", "You are passing close to parked cars", "The gap narrows"],
       response: "Drop back or move left if clear and give the door zone space.",
@@ -306,7 +346,7 @@
     },
     {
       name: "Brake lights ahead", category: "traffic", road: "straight", tint: null,
-      win: [3.0, 5.1], max: 6.8,
+      win: [3.0, 5.1], max: 6.8, phases: { potential: [1.5, 3.0] },
       hazard: "Traffic ahead brakes suddenly after a crest.",
       clues: ["Brake lights appear ahead", "Following distance is short", "The view beyond the crest is limited"],
       response: "Ease off and increase your gap before the queue reaches you.",
@@ -321,7 +361,7 @@
     },
     {
       name: "Rural animal crossing", category: "animals", road: "rural", tint: null,
-      win: [3.2, 4.9], max: 6.5,
+      win: [3.2, 4.9], max: 6.5, phases: { potential: [1.7, 3.2] },
       hazard: "An animal crosses from a rural verge, a second following it.",
       clues: ["Warning signs or open fields", "Movement at the road edge", "One animal often precedes another"],
       response: "Brake in your lane and be ready to stop; do not swerve at speed.",
@@ -334,7 +374,7 @@
     },
     {
       name: "Waiting pedestrian", category: "pedestrians", road: "straight", tint: null,
-      win: [3.0, 5.4], max: 7.0,
+      win: [3.0, 5.4], max: 7.0, phases: { potential: [1.5, 3.0] },
       hazard: "A pedestrian waiting at a crossing starts to move toward the road.",
       clues: ["Crosswalk markings ahead", "A person waits near the kerb", "Their attention is on traffic, not you"],
       response: "Slow down before they step out and prepare to give way.",
@@ -347,7 +387,7 @@
     },
     {
       name: "Cyclist ahead", category: "cyclists", road: "residential", tint: null,
-      win: [2.6, 4.6], max: 6.2,
+      win: [2.6, 4.6], max: 6.2, phases: { potential: [1.1, 2.6] },
       hazard: "A cyclist moves around a parked vehicle into your lane.",
       clues: ["The cyclist looks over their shoulder", "A parked vehicle narrows the lane", "No safe passing gap yet"],
       response: "Ease off and hold back until you can pass with at least 1.5 metres.",
@@ -356,7 +396,7 @@
     },
     {
       name: "Emerging vehicle", category: "junctions", road: "residential", tint: null,
-      win: [2.8, 5.0], max: 6.8,
+      win: [2.8, 5.0], max: 6.8, phases: { potential: [1.3, 2.8] },
       hazard: "A vehicle emerges from a side road into your path.",
       clues: ["A junction is ahead", "Wheels move before the vehicle appears", "The side-road view is partly blocked"],
       response: "Cover the brake and prepare to slow; give the emerging driver time to react.",
@@ -370,7 +410,7 @@
     },
     {
       name: "Merging traffic", category: "merging", road: "hatched", tint: null,
-      win: [3.1, 5.5], max: 7.0,
+      win: [3.1, 5.5], max: 7.0, phases: { potential: [1.6, 3.1] },
       hazard: "A vehicle accelerates down a slip road into your lane.",
       clues: ["A merge arrow or slip road appears", "The other vehicle's speed is still changing", "Your lane becomes the through lane"],
       response: "Adjust speed or change lane early; avoid competing for the same space.",
@@ -385,7 +425,7 @@
     },
     {
       name: "Motorcycle filtering", category: "motorcyclists", road: "straight", tint: null,
-      win: [2.9, 4.9], max: 6.5,
+      win: [2.9, 4.9], max: 6.5, phases: { potential: [1.4, 2.9] },
       hazard: "A motorcycle filters between slow vehicles into your lane.",
       clues: ["A narrow moving shape appears between vehicles", "Traffic ahead is slow", "Mirror checks are essential"],
       response: "Hold steady, check mirrors, and leave room; do not move suddenly.",
@@ -399,7 +439,7 @@
     },
     {
       name: "Restricted visibility", category: "concealed", road: "residential", tint: null,
-      win: [3.0, 5.2], max: 6.8,
+      win: [3.0, 5.2], max: 6.8, phases: { potential: [0.6, 3.0] },
       hazard: "A parked van blocks your view of a crossing pedestrian.",
       clues: ["A large vehicle hides the near-side view", "A school or shop is nearby", "Speed makes the hidden risk worse"],
       response: "Slow until you can see past the obstruction and be ready to stop.",
@@ -412,7 +452,7 @@
     },
     {
       name: "Roadworks ahead", category: "roadworks", road: "straight", tint: null,
-      win: [3.0, 5.3], max: 6.9,
+      win: [3.0, 5.3], max: 6.9, phases: { potential: [1.5, 3.0] },
       hazard: "Workers and cones narrow the carriageway.",
       clues: ["Temporary cones appear", "Signals or workers are present", "Lanes merge ahead"],
       response: "Reduce speed before the cone taper and follow the temporary lane.",
@@ -425,7 +465,7 @@
     },
     {
       name: "Emergency vehicle", category: "emergency", road: "straight", tint: null,
-      win: [2.8, 4.8], max: 6.4,
+      win: [2.8, 4.8], max: 6.4, phases: { potential: [0.4, 2.8] },
       hazard: "An emergency vehicle approaches from behind while the road ahead narrows.",
       clues: ["Flashing blue lights in mirrors", "Traffic starts pulling right", "Sirens change direction"],
       response: "Check mirrors, then pull right or stop where it is safe and legal.",
@@ -439,7 +479,7 @@
     },
     {
       name: "Roundabout approach", category: "roundabouts", road: "roundabout", tint: null,
-      win: [2.9, 5.0], max: 6.6,
+      win: [2.9, 5.0], max: 6.6, phases: { potential: [1.4, 2.9] },
       hazard: "A vehicle already on the roundabout cuts across your entry path without signalling.",
       clues: ["A vehicle circulates without an indicator", "Its position suggests your exit", "Give-way markings at the entry"],
       response: "Hold back at the give-way line until its path is clear of your entry.",
@@ -453,7 +493,7 @@
     },
     {
       name: "Rainy crossing", category: "rain", road: "residential", tint: "rain",
-      win: [3.0, 5.4], max: 7.0,
+      win: [3.0, 5.4], max: 7.0, phases: { potential: [1.5, 3.0] },
       hazard: "A pedestrian with an umbrella steps out from behind a parked van, hidden until the last moment.",
       clues: ["Rain reduces visibility and grip", "The umbrella blocks the pedestrian's own view", "Wet roads lengthen stopping distance"],
       response: "Ease off early, cover the brake, and allow for longer stopping distances.",
@@ -467,7 +507,7 @@
     },
     {
       name: "Unlit cyclist at night", category: "darkness", road: "straight", tint: "dark",
-      win: [2.8, 5.0], max: 6.6,
+      win: [2.8, 5.0], max: 6.6, phases: { potential: [1.3, 2.8] },
       hazard: "A cyclist without lights rides along the near-side kerb, visible only in your headlights.",
       clues: ["Darkness narrows what you can see", "A faint shape moves at the road edge", "No rear light is visible"],
       response: "Hold back, pass wide only when clear, and be ready for them to swerve.",
@@ -480,7 +520,7 @@
     },
     {
       name: "Country bend", category: "country-roads", road: "bend", tint: null,
-      win: [3.2, 5.2], max: 6.8,
+      win: [3.2, 5.2], max: 6.8, phases: { potential: [1.7, 3.2] },
       hazard: "An oncoming vehicle cuts the bend across the centre line into your path.",
       clues: ["The bend hides oncoming traffic", "Hedges crowd the road edge", "The oncoming line crosses the centre"],
       response: "Slow on entry so you can stay in your own space if it cuts in.",
@@ -492,7 +532,7 @@
     },
     {
       name: "Bus pulling out", category: "buses", road: "straight", tint: null,
-      win: [3.0, 5.2], max: 6.8,
+      win: [3.0, 5.2], max: 6.8, phases: { potential: [0.6, 3.0] },
       hazard: "A bus at a stop indicates and pulls out into your path.",
       clues: ["The bus is at a stop with a queue beside it", "An indicator starts to flash", "The gap between you and the bus closes"],
       response: "Ease off and give way; do not undertake the bus as it moves off.",
@@ -506,7 +546,7 @@
     },
     {
       name: "Delivery van door", category: "delivery-vehicles", road: "residential", tint: null,
-      win: [3.1, 5.3], max: 6.8,
+      win: [3.1, 5.3], max: 6.8, phases: { potential: [1.6, 3.1] },
       hazard: "A delivery driver steps out from behind their parked van into the road.",
       clues: ["A van stands with its rear doors open", "Parcels wait on the pavement", "The driver cannot see you from behind it"],
       response: "Slow to walking pace and be ready to stop; leave the door zone space.",
@@ -519,7 +559,7 @@
     },
     {
       name: "Hidden driveway", category: "concealed", road: "rural", tint: null,
-      win: [3.0, 5.4], max: 6.8,
+      win: [3.0, 5.4], max: 6.8, phases: { potential: [0.5, 3.0] },
       hazard: "A vehicle reverses out of a concealed driveway through a gap in the hedge.",
       clues: ["A gap in the hedge suggests an entrance", "Nothing seems to move at first", "The reversing path crosses your lane"],
       response: "Cover the brake as you pass gaps you cannot see into; be ready to stop.",
@@ -533,7 +573,7 @@
     },
     {
       name: "Ice-cream van", category: "children", road: "residential", tint: null,
-      win: [3.2, 5.6], max: 7.2,
+      win: [3.2, 5.6], max: 7.2, phases: { potential: [0.7, 3.2] },
       hazard: "Children run out from behind a parked ice-cream van.",
       clues: ["An ice-cream van attracts children", "Queued figures wait on the pavement", "The van hides the space behind it"],
       response: "Drop your speed well before the van and cover the brake.",
@@ -548,7 +588,7 @@
     },
     {
       name: "Horse rider on the bend", category: "country-roads", road: "bend", tint: null,
-      win: [3.0, 5.2], max: 6.6,
+      win: [3.0, 5.2], max: 6.6, phases: { potential: [1.5, 3.0] },
       hazard: "A horse rider appears around the bend, the horse spooking toward your lane.",
       clues: ["A rider appears where you cannot see far", "The horse's line drifts toward the centre", "No passing room on the bend"],
       response: "Slow to a walking pace well back, pass wide and quietly only when safe.",
@@ -560,7 +600,7 @@
     },
     {
       name: "Dog walker", category: "animals", road: "residential", tint: null,
-      win: [3.0, 5.4], max: 6.8,
+      win: [3.0, 5.4], max: 6.8, phases: { potential: [1.5, 3.0] },
       hazard: "A dog on a long lead runs across the road ahead of its walker.",
       clues: ["A long lead crosses the pavement edge", "The walker is distracted", "The dog's attention is on the other side"],
       response: "Ease off and be ready to stop; never sound the horn at animals near you.",
@@ -575,8 +615,8 @@
     },
     {
       name: "Residential multiple choice", category: "multiple-hazards", road: "residential", tint: null,
-      multi: true,
-      win: [3.0, 5.4], max: 7.0,
+      multi: true, distractorScene: true,
+      win: [3.0, 5.4], max: 7.0, phases: { potential: [1.5, 3.0] },
       hazard: "The parked 4x4's reverse lights come on and it backs out of its space into your path.",
       clues: ["Reverse lights appear on the parked 4x4", "It sits at an angle to the kerb", "Its driver cannot see you yet"],
       response: "Hold back and give it room; wait until the driver can see you before passing.",
@@ -599,7 +639,7 @@
     {
       name: "Town centre multiple choice", category: "multiple-hazards", road: "straight", tint: null,
       multi: true,
-      win: [3.1, 5.5], max: 7.0,
+      win: [3.1, 5.5], max: 7.0, phases: { potential: [1.6, 3.1] },
       hazard: "The cyclist between the queued vehicles swings out into your lane without checking.",
       clues: ["A cyclist filters between the queue", "Their line shifts toward you", "The gap they aim for is closing"],
       response: "Ease off and hold your line; let them choose their space before you move.",
@@ -620,7 +660,7 @@
     {
       name: "Junction multiple choice", category: "multiple-hazards", road: "residential", tint: null,
       multi: true,
-      win: [3.0, 5.4], max: 7.0,
+      win: [3.0, 5.4], max: 7.0, phases: { potential: [1.5, 3.0] },
       hazard: "The car at the right-hand side road noses out past its give-way line into your path.",
       clues: ["Two vehicles wait at side roads", "The right-hand car creeps forward", "Its front wheels cross the give-way line"],
       response: "Cover the brake as soon as it creeps; be ready to stop in your own lane.",
@@ -638,25 +678,334 @@
         return s;
       },
     },
+    {
+      name: "Movement behind a van", category: "concealed", road: "residential", tint: null,
+      win: [4.0, 6.2], max: 8.0, phases: { potential: [1.4, 4.0] },
+      hazard: "A pedestrian emerges from behind a parked van long after the first glimpse of movement beside it.",
+      clues: ["A shadow moves beside the parked van", "The van hides the whole footway", "Nothing steps out at first"],
+      response: "Hold your speed back while the van hides the view; be ready to stop when the space opens.",
+      tip: "A glimpse behind a van is the clue — the step-out comes when you are alongside.",
+      objs: t => {
+        let s = hzVan(230, hzY(t, 2.2));
+        if (t >= 1.4 && t < 4.0) s += hzRR(262, hzY(t, 2.2) + 30 + 6 * Math.sin(t * 5), 8, 26, "rgba(200,200,212,0.55)", 3);
+        if (t >= 4.0) s += hzPerson(272 - 46 * (t - 4.0), hzY(t, 2.2) + 30);
+        return s;
+      },
+    },
+    {
+      name: "Lights change at the crossing", category: "pedestrians", road: "straight", tint: null,
+      win: [3.2, 5.6], max: 7.2, phases: { potential: [1.2, 3.2] },
+      hazard: "The signals go green-amber-red and a waiting pedestrian steps onto the crossing as your lights turn red.",
+      clues: ["The signals sit at green with a person waiting", "Amber gives no extra time to accelerate", "Their attention is on the signal, not you"],
+      response: "Plan to stop as the lights change; never race an amber to beat the red.",
+      tip: "A pedestrian watches the signal, not you — assume they move the moment it changes.",
+      objs: t => {
+        const phase = t < 2.6 ? "green" : t < 3.2 ? "amber" : "red";
+        let s = hzLights(312, hzY(t, 1.6), phase) + hzCrosswalk(hzY(t, 2.2));
+        s += hzPerson(286 - (t >= 3.2 ? 56 * (t - 3.2) : 0), hzY(t, 2.2) + 10);
+        return s;
+      },
+    },
+    {
+      name: "Nose at the hedge gap", category: "junctions", road: "rural", tint: null,
+      win: [3.6, 5.8], max: 7.4, phases: { potential: [1.6, 3.6] },
+      hazard: "A vehicle noses out through a hedge gap where only its front bumper is visible before it enters your path.",
+      clues: ["A gap in the hedge hides the junction", "Only a sliver of the vehicle shows", "No give-way line is visible from here"],
+      response: "Cover the brake before the gap and be ready for the nose to appear in your lane.",
+      tip: "A visible sliver of a car means a whole driver who cannot see you — slow for the gap.",
+      objs: t => {
+        let s = hzHedge(286, hzY(t, 1.6), 68, 46) + hzRR(276, hzY(t, 1.6) + 30, 14, 20, "#232a20", 4);
+        if (t >= 1.6) s += hzRR(268, hzY(t, 1.6) + 32, 22, 16, "#454550", 3);
+        const k = Math.min(1, Math.max(0, (t - 3.6) / 1.8));
+        if (t >= 3.6) s += hzCarAhead(288 - 96 * k, hzY(t, 1.6) + 30 - 26 * k, false);
+        return s;
+      },
+    },
+    {
+      name: "Heavy rain spray", category: "rain", road: "straight", tint: "rain",
+      win: [3.2, 5.6], max: 7.2, phases: { potential: [1.2, 3.2] },
+      hazard: "A slow vehicle hidden in spray from the lorry ahead brakes hard as the spray clears.",
+      clues: ["Spray from the lorry hides the lane ahead", "Your wipers cannot keep the screen clear", "Speed feels fine but grip is not"],
+      response: "Drop back out of the spray and double your gap before you need to brake.",
+      tip: "If you cannot see the vehicle ahead's tyres, you cannot see its brake lights.",
+      objs: t => {
+        const y = hzY(t, 2.4);
+        let s = hzRR(152, y - 130, 58, 96, "#4d4d58", 6) + hzSpray(180, y - 46);
+        if (t >= 2.6) s += hzSpray(180, y - 46) + hzCarAhead(180, y - 40, t > 3.6 && Math.floor(t * 4) % 2 === 0);
+        return s;
+      },
+    },
+    {
+      name: "Oncoming glare at night", category: "darkness", road: "straight", tint: "dark",
+      win: [3.4, 5.8], max: 7.4, phases: { potential: [1.4, 3.4] },
+      hazard: "An unlit cyclist becomes visible only as the oncoming vehicle's glare passes, already close to your path.",
+      clues: ["Oncoming headlights fill the mirrors and screen", "The verge disappears in the glare", "A faint shape keeps pace at the kerb"],
+      response: "Ease off while the glare lasts and hold your line until you can see the verge again.",
+      tip: "In glare you lose the edges of the road — slow before the dazzle, not during it.",
+      objs: t => {
+        let s = hzGlare(118, hzY(t, 1.8) - 60) + hzOncoming(t, 1.0, 122);
+        const k = Math.min(1, Math.max(0, (t - 3.4) / 1.8));
+        s += hzCyclist(248 - 36 * k, hzY(t, 1.8) + 20);
+        return s;
+      },
+    },
+    {
+      name: "Mini roundabout", category: "roundabouts", road: "roundabout", tint: null,
+      multi: true,
+      win: [3.2, 5.6], max: 7.2, phases: { potential: [1.2, 3.2] },
+      hazard: "The car on your right drives straight across the mini-roundabout into your path without looking.",
+      clues: ["Three vehicles approach the mini-roundabout", "The right-hand car keeps rolling", "Its speed never matches the give-way"],
+      response: "Cover the brake on approach and hold back until the circulating space is yours.",
+      tip: "At a mini-roundabout, judge who is rolling — motion beats indicators every time.",
+      decoys: [
+        "A van approaches from the left and stops correctly at the give-way line.",
+        "A cyclist circles the roundabout behind you and exits before you arrive.",
+      ],
+      objs: t => {
+        let s = hzC(180, 150, 30, "#17171c") + hzRing(180, 150, 30, "rgba(255,255,255,.4)", 3) + hzRR(177, 138, 6, 24, "rgba(255,255,255,.3)", 2);
+        s += hzVan(66, 208) + hzCyclist(150, 118);
+        const k = Math.min(1, Math.max(0, (t - 3.2) / 1.8));
+        s += hzCarAhead(262 - 108 * k, 120 + 40 * k, t > 3.6);
+        return s;
+      },
+    },
+    {
+      name: "Ball on the pavement", category: "multiple-hazards", road: "residential", tint: null,
+      multi: true, distractorScene: true,
+      win: [3.0, 5.4], max: 7.0, phases: { potential: [1.5, 3.0] },
+      hazard: "A parked 4x4's reverse lights come on and it backs out while everything else on screen stays still.",
+      clues: ["A ball sits on the pavement edge", "A dog walker pauses on the kerb", "Reverse lights glow on the parked 4x4"],
+      response: "Read all three, act on the moving one: hold back for the 4x4 and cover the brake.",
+      tip: "Movement decides the hazard — a still ball and a held dog are scenery until they change.",
+      decoys: [
+        "A ball rests on the pavement and nobody chases it.",
+        "A dog on a lead sniffs the kerb and never steps into the road.",
+      ],
+      objs: t => {
+        let s = hzBall(292, hzY(t, 1.8) - 70) + hzPerson(62, hzY(t, 1.8) + 60) + hzDog(84, hzY(t, 1.8) + 66) + hzLead(70, hzY(t, 1.8) + 56, 82, hzY(t, 1.8) + 64);
+        s += hzParkedAt(222, hzY(t, 1.8), 40, 82);
+        const k = Math.min(1, Math.max(0, (t - 3.0) / 1.8));
+        if (t >= 3.0) s += hzC(230, hzY(t, 1.8) + 78, 4, "#c1272d") + hzC(254, hzY(t, 1.8) + 78, 4, "#c1272d");
+        s += hzRR(222 - 62 * k, hzY(t, 1.8) + 12 * k, 40, 82, "#33333c", 6) + hzRR(226 - 62 * k, hzY(t, 1.8) + 20 + 12 * k, 32, 18, "#26262e", 3);
+        return s;
+      },
+    },
+    {
+      name: "School street — ball rolls out", category: "multiple-hazards", road: "residential", tint: null,
+      multi: true,
+      win: [4.6, 6.8], max: 8.4, phases: { potential: [2.2, 4.6] },
+      hazard: "A ball rolls into the road late and a child runs after it — everything else stays harmless the whole scene.",
+      clues: ["A ball appears at the kerb late on", "Children wait near the school gate", "Parked vehicles hide the footway"],
+      response: "Hold a speed that lets you stop for any one of them; react only when something enters your path.",
+      tip: "The discipline is waiting: a watched scene with no movement is a safe scene.",
+      decoys: [
+        "A dog on a lead walks at heel past the school and never steps off the kerb.",
+        "A parked van has its rear doors open, but nobody moves around it.",
+        "Children stand inside the school gate and stay there.",
+      ],
+      objs: t => {
+        let s = hzParked(hzY(t, 2.4)) + hzDelivery(232, hzY(t, 2.4) - 130);
+        s += hzPerson(64, hzY(t, 2.4) + 30) + hzDog(88, hzY(t, 2.4) + 36) + hzLead(72, hzY(t, 2.4) + 22, 86, hzY(t, 2.4) + 34);
+        s += hzChild(300, hzY(t, 2.4) - 210) + hzChild(316, hzY(t, 2.4) - 194);
+        if (t >= 4.2) s += hzBall(300 - 40 * (t - 4.2), hzY(t, 2.4) + 20);
+        if (t >= 4.6) s += hzChild(306 - 70 * (t - 4.6), hzY(t, 2.4) + 18);
+        return s;
+      },
+    },
+    {
+      name: "Bus stop patience", category: "pedestrians", road: "straight", tint: null,
+      multi: true,
+      win: [4.4, 6.6], max: 8.2, phases: { potential: [1.8, 4.4] },
+      hazard: "A pedestrian steps off the kerb late to cross behind the stopped bus — all the early scenes stay harmless.",
+      clues: ["A queue waits at the bus stop", "A phone user stands at the kerb edge", "The bus hides the crossing point"],
+      response: "Keep a walking-pace approach past the bus and cover the brake for a hidden crossing.",
+      tip: "The dangerous move is always the one you cannot see — plan for it before it happens.",
+      decoys: [
+        "A phone user stands at the kerb and never looks up.",
+        "The queue at the bus stop boards one at a time and stays on the kerb.",
+      ],
+      objs: t => {
+        let s = hzBusStop(hzY(t, 2.6)) + hzBus(242, hzY(t, 2.6) + 8, {});
+        s += hzPhone(58, hzY(t, 2.6) + 130) + hzPerson(300, hzY(t, 2.6) - 80) + hzPerson(318, hzY(t, 2.6) - 60);
+        if (t >= 4.4) s += hzPerson(306 - 64 * (t - 4.4), hzY(t, 2.6) + 48);
+        return s;
+      },
+    },
+    {
+      name: "Meeting on the country lane", category: "multiple-hazards", road: "bend", tint: "wet",
+      multi: true,
+      win: [3.2, 5.6], max: 7.4, phases: { potential: [1.2, 3.2] },
+      hazard: "The horse rider's mount shies toward your lane as you pass a cyclist and an oncoming tractor.",
+      clues: ["A horse rider approaches on the narrow lane", "A cyclist rides ahead of you", "An oncoming tractor takes the crown of the road"],
+      response: "Slow to a walking pace, hold back behind the cyclist, and pass the horse wide and quiet.",
+      tip: "On a country lane the order matters: pass the cyclist before you meet the horse, not during.",
+      decoys: [
+        "The cyclist ahead keeps a steady line and moves left for you.",
+        "The oncoming tractor stays on its own side and passes without conflict.",
+      ],
+      objs: t => {
+        let s = hzFence(292, hzY(t, 1.8), 62) + hzCyclist(226, hzY(t, 1.8) + 70);
+        s += hzOncoming(t, 0.8, 120, { color: "#4a5a3a" });
+        const k = Math.min(1, Math.max(0, (t - 3.2) / 1.8));
+        s += hzHorse(252 - 40 * k, hzY(t, 1.8) - 60);
+        return s;
+      },
+    },
   ];
 
   /* ---------------- deterministic display copy ---------------- */
   /**
-   * Text equivalent of the timeline visual: the developing window plus every
-   * click's position. Deterministic — pure function of its inputs.
+   * Phase boundaries of a scenario, mirroring Core.hazardPhaseAt semantics:
+   * background before potential[0], potential until win[0], developing across
+   * the window, critical from win[1] to the end of the scene.
+   */
+  function phaseBounds(sc) {
+    const win = (sc && sc.win) || [0, 1];
+    const pot = sc && sc.phases && Array.isArray(sc.phases.potential) ? sc.phases.potential : null;
+    return {
+      potStart: pot ? pot[0] : Math.max(0, win[0] - 1.5),
+      winStart: win[0],
+      winEnd: win[1],
+      end: (sc && sc.max) || win[1],
+    };
+  }
+  /** Local mirror of Core.hazardPhaseAt for text generation (tests may run
+   *  this file without js/core.js). */
+  function phaseAt(sc, t) {
+    if (t == null || !(t >= 0)) return null;
+    const b = phaseBounds(sc);
+    if (t >= b.winEnd) return "critical";
+    if (t >= b.winStart) return "developing";
+    if (t >= b.potStart) return "potential";
+    return "background";
+  }
+  /** Words for the phase arc the timeline visual draws. */
+  function phaseArcText(sc) {
+    const b = phaseBounds(sc);
+    return `Phase arc: background 0.0s to ${b.potStart.toFixed(1)}s; `
+      + `potential ${b.potStart.toFixed(1)}s to ${b.winStart.toFixed(1)}s; `
+      + `developing ${b.winStart.toFixed(1)}s to ${b.winEnd.toFixed(1)}s (this is the scoring window); `
+      + `critical ${b.winEnd.toFixed(1)}s to ${b.end.toFixed(1)}s.`;
+  }
+
+  /**
+   * Text equivalent of the timeline visual: the phase arc in words, the
+   * developing window, and every click's position and phase. Deterministic —
+   * pure function of its inputs.
    */
   function timelineText(sc, analysis, presses) {
     const list = (Array.isArray(presses) ? presses : []).filter((t) => typeof t === "number" && isFinite(t) && t >= 0).sort((a, b) => a - b);
     const winLine = `Developing window: ${analysis.winStart.toFixed(1)}s to ${analysis.winEnd.toFixed(1)}s.`;
-    if (!list.length) return `${winLine} You did not click.`;
+    const arcLine = phaseArcText(sc);
+    if (!list.length) return `${winLine} ${arcLine} You did not click.`;
     const parts = list.map((t) => {
-      if (t < analysis.winStart - 0.35) return `${t.toFixed(1)}s (before the hazard developed)`;
-      if (t > analysis.winEnd) return `${t.toFixed(1)}s (after the hazard had finished developing)`;
-      return `${t.toFixed(1)}s`;
+      const phase = phaseAt(sc, t);
+      if (t < analysis.winStart - 0.35) {
+        const note = phase === "background" ? "background phase — a false positive"
+          : phase === "potential" ? "potential phase — early anticipation"
+          : "";
+        return `${t.toFixed(1)}s (before the hazard developed)${note ? ` — ${note}` : ""}`;
+      }
+      if (t > analysis.winEnd) return `${t.toFixed(1)}s (after the hazard had finished developing) — ${phase || "critical"} phase`;
+      return `${t.toFixed(1)}s${phase ? ` (${phase} phase)` : ""}`;
     });
     const first = list.find((t) => t >= analysis.winStart - 0.35);
     const useful = first == null ? "" : ` First useful click: ${first.toFixed(1)}s.`;
-    return `${winLine} You clicked at ${parts.join(", ")}.${useful}`;
+    return `${winLine} ${arcLine} You clicked at ${parts.join(", ")}.${useful}`;
+  }
+
+  /**
+   * Post-scenario explanation in phase framing, built from Core.hazardTiming
+   * output. Deterministic. Example voice: "You noticed the cyclist while they
+   * were still only a potential hazard. The hazard became developing when the
+   * parked van began blocking your view and the cyclist moved toward your lane."
+   */
+  function phaseNarrative(sc, timing) {
+    const b = phaseBounds(sc);
+    const name = (sc && sc.name ? sc.name.toLowerCase() : "the hazard");
+    const hazard = sc && sc.hazard ? sc.hazard.charAt(0).toLowerCase() + sc.hazard.slice(1) : "";
+    const became = `The situation became developing at ${b.winStart.toFixed(1)}s — ${hazard}`;
+    const out = [];
+    const phase = timing && timing.firstObservationPhase;
+    if (timing && timing.firstObservation == null) {
+      out.push(`You did not click. The early clues were visible from ${b.potStart.toFixed(1)}s, well before anything threatened your path.`);
+      out.push(became);
+    } else if (phase === "background") {
+      out.push(`Your first click came in the background phase — nothing was directed at your path yet, so it counts as a false positive rather than anticipation.`);
+      out.push(became);
+    } else if (phase === "potential") {
+      out.push(`You noticed ${name} while it was still only a potential hazard — the clues were visible but nothing was directed at your path yet.`);
+      out.push(became);
+    } else if (phase === "developing") {
+      out.push(`You first reacted as ${name} was already developing — inside the window, but the clues were on screen from ${b.potStart.toFixed(1)}s.`);
+    } else {
+      out.push(`Your first reaction came in the critical phase, when ${name} was already fully under way.`);
+      out.push(became);
+    }
+    if (timing && timing.firstObservation != null && timing.firstObservationPhase === "potential") {
+      out.push(`Clicking at ${timing.firstObservation.toFixed(1)}s was correct anticipation from the potential phase — anything before the clues appeared would be a false positive.`);
+    }
+    if (timing && timing.falsePositives > 0) {
+      out.push(`${timing.falsePositives} of your click${timing.falsePositives > 1 ? "s came" : " came"} in the background phase — false positives, not early anticipation.`);
+    }
+    if (timing && timing.repeatedClicks > 1) {
+      out.push(`You clicked ${timing.repeatedClicks} times; trained perception is one deliberate response to the developing situation.`);
+    }
+    return out;
+  }
+
+  /* ---------------- skill categories (display copy) ---------------- */
+  const CATEGORY_LABELS = {
+    "children": "Child hazards", "parked-vehicles": "Parked-vehicle hazards",
+    "traffic": "Traffic hazards", "animals": "Animal hazards",
+    "pedestrians": "Pedestrian hazards", "cyclists": "Cyclist hazards",
+    "motorcyclists": "Motorcyclist hazards", "junctions": "Junction hazards",
+    "roundabouts": "Roundabout hazards", "merging": "Merging hazards",
+    "concealed": "Concealed hazards", "roadworks": "Roadworks hazards",
+    "emergency": "Emergency-vehicle hazards", "rain": "Rain hazards",
+    "darkness": "Darkness hazards", "country-roads": "Country-road hazards",
+    "buses": "Bus hazards", "delivery-vehicles": "Delivery-vehicle hazards",
+    "multiple-hazards": "Multiple-hazard scenes",
+  };
+  function categoryLabel(cat) { return CATEGORY_LABELS[cat] || `${String(cat).replace(/-/g, " ")} hazards`; }
+
+  /** "Concealed hazards — detected late in 3 of 4" for one skill row. */
+  function skillLine(row) {
+    const label = categoryLabel(row.category);
+    const n = row.attempts || 0;
+    if (!n) return `${label} — no attempts yet`;
+    const lateMissed = (row.late || 0) + (row.missed || 0);
+    if (lateMissed === 0) return `${label} — read early in ${n} of ${n}`;
+    if ((row.missed || 0) > (row.late || 0)) return `${label} — missed in ${row.missed} of ${n}`;
+    return `${label} — detected late in ${row.late} of ${n}`;
+  }
+
+  /**
+   * 1-2 coaching lines plus one concrete recommendation, in the tone of
+   * nextSteps(). Deterministic: weakest category first, honest wording.
+   */
+  function categoryCoaching(skillRows, bank) {
+    const rows = (Array.isArray(skillRows) ? skillRows : []).filter((r) => r && r.attempts);
+    if (!rows.length) return { lines: [], recommendation: "" };
+    const weak = rows[0];
+    const struggling = weak.attempts >= 2 && ((weak.late || 0) + (weak.missed || 0)) * 2 >= weak.attempts;
+    const lines = [];
+    if (struggling) {
+      const how = (weak.missed || 0) > (weak.late || 0) ? "go unseen" : "are consistently detected late";
+      lines.push(`Your hazard recognition is strong overall, but ${categoryLabel(weak.category).toLowerCase()} ${how}.`);
+    } else {
+      lines.push("Your recognition is consistent across the categories you trained — keep mixing them so no single pattern goes stale.");
+    }
+    const pool = (Array.isArray(bank) ? bank : []).filter((s) => s.category === weak.category);
+    const n = Math.max(1, Math.min(3, pool.length || 1));
+    const mins = Math.max(1, Math.round(n * 1.3));
+    const label = categoryLabel(weak.category).toLowerCase();
+    const catAdj = label.endsWith(" hazards") ? `${label.slice(0, -" hazards".length)}-hazard`
+      : label.replace(/ (scenarios?|scenes)$/, "");
+    return {
+      lines,
+      recommendation: `${n} ${catAdj} scenario${n > 1 ? "s" : ""} · ~${mins} min`,
+    };
   }
 
   /** Anticipation-class counts plus late-recognition and clicking counts. */
@@ -674,11 +1023,19 @@
     return counts;
   }
 
-  /** 1-2 specific next-step lines for the end-of-run summary. Deterministic. */
-  function nextSteps(summary, counts) {
+  /** 1-2 specific next-step lines for the end-of-run summary. Deterministic.
+   *  `skillRows` (optional) adds category-aware coaching on top of the
+   *  timing-based lines. */
+  function nextSteps(summary, counts, skillRows) {
     if (!summary || summary.total === 0) return ["Start a session to get training feedback on your hazard timing."];
     const out = [];
-    if (counts && counts.overEager >= 2) {
+    const rows = (Array.isArray(skillRows) ? skillRows : []).filter((r) => r && r.attempts);
+    const weak = rows[0];
+    if (weak && weak.attempts >= 2 && ((weak.late || 0) + (weak.missed || 0)) * 2 >= weak.attempts) {
+      const how = (weak.missed || 0) > (weak.late || 0) ? "go unseen" : "are consistently detected late";
+      out.push(`Your hazard recognition is strong overall, but ${categoryLabel(weak.category).toLowerCase()} ${how}.`);
+    }
+    if (counts && counts.overEager >= 2 && out.length < 2) {
       out.push(`You clicked before anything was developing in ${counts.overEager} scenes — wait for a movement that threatens your path before reacting.`);
     }
     if (counts && counts.lateRecognition > 0) {
@@ -702,6 +1059,8 @@
     HZ, RUN_SIZE, scenarios: HZ_SCENARIOS,
     buildScene: hzScene, y: hzY,
     timelineText, summaryCounts, nextSteps,
+    phaseBounds, phaseAt, phaseArcText, phaseNarrative,
+    CATEGORY_LABELS, categoryLabel, skillLine, categoryCoaching,
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = RoadReadyHazardScenarios;

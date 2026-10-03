@@ -131,24 +131,60 @@
 
   /* ---------------- timeline visual ---------------- */
   /* Positions via CSSOM only — the CSP blocks style="" attributes. */
-  function renderTimeline(sc, presses, analysis) {
+  function renderTimeline(sc, presses, analysis, timing) {
     const host = $("hzTimeline");
     if (!host) return;
+    const core = ctx.Core;
     const dur = sc.max || 1;
     const pct = (t) => Math.max(0, Math.min(100, (100 * t) / dur));
+    const b = HZS.phaseBounds(sc);
     host.textContent = "";
+
+    /* Phase arc: "Potential ───── Developing ───── Critical", each label
+     * centred over its band. Background is the unlabelled lead-in. */
+    const arc = document.createElement("div");
+    arc.className = "hz-tl-arc";
+    arc.id = "hzTlArc";
+    arc.setAttribute("aria-hidden", "true");
+    const arcLine = document.createElement("div");
+    arcLine.className = "hz-tl-arc-line";
+    arc.appendChild(arcLine);
+    const arcSegs = [
+      { label: "Potential", from: b.potStart, to: b.winStart },
+      { label: "Developing", from: b.winStart, to: b.winEnd },
+      { label: "Critical", from: b.winEnd, to: b.end },
+    ];
+    for (const seg of arcSegs) {
+      const lab = document.createElement("span");
+      lab.className = "hz-tl-arc-label";
+      lab.textContent = seg.label;
+      lab.style.setProperty("left", ((pct(seg.from) + pct(seg.to)) / 2).toFixed(2) + "%");
+      arc.appendChild(lab);
+    }
 
     const track = document.createElement("div");
     track.className = "hz-tl-track";
     track.setAttribute("aria-hidden", "true");
-    const win = document.createElement("div");
-    win.className = "hz-tl-window";
-    win.style.setProperty("left", pct(sc.win[0]).toFixed(2) + "%");
-    win.style.setProperty("width", (pct(sc.win[1]) - pct(sc.win[0])).toFixed(2) + "%");
-    track.appendChild(win);
+    const bands = [
+      { cls: "hz-tl-seg-bg", from: 0, to: b.potStart },
+      { cls: "hz-tl-seg-pot", from: b.potStart, to: b.winStart },
+      { cls: "hz-tl-window", from: b.winStart, to: b.winEnd },
+      { cls: "hz-tl-seg-crit", from: b.winEnd, to: b.end },
+    ];
+    for (const band of bands) {
+      const el = document.createElement("div");
+      el.className = band.cls;
+      el.style.setProperty("left", pct(band.from).toFixed(2) + "%");
+      el.style.setProperty("width", (pct(band.to) - pct(band.from)).toFixed(2) + "%");
+      track.appendChild(el);
+    }
     for (const t of presses) {
+      const phase = core.hazardPhaseAt(t, sc.win[0], sc.win[1], b.potStart);
       const mark = document.createElement("span");
-      mark.className = "hz-tl-mark";
+      mark.className = "hz-tl-mark " + (phase === "background" ? "hz-tl-mark-fp"
+        : phase === "potential" ? "hz-tl-mark-early"
+        : phase === "developing" ? "hz-tl-mark-hit" : "hz-tl-mark-late");
+      mark.textContent = "▲";
       mark.style.setProperty("left", pct(t).toFixed(2) + "%");
       track.appendChild(mark);
     }
@@ -158,15 +194,64 @@
     axis.setAttribute("aria-hidden", "true");
     const a0 = document.createElement("span");
     a0.textContent = "0s";
+    const am = document.createElement("span");
+    am.textContent = "▲ = your click";
     const a1 = document.createElement("span");
     a1.textContent = dur.toFixed(1) + "s";
-    axis.append(a0, a1);
+    axis.append(a0, am, a1);
 
     const txt = document.createElement("p");
     txt.className = "hz-tl-text";
     txt.textContent = HZS.timelineText(sc, analysis, presses);
 
-    host.append(track, axis, txt);
+    host.append(arc, track, axis, txt);
+  }
+
+  /* ---------------- timing facts (phase framing) ---------------- */
+  /* Built from Core.hazardTiming so the copy never invents a classification:
+   * first-observation phase, correct anticipation (potential/developing),
+   * window hit, late, missed, repeated clicks, and background false positives
+   * called out as distinct from early anticipation. */
+  function timingLines(timing, analysis) {
+    const out = [];
+    const b = HZS.phaseBounds({ win: [analysis.winStart, analysis.winEnd] });
+    const fo = timing.firstObservation;
+    if (fo == null) {
+      out.push("No clicks: nothing is marked on the timeline.");
+      out.push(`Missed: the hazard developed from ${b.winStart.toFixed(1)}s without a response.`);
+      return out;
+    }
+    const p = timing.firstObservationPhase;
+    const tag = p === "background" ? "a false positive"
+      : p === "potential" ? "early anticipation"
+      : p === "developing" ? "inside the developing window"
+      : "late — the hazard was already fully under way";
+    out.push(`First observation: ${fo.toFixed(1)}s — ${tag} (${p} phase).`);
+    if (timing.anticipatory) {
+      out.push("Correct anticipation: a click landed while the clues were only potential or the hazard was developing.");
+    } else {
+      out.push("No correct anticipation: no click landed in the potential or developing phase.");
+    }
+    const scoredLate = analysis.scoredPress != null && analysis.scoredPress > b.winEnd;
+    if (timing.late || scoredLate) {
+      out.push(`Detected late: the first click came after ${b.winEnd.toFixed(1)}s, once the hazard was fully under way.`);
+    } else if (timing.windowHit) {
+      out.push(`Window hit: your first click scored against the developing window (${b.winStart.toFixed(1)}s–${b.winEnd.toFixed(1)}s).`);
+    } else if (timing.earlyClick) {
+      out.push(fo >= b.potStart
+        ? `Early anticipation: you had it spotted by ${fo.toFixed(1)}s in the potential phase — the points scale scores reactions from ${(b.winStart - 0.35).toFixed(2)}s, so this one scored 0, but the recognition is the skill being trained.`
+        : `Too early to score: the click at ${fo.toFixed(1)}s came before any clue was on screen.`);
+    }
+    if (timing.repeatedClicks > 1) {
+      out.push(`Repeated clicks: ${timing.repeatedClicks} in one scene — trained perception is one deliberate response.`);
+    }
+    if (analysis.excessive) {
+      out.push("More than five clicks in one scene counts as excessive clicking in this training.");
+    }
+    if (timing.falsePositives > 0) {
+      out.push(`False positives: ${timing.falsePositives} click${timing.falsePositives > 1 ? "s" : ""} in the background phase — reacting to scenery. Distinct from early anticipation, which is a click while real clues were showing.`);
+    }
+    return out;
   }
 
   /* ---------------- verdict copy (extends core feedback, still hedged) ---- */
@@ -195,7 +280,7 @@
     }
     run = {
       session: pool.slice(0, Math.min(HZS.RUN_SIZE, pool.length)),
-      i: 0, analyses: [], presses: [], totalPts: 0,
+      i: 0, analyses: [], presses: [], timings: [], totalPts: 0,
       phase: "intro", running: false, timer: null, countdownTimer: null,
       beginScene: null, lastPress: null,
     };
@@ -291,9 +376,14 @@
     run.phase = "verdict";
     const presses = run.presses[run.i].slice().sort((a, b) => a - b);
     const analysis = ctx.Core.hazardAnalysis(sc.name, presses, sc.win[0], sc.win[1]);
+    // Phase-aware timing: first observation, early anticipation vs false
+    // positives, window hit, late, repeated clicks (Core.hazardTiming).
+    const potentialStart = sc.phases && sc.phases.potential ? sc.phases.potential[0] : null;
+    const timing = ctx.Core.hazardTiming(analysis, presses, sc.win[0], sc.win[1], potentialStart);
     run.analyses[run.i] = analysis;
+    run.timings[run.i] = timing;
     run.totalPts += analysis.pts;
-    renderTimeline(sc, presses, analysis);
+    renderTimeline(sc, presses, analysis, timing);
 
     const state = ctx.getState();
     if (!Array.isArray(state.hazardLog)) state.hazardLog = [];
@@ -316,11 +406,18 @@
     announce(`${sc.name}: ${analysis.pts} points. ${verdict}`);
     renderAccessibleList();
 
+    // Phase narrative + timing lines: why the click landed where it did.
+    // phaseNarrative returns an array of phase-framed lines.
+    const narrative = (HZS.phaseNarrative(sc, timing) || []).join(" ");
+    const lines = timingLines(timing, analysis);
+
     showOverlay(`
       <div class="ov-inner">
         <p class="ov-count">${run.i + 1} / ${run.session.length} · ${esc(sc.name)}</p>
         <div class="ov-pts ${analysis.pts ? "" : "zero"}">${analysis.pts ? "+" + analysis.pts : "0"} pts</div>
         <p><b>${esc(verdict)}</b></p>
+        ${narrative ? `<p class="ov-dim hz-narrative">${esc(narrative)}</p>` : ""}
+        <ul class="hz-timing-lines">${lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>
         <p class="ov-dim"><b>Developing hazard:</b> ${esc(sc.hazard)}</p>
         <p class="ov-dim"><b>Early clues:</b> ${esc(sc.clues.join(" · "))}</p>
         <p class="ov-dim"><b>Best response:</b> ${esc(sc.response)}</p>
@@ -353,6 +450,14 @@
     if (ctx.renderHome) ctx.renderHome();
 
     const steps = HZS.nextSteps(summary, counts);
+    // Skill by category, weakest first: the coachable picture of a run.
+    const skillRows = core.hazardCategorySkill(run.analyses, (name) => {
+      const sc = (HZS.scenarios || []).find((s) => s.name === name);
+      return sc ? sc.category : null;
+    });
+    const skillLines = skillRows.map((r) => HZS.skillLine(r)).filter(Boolean);
+    // categoryCoaching returns { lines, recommendation } — not an array.
+    const coaching = HZS.categoryCoaching ? HZS.categoryCoaching(skillRows, HZS.scenarios) : { lines: [], recommendation: "" };
     const verdictCopy = summary.verdict === "sharp" ? "Sharp recognition this run."
       : summary.verdict === "developing" ? "Solid instincts — polish the early spots."
       : summary.verdict === "no-data" ? "No scenarios completed."
@@ -367,6 +472,9 @@
           <li>Anticipatory responses: ${counts.anticipatory} · reactive: ${counts.reactive} · over-eager: ${counts.overEager}</li>
           <li>Missed hazards: ${summary.missed} · late recognitions: ${counts.lateRecognition} · excessive clicking: ${counts.excessive}</li>
         </ul>
+        ${skillLines.length ? `<div class="hz-skill" id="hzSkillList"><p class="hz-skill-head">Skill by category (weakest first)</p><ul class="hz-skill-list">${skillLines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul></div>` : ""}
+        ${coaching.lines.map((s) => `<p class="ov-dim"><b>Coach:</b> ${esc(s)}</p>`).join("")}
+        ${coaching.recommendation ? `<p class="ov-dim"><b>Recommended next:</b> ${esc(coaching.recommendation)}</p>` : ""}
         ${steps.map((s) => `<p class="ov-dim"><b>Next step:</b> ${esc(s)}</p>`).join("")}
         <div class="ov-btns">
           <button class="btn primary" id="hzAgain">Train again</button>

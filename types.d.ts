@@ -9,6 +9,14 @@ interface Window {
   RoadReadyCore: any;
   /** Present only when js/coach.js has loaded before app.js. */
   RoadReadyCoach: any;
+  /** Present only when js/mastery.js has loaded before app.js. */
+  RoadReadyMastery: any;
+  /** Present only when js/explain.js has loaded before app.js. */
+  RoadReadyExplain: any;
+  /** Present only when js/evidence.js has loaded before app.js. */
+  RoadReadyEvidence: any;
+  /** Present only when js/concept-map-ui.js has loaded before app.js. */
+  RoadReadyConceptMapUI: any;
   /** Present only when js/format.js has loaded before app.js. */
   RoadReadyFormat: any;
   RoadReadyPacks: any;

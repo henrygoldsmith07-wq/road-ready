@@ -3,6 +3,9 @@
 
 const Core = window.RoadReadyCore;
 const Coach = window.RoadReadyCoach;
+const Explain = window.RoadReadyExplain;
+const Evidence = window.RoadReadyEvidence;
+const Mastery = window.RoadReadyMastery;
 const Format = window.RoadReadyFormat || {};
 const Packs = window.RoadReadyPacks;
 const BLUEPRINTS = (window.RoadReadyBlueprints || {}).EXAM_BLUEPRINTS || {};
@@ -20,6 +23,7 @@ const ReviewUI = window.RoadReadyReviewUI;
 const ResultsUI = window.RoadReadyResultsUI;
 const HomeUI = window.RoadReadyHomeUI;
 const QuizUI = window.RoadReadyQuizUI;
+const ConceptMapUI = window.RoadReadyConceptMapUI;
 if (PracticalUI) {
   PracticalUI.init({
     Core,
@@ -58,7 +62,7 @@ function renderStudy() {
 // crash the app on boot. Every late-bound entry is a thunk or accessor.
 function extractedDeps() {
   return {
-    Core, Coach, CATEGORIES, SIGNS, signSVG,
+    Core, Coach, Explain, Mastery, CATEGORIES, SIGNS, signSVG,
     getState: () => state,
     getBank: () => bank,
     getQuestion: (id) => byId[id],
@@ -92,6 +96,14 @@ if (HomeUI) {
     predictionCalibrationSamples: () => predictionCalibrationSamples(),
     buildCalibrationCurve: (samples) => buildCalibrationCurve(samples),
     CALIBRATION_CONTEXT: () => CALIBRATION_CONTEXT(),
+    ConceptMapUI,
+  }));
+}
+
+if (ConceptMapUI) {
+  ConceptMapUI.init(Object.assign(extractedDeps(), {
+    startPractice: (qs, label, backTo) => startPractice(qs, label, backTo),
+    showView: (name) => showView(name),
   }));
 }
 
@@ -551,9 +563,26 @@ function startCoachSession() {
     qs = qs.concat(pad);
   }
   qs = qs.slice(0, Math.max(1, r.questionCount || 10));
+  // Learning evidence: the learner FOLLOWED this recommendation — record the
+  // signals that triggered it so the internal report can measure whether
+  // followed recommendations move them (js/evidence.js).
+  if (Evidence) {
+    state.coachEvents = Evidence.recordRecommendation(state.coachEvents, {
+      type: r.type,
+      followed: true,
+      kind: r.type === Coach.REC_TYPES.TAKE_MOCK ? "mock" : r.type === Coach.REC_TYPES.REVIEW_OVERDUE ? "review" : "practice",
+      conceptKeys: r.conceptKeys,
+      before: {
+        conceptMastery: r.evidence && r.evidence.length && r.evidence[0].mastery != null ? r.evidence[0].mastery : null,
+        misconceptions: Coach.activeMisconceptions(state.misconceptions).length,
+      },
+    }, Date.now());
+    save();
+  }
   session = {
     mode: "practice", label: r.title, questions: shuffle(qs), i: 0, correct: 0,
     answers: [], endTs: 0, timerId: null, marathon: false, requeued: {},
+    coachEventType: r.type, // lets finishSession close the evidence loop
   };
   quizBackTarget = "home";
   beginQuiz();
@@ -701,6 +730,24 @@ function finishSession(timedOut) {
   session.finished = true;
   clearInterval(session.timerId);
   clearTimeout(session.advanceId);
+  // Learning evidence: close the loop on a followed coach session — record how
+  // the session actually went against the signals that triggered it.
+  if (Evidence && session.coachEventType) {
+    const answers = session.answers || [];
+    const accuracy = answers.length ? answers.filter((a) => a.right).length / answers.length : null;
+    state.coachEvents = Evidence.recordRecommendation(state.coachEvents, {
+      type: session.coachEventType,
+      followed: true,
+      kind: "practice",
+      during: { accuracy },
+      after: {
+        conceptMastery: null,
+        misconceptions: Coach.activeMisconceptions(state.misconceptions).length,
+      },
+    }, Date.now());
+    save();
+    session.coachEventType = null;
+  }
   if (session.mode === "exam") {
     // unanswered questions count as wrong
     session.questions.forEach(q => {
@@ -763,7 +810,57 @@ function toggleFlag() { if (QuizUI) QuizUI.toggleFlag(); }
 
 /* ---------------- STATS ---------------- */
 
+/**
+ * Progress led by the six things that matter: syllabus coverage, mastery,
+ * retention, mock performance, hazard skill, recurring misconceptions — as
+ * plain statements. The headline study-progress score stays, clearly labelled
+ * a heuristic, but no vanity percentage leads the screen.
+ */
+function renderProgressSummary() {
+  const host = $("progressSummary");
+  if (!host) return;
+  const rows = Mastery ? Mastery.conceptMap(bank, state.qstats, state.misconceptions, Date.now()) : [];
+  const summary = Mastery ? Mastery.masterySummary(rows) : null;
+  const lines = [];
+  if (summary) {
+    const covered = Math.round(summary.covered * 100);
+    lines.push(covered >= 95 ? "Most concepts are covered." : `${summary.counts.unseen} concept${summary.counts.unseen === 1 ? " is" : "s are"} still untested.`);
+    const weak = summary.counts.learning + summary.counts.seen;
+    lines.push(weak ? `${weak} important concept${weak === 1 ? " is" : "s are"} still weak.` : "No weak concepts outstanding.");
+  }
+  const recentMocks = state.exams.slice(-3);
+  if (recentMocks.length) {
+    const avg = recentMocks.reduce((t, e) => t + e.correct, 0) / recentMocks.length;
+    const size = recentMocks[0].total;
+    lines.push(`Your last ${recentMocks.length} mock${recentMocks.length === 1 ? "" : "s"} averaged ${Math.round(avg)}/${size}.`);
+  }
+  const activeMis = Coach.activeMisconceptions(state.misconceptions).length;
+  lines.push(activeMis
+    ? `${activeMis} recurring misconception${activeMis === 1 ? "" : "s"} remain${activeMis === 1 ? "s" : ""}.`
+    : "No recurring misconceptions.");
+  const hazardRows = Core.hazardCategorySkill(
+    (state.hazardLog || []).map((h) => ({ scenario: h.scenario, pts: h.pts, outcome: h.band === "late" || h.band === "early" ? "late" : "window", anticipation: h.band === "instant" || h.band === "good" ? "anticipatory" : "reactive" })),
+    (name) => {
+      const sc = (typeof HZ_SCENARIOS !== "undefined" ? HZ_SCENARIOS : []).find((s) => s.name === name);
+      return sc ? sc.category : null;
+    },
+  );
+  if (hazardRows.length >= 2) {
+    const best = hazardRows[hazardRows.length - 1];
+    const worst = hazardRows[0];
+    lines.push(`Hazard detection is strongest for ${best.category.replace(/-/g, " ")} and weakest for ${worst.category.replace(/-/g, " ")}.`);
+  }
+  host.replaceChildren(...lines.map((line) => {
+    const p = document.createElement("p");
+    p.className = "progress-statement";
+    p.textContent = line;
+    return p;
+  }));
+  host.hidden = lines.length === 0;
+}
+
 function renderStats() {
+  renderProgressSummary();
   const acc = state.answered ? Math.round(100 * state.correctCount / state.answered) : null;
   $("ssAnswered").textContent = state.answered;
   $("ssAccuracy").textContent = acc === null ? "–" : acc + "%";
@@ -808,6 +905,18 @@ function renderStats() {
     bar.appendChild(fill);
     const row = document.createElement("div");
     row.className = "mastery-row";
+    // The mastery row is the entry to the Concept Mastery Map: "which
+    // concepts in this topic do I actually know?" opens one tap away.
+    row.tabIndex = 0;
+    row.setAttribute("role", "button");
+    row.setAttribute("aria-label", `${c.name} concept map`);
+    const openMap = () => {
+      if (ConceptMapUI) { ConceptMapUI.render(id); showView("conceptmap"); }
+    };
+    on(row, "click", openMap);
+    on(row, "keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openMap(); }
+    });
     const name = document.createElement("span");
     name.className = "m-name";
     name.innerHTML = icon(c.icon, 15); // trusted static SVG from js/icons.js
@@ -858,7 +967,30 @@ function renderStats() {
     $("calibrationDisclaimer").textContent = narrative.disclaimer;
   }
   renderCalibration();
+  renderEvidenceReport();
   renderStudy();
+}
+
+/**
+ * Internal learning-evidence report (advanced research section): whether
+ * followed Coach recommendations move mastery, misconception resolution
+ * rates, coach vs self-directed lift, and retention — each scoped to its
+ * sample size, "insufficient evidence" where the data cannot carry a claim.
+ */
+function renderEvidenceReport() {
+  const host = $("evidenceReport");
+  if (!host || !Evidence) return;
+  const events = state.coachEvents || [];
+  const rep = Evidence.evaluate(events, {
+    nowMs: Date.now(),
+    retentionLog: (state.study && state.study.retentionLog) || [],
+  });
+  host.replaceChildren(...rep.statements.map((line) => {
+    const p = document.createElement("p");
+    p.className = "state-note";
+    p.textContent = line;
+    return p;
+  }));
 }
 
 /* ---------------- official-test predictions (primary calibration) ---------------- */
@@ -1239,9 +1371,11 @@ function init() {
     on($("btnSaveSession"), "click", () => PracticalUI.saveSession());
   }
   on($("qaReview"), "click", () => {
-    const m = missedQuestions();
-    if (!m.length) { alert("Nothing missed yet — keep practicing!"); return; }
-    startPractice(pickWeighted(m.map(q => ({ q, w: 1 })), Math.min(10, m.length)), "Missed Questions", "home");
+    // The home "Weaknesses" action opens the Weakness Centre — grouped,
+    // solvable problems with their own action set — rather than silently
+    // starting a drill the learner did not choose.
+    renderReview();
+    showView("review");
   });
   on($("btnPlanDate"), "click", () => {
     showView("settings");

@@ -31,13 +31,15 @@ Two honest scoping calls that follow from this:
 | Mock Exams | An **Official Simulation** locked to the selected jurisdiction's real published count, time limit and pass bar (e.g. DVSA car: 50 questions, 43 to pass, 57 minutes), plus two clearly-labelled extras: **Quick Check** (10 questions) and **Weak Topics Exam** (20 questions weighted toward your lowest categories) — timed, with no feedback until you submit. Afterwards, a concise debrief (concept-level weaknesses, repeated misconceptions, slow answers, right→wrong regressions) and one primary action: **turn the mock into a targeted drill** built from the concepts missed — different questions, same rules |
 | Official Simulations | Pick a jurisdiction and the exam locks to its real published count, time and pass bar **only when the bank has enough unique questions**. Full pools run as locked official-format simulations; incomplete pools are explicitly labelled practice previews and cannot award an official-standard pass. Specs include CA 46/38, TX 30/21, NY 20/14, FL 50/40 in 60 min, WA 40/32, PA 18/15, GB 50/43 in 57 min (`js/exam-blueprints.js`, source-cited) |
 | Hazard Perception | A first-class training mode: 25 original animated scenarios (children, doors, cyclists, motorcyclists, buses, delivery vehicles, country roads, rain, darkness, concealed hazards, and multi-hazard scenes where only one situation develops) with per-scenario click analytics — first useful click, early anticipation, developing-window hits, late recognition, excessive clicking, misses — and a visual timeline after each scenario showing when the hazard started developing and where you clicked, plus a full text alternative. Original training material, never DVSA clips or scoring. Labeled bonus training where exams don't include it (most U.S. states) and a core section where they do (GB DVSA test: 14 clips, 44/75); jurisdiction modules declare this via `hazardPerception.includedInExam` |
-| Sign Flashcards | 53 hand-drawn SVG road signs (jurisdiction-aware wording) with spaced review — new, learning, familiar, mastered and due-for-review states, not a bare known/not-known bit |
+| Sign Flashcards | 53 hand-drawn SVG road signs (jurisdiction-aware wording) with spaced review — new, learning, familiar, mastered and due-for-review states, not a bare known/not-known bit. Confused sign pairs are tracked and drive side-by-side comparison drills |
 | Study Guide | Jurisdiction-native guidance. U.S. packs show the U.S. cheat sheets/road-test material; Great Britain hides those sections and relies on its verified GB fact card and theory question bank instead |
 | Read Aloud | Text-to-speech for questions, choices, and explanations — great for commutes and accessibility |
 | XP & Achievements | Earn XP for every answer, climb levels, and unlock 12 achievements from First Steps to Hawk Eye |
-| Review Missed | A weakness-management area: mistakes grouped by misconception pattern, persistent vs recent errors, fast-wrong, slow-right and overdue review — with a "11 missed questions map to only 4 underlying concepts" summary and one-tap drills per group |
+| Review Missed | A **Weakness Centre**: problems grouped by recurring mistakes, slow-but-correct, recent regressions, overdue review and unseen high-value concepts — each with Repair misconception / drill / View rule / Mark for later actions, a misconception-resolution count, and plain "why this matters" lines |
+| Concept Mastery Maps | Every topic opens a map of its underlying concepts with honest states (Unseen / Seen once / Learning / Secure / Strong, overlaid by Needs review or Recurring misconception), expandable detail (attempts, accuracy, fluency, question styles tried, misconception history) and one recommended next action. Mastery is robustness-based: accuracy, recency, repeated retrieval, wording and form transfer, fluency, and spaced retention — five near-identical correct answers never earn the credit of one correct answer across recall, scenario, visual and ordering forms |
 | Progress | Study-progress score, per-topic mastery, accuracy, day streak, daily goal, study time, exam history |
-| Misconception Repair | A wrong answer becomes a learning sequence: the correct rule, the distinction you may have missed (hedged — Road Ready never claims to know your reasoning), a fresh concept variant later in the session, and escalating intervention on repeats — explicit rule comparison plus a targeted drill, then a tracked misconception card |
+| Misconception Repair | A wrong answer becomes a learning sequence: a structured breakdown (why your answer was tempting, the key distinction, the rule to remember, the common trap) plus a hedged mistake classification — likely a memory slip, rule misunderstanding, similar-rule confusion, wording trap, sign confusion, rushed answer, overthinking, or weak underlying concept. Then a fresh concept variant later in the session, escalating intervention on repeats, and a tracked misconception card. Road Ready never claims to know your reasoning |
+| Session Summaries | Every practice session ends with what it actually changed — concepts strengthened, misconceptions resolved, what is still weak, coverage movement — and the best next action, not just a score |
 | Answer Fluency *(new)* | How fast you answered, not just whether you were right. A question answered **fast and wrong** is a misconception you don't know you hold — invisible to a wrong-count, and surfaced first in practice and Review Missed. One answered **slow and right** is knowledge that isn't automatic yet, which is what slips under exam time pressure. Thresholds are your own percentiles, never a fixed stopwatch, and nothing is classified until you've answered enough for them to mean anything |
 | Drive Log *(new)* | Log supervised sessions (duration, conditions, road types, ✓/△/✗ per skill, instructor notes); skills roll up into 7 competencies (Observation, Vehicle control, Junctions, Roundabouts, Lane discipline, Parking, Independent driving) with a next-lesson-focus recommendation |
 | Training Progress | Theory progress and practical-session evidence stay separate in the UI; Road Ready does not combine them into a single driving-readiness/pass score |
@@ -74,9 +76,12 @@ Questions follow general U.S. rules of the road common across state DMV handbook
 - `js/packs/uk.js` — the Great Britain (DVSA car theory) pack: region fact table + its 355-question bank
 - `js/signs.js` — SVG road-sign library (shared artwork, per-jurisdiction wording)
 - `js/core.js` — pure engine: scoring, readiness, concept mastery, adaptive selection, spaced scheduling (questions + sign flashcards), exam assembly/grading, hazard scoring + analytics, misconception ledger, XP/levels, achievements, state migration, import/export
-- `js/coach.js` — Adaptive Coach engine (DOM-free): deterministic recommendations, concept diagnosis, misconception tracking, review grouping, mock debrief + post-mock drill generation
+- `js/coach.js` — Adaptive Coach engine (DOM-free): deterministic recommendations, concept diagnosis, misconception tracking, review grouping, weakness centre, mock debrief + post-mock drill generation, session summaries, repair reports
+- `js/mastery.js` — concept mastery engine (DOM-free): robustness-based states (unseen / learning / secure / strong + needs-review and misconception overlays) on accuracy, recency, wording and form transfer, fluency, and spaced retention
+- `js/explain.js` — coaching copy and mistake taxonomy (DOM-free): plain-English recommendation explanations (noticed → matters → do → success) and the hedged eight-way mistake classification behind the repair flow
+- `js/evidence.js` — internal learning-evidence module (DOM-free): local measurement of whether followed recommendations move mastery, misconception resolution rates and retention — small samples report "insufficient evidence" instead of a number
 - `js/account.js` / `js/account-ui.js` — optional account transport and isolated sync/settings controller
-- `js/practical-ui.js` / `js/study-ui.js` / `js/home-ui.js` / `js/quiz-ui.js` / `js/flashcards-ui.js` / `js/review-ui.js` / `js/results-ui.js` — UI-domain modules (dependency-injected, no shared globals): practical log, learner study, home/Today Plan, quiz, sign flashcards, weakness review, results/debrief
+- `js/practical-ui.js` / `js/study-ui.js` / `js/home-ui.js` / `js/quiz-ui.js` / `js/flashcards-ui.js` / `js/review-ui.js` / `js/results-ui.js` / `js/concept-map-ui.js` — UI-domain modules (dependency-injected, no shared globals): practical log, learner study, home/Today Plan, quiz, sign flashcards, weakness centre, results/debrief/session-summary, concept mastery maps
 - `js/hazard-scenarios.js` / `js/hazard-ui.js` / `css/hazard.css` — hazard-perception scenario bank (25 original scenes, SVG scene builders) and the training-mode UI (timeline feedback, analytics, accessible alternative)
 - `js/guide.js` — jurisdiction-native guide visibility/source controller
 - `js/state-packs.js` — jurisdiction content packs (CA, TX, NY, FL, WA, PA, UK) and the source registry
@@ -108,6 +113,12 @@ migration/versioning, import/export and state packs — plus the Adaptive Coach
 engine (deterministic recommendations, misconception detection and
 repeated-error escalation, post-mock drill generation, test-date phase shifts,
 recommendation prioritisation), spaced sign review and jurisdiction isolation.
+The learning core adds `learning-core.test.js` (robustness-based concept
+states and their transitions, the hedged mistake taxonomy, plain-English
+coaching copy for every recommendation situation, weakness-centre grouping,
+session summaries, repair reports, hazard phase analysis) and
+`evidence.test.js` (the internal learning-evidence module — small samples
+must report "insufficient evidence", never a claim).
 
 **Content QA system (`scripts/`)** validates every commit's content:
 question-bank schema, duplicate questions (prompt+sign identity), duplicate
@@ -131,7 +142,12 @@ uncommitted bank drift fails the build until you regenerate it.
 
 **E2E (`e2e/`, Playwright)** runs real journeys — onboarding, practice,
 timed mock exam, flashcards, import/export round-trip, PWA offline reload,
-accessibility checks — on desktop Chrome plus iPhone and Pixel profiles.
+accessibility checks — on desktop Chrome plus iPhone and Pixel profiles. The
+coach loop adds its own journeys (`coach.spec.js`, `coach-loop.spec.js`): a
+wrong answer → structured explanation → concept repair; mock → debrief →
+targeted drill; home → Today Plan adaptive action; concept mastery maps and
+weakness-centre actions; session summaries; overdue concepts; a test date
+changing the plan's composition; and GB sign learning.
 
 ## PWA / offline
 

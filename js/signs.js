@@ -85,7 +85,8 @@ const SIGNS = {
   },
   noLeftTurn: {
     name: "No Left Turn", family: "Regulatory (prohibition)",
-    meaning: "Left turns are prohibited at this intersection. Continue and make the turn elsewhere (e.g., three right turns around the block).",
+    meaning: "Left turns are prohibited at this junction. Continue and make the turn elsewhere (e.g., three right turns around the block).",
+    alt: { UK: { name: "No Left Turn", meaning: "A left turn is prohibited at this junction. Continue past the junction and turn left where it is permitted, or find another route — the order applies for as long as the sign does." } },
     svg: `<rect x="6" y="6" width="88" height="88" rx="8" fill="#fff" stroke="#111" stroke-width="3"/>
       <line x1="40" y1="75" x2="40" y2="40" stroke="#111" stroke-width="8" stroke-linecap="round"/>
       <polygon points="30,42 50,42 40,26" fill="#111"/>
@@ -134,6 +135,7 @@ const SIGNS = {
   pedCrossing: {
     name: "Pedestrian Crossing", family: "Warning",
     meaning: "People may be crossing ahead. Slow down, scan the sidewalks, and be ready to stop and yield to pedestrians in the crosswalk.",
+    alt: { UK: { name: "Pedestrian Crossing", meaning: "People may be crossing ahead. Slow down, scan the footway on both sides, and be ready to stop and give way to pedestrians who are crossing." } },
     svg: diamond(YEL, person(50, 58, 1.15, "#111"))
   },
   schoolZone: {
@@ -320,6 +322,24 @@ const SIGNS = {
     meaning: "You must not exceed 30 mph on this road. The figure is a maximum for ideal conditions; rain, fog, parked vehicles and people walking may all make a lower speed appropriate.",
     svg: `<circle cx="50" cy="50" r="45" fill="#fff" stroke="${RED}" stroke-width="10"/>${txt(50, 66, "30", 44, "#111")}`
   },
+  nationalSpeedLimit: {
+    name: "National Speed Limit", family: "Regulatory — speed limit",
+    meaning: "The national speed limit for the class of road and type of vehicle applies from here. The sign prints no figure because the correct speed depends on both the road and what you are driving.",
+    alt: { UK: { name: "National Speed Limit", meaning: "The national limit for the road and your vehicle applies here: 60 mph for a car on a single carriageway, 70 mph on a dual carriageway or motorway, and 30 mph on a lit road unless signs show otherwise." } },
+    svg: `<circle cx="50" cy="50" r="45" fill="#fff" stroke="#111" stroke-width="5"/><line x1="15" y1="85" x2="85" y2="15" stroke="#111" stroke-width="13" stroke-linecap="round"/>`
+  },
+  minimumSpeed30: {
+    name: "Minimum Speed 30", family: "Mandatory — minimum speed",
+    meaning: "A minimum speed of 30 mph applies on this road. Drive at or above the figure unless it is unsafe or impracticable to comply, because traffic behind is entitled to expect that pace.",
+    alt: { UK: { name: "Minimum Speed Limit 30", meaning: "You must not drive below 30 mph here unless it is unsafe or impracticable to comply. The blue circle makes the figure a floor to keep above, not a maximum to stay under." } },
+    svg: `<circle cx="50" cy="50" r="45" fill="#1c4e9c" stroke="#fff" stroke-width="3"/>${txt(50, 66, "30", 44, "#fff")}`
+  },
+  endOfSpeedLimitZone: {
+    name: "End of Speed Limit Zone", family: "Regulatory — zone end",
+    meaning: "The signed zone ends here and the maximum speed shown on the panel applies from this point. A specific figure replaces the zone limit rather than returning the road to its default.",
+    alt: { UK: { name: "End of 20 mph Zone", meaning: "The 20 mph zone ends here and the 30 mph maximum on the panel applies onward. The panel hands you a specific limit, so read the figure rather than assuming the national limit returns." } },
+    svg: `<rect x="14" y="6" width="72" height="88" rx="3" fill="#fff" stroke="#111" stroke-width="4"/>${txt(50, 32, "END", 16, "#111")}<circle cx="50" cy="66" r="21" fill="#fff" stroke="${RED}" stroke-width="6"/>${txt(50, 76, "30", 21, "#111")}`
+  },
   turnLeftAhead: {
     name: "Turn Left Ahead", family: "Mandatory — blue circle",
     meaning: "You must turn left where the instruction applies. Blue circles give orders rather than advice, so continuing straight past this sign is an offence.",
@@ -422,6 +442,16 @@ const SIGNS = {
     meaning: "White backgrounds with black lettering and black route numbers sign local or non-primary routes, the everyday destinations away from the strategic network.",
     svg: `<rect x="6" y="14" width="88" height="72" rx="4" fill="#fff" stroke="#111" stroke-width="3"/>` +
       `${txt(50, 44, "Town Centre", 13, "#111")}${txt(50, 66, "Station", 13, "#111")}`
+  },
+  waitingTimesPlate: {
+    name: "Waiting Restriction Time Plate", family: "Supplementary plate",
+    meaning: "A yellow plate below a waiting or parking order giving the days and times the order operates. The sign above bites only during the period the plate shows; outside those times the order is not in force.",
+    svg: `<rect x="6" y="32" width="88" height="36" fill="${YEL}" stroke="#111" stroke-width="3"/>${txt(50, 56, "MON-SAT 8-6", 15, "#111")}`
+  },
+  loadingRestrictionPlate: {
+    name: "Loading Restriction Plate", family: "Supplementary plate",
+    meaning: "A white plate combined with a no waiting plate, giving the times when loading is also banned and an arrow for the direction that ban runs in. The arrow belongs only to the white panel it is printed on, not to the whole plate.",
+    svg: `<rect x="6" y="32" width="88" height="36" fill="#fff" stroke="#111" stroke-width="3"/>${txt(38, 55, "7AM-7PM", 13, "#111")}<line x1="58" y1="50" x2="82" y2="50" stroke="#111" stroke-width="5"/><polygon points="82,41 94,50 82,59" fill="#111"/>`
   },
   motorwayServices: {
     name: "Motorway Services", family: "Information — motorway services",

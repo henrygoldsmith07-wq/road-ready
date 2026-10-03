@@ -102,7 +102,7 @@
       const fb = $("feedback");
       fb.hidden = !state.settings.feedback;
       $("fbHead").innerHTML = right ? `<span class="ok">${icon("check", 15)} Correct</span>` : `<span class="bad">${icon("x", 15)} Not quite</span>`;
-      $("fbWhy").textContent = q.why;
+      renderFeedbackDetail(q, right, s);
       renderRepair(q, right);
       const source = sourceForQuestion(q);
       const sourceLink = $("fbSource");
@@ -136,6 +136,77 @@
         else renderQuiz();
       }, 420);
     }
+  }
+
+  /**
+   * Post-answer feedback depth:
+   *   correct + quick + concept secure → concise confirmation, no wall of text
+   *   correct but slow, or concept weak → brief explanation on why it matters
+   *   wrong → structured breakdown: correct answer, why correct, why the
+   *           picked choice was tempting, the rule to remember, and the common
+   *           trap — with the hedged mistake taxonomy classification.
+   */
+  function renderFeedbackDetail(q, right, s) {
+    const { Explain, Core, getState, getBank, Mastery } = ctx;
+    const host = $("fbWhy");
+    const state = getState();
+    const stat = state.qstats[q.id] || {};
+    const pickedIdx = s.answers.length ? s.answers[s.answers.length - 1].picked : -1;
+
+    if (right) {
+      // Concise unless the evidence says otherwise: weak concept or slow answer.
+      const key = Core.conceptKeyOf(q);
+      const row = Mastery
+        ? Mastery.conceptState(Core.groupByConcept(getBank()).get(key) || [q], state.qstats, state.misconceptions[key], Date.now())
+        : null;
+      const slow = stat.slowRight > 0;
+      const weak = row && (row.state === "learning" || row.state === "seen" || row.overlay);
+      if (!slow && !weak) {
+        host.textContent = "";
+        host.hidden = true;
+        return;
+      }
+      host.hidden = false;
+      host.textContent = slow
+        ? `Right — but this one took longer than your usual correct answers. ${Explain ? Explain.firstSentence(q.why) : q.why}`
+        : `Right. ${Explain ? Explain.firstSentence(q.why) : q.why}`;
+      return;
+    }
+
+    // Wrong: structured breakdown from verified bank content only.
+    const pct = Core.rtPercentiles(state.rtSamples);
+    const rtMs = s.answers.length ? s.answers[s.answers.length - 1].rtMs : null;
+    const similarIds = (Core.groupByConcept(getBank()).get(Core.conceptKeyOf(q)) || [])
+      .filter((v) => v.id !== q.id).map((v) => v.id);
+    const mistake = Explain
+      ? Explain.classifyMistake({
+          q, stat, rtMs, pct,
+          conceptRow: Mastery ? Mastery.conceptState([q], state.qstats, state.misconceptions[Core.conceptKeyOf(q)], Date.now()) : null,
+          similarIds,
+        })
+      : null;
+    const breakdown = Explain
+      ? Explain.wrongAnswerBreakdown({ q, pickedIdx, mistake, contrast: null })
+      : null;
+
+    host.hidden = false;
+    if (!breakdown) { host.textContent = q.why; return; }
+    const lines = [];
+    if (breakdown.whyWrong) lines.push(`Why your answer is tempting: ${breakdown.whyWrong}`);
+    if (breakdown.ruleToRemember && breakdown.ruleToRemember !== breakdown.whyCorrect) {
+      lines.push(`Rule to remember: ${breakdown.ruleToRemember}`);
+    }
+    if (breakdown.commonTrap) lines.push(breakdown.commonTrap);
+    host.replaceChildren(...lines.map((line) => {
+      const p = document.createElement("span");
+      p.className = "fb-line";
+      p.textContent = line;
+      return p;
+    }));
+    const why = document.createElement("span");
+    why.className = "fb-line fb-why-line";
+    why.textContent = `Why it's correct: ${breakdown.whyCorrect}`;
+    host.appendChild(why);
   }
 
   /**

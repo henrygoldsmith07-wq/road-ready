@@ -39,6 +39,7 @@
       signStudy: {},     // signId -> {stage, due, reps, lapses, lastSeen} — spaced sign review
       misconceptions: {},// conceptKey -> {errors, questionIds[], firstSeen, lastSeen, stage, solvedIds[], repairedAt}
       coach: { lastSnapshot: null, lastPlanType: "" }, // session-over-session delta for the Adaptive Coach
+      coachEvents: [],  // learning-evidence log (js/evidence.js): recommendation outcomes, local only
       fcOrder: null,
       achievements: {},  // id -> unlock timestamp
       xp: 0,
@@ -128,12 +129,19 @@ function sanitizeState(s, opts) {
     s.signStudy = plainObject(s.signStudy);
     Object.keys(s.signStudy).forEach((signId) => {
       const st = plainObject(s.signStudy[signId]);
+      const confused = plainObject(st.confused);
+      const cleanConfused = {};
+      Object.keys(confused).forEach((other) => {
+        const count = num(confused[other], 0, 0, 1e6);
+        if (count > 0 && typeof other === "string") cleanConfused[other] = count;
+      });
       s.signStudy[signId] = {
         stage: strEnum(st.stage, SIGN_STAGES, "new"),
         due: num(st.due, 0, 0, 8.64e15) || undefined,
         reps: num(st.reps, 0, 0, 1e6),
         lapses: num(st.lapses, 0, 0, 1e6),
         lastSeen: num(st.lastSeen, 0, 0, 8.64e15) || undefined,
+        confused: cleanConfused,
       };
     });
     // legacy fcKnown flags seed signStudy as mastered so an upgrade never
@@ -171,6 +179,18 @@ function sanitizeState(s, opts) {
       : null;
     coach.lastPlanType = typeof coach.lastPlanType === "string" ? coach.lastPlanType.slice(0, 32) : "";
     s.coach = coach;
+    s.coachEvents = Array.isArray(s.coachEvents)
+      ? s.coachEvents.filter((e) => e && typeof e === "object" && !Array.isArray(e)).slice(-200).map((e) => ({
+          at: num(e.at, 0, 0, 8.64e15) || undefined,
+          type: typeof e.type === "string" ? e.type.slice(0, 32) : "unknown",
+          followed: bool(e.followed),
+          kind: typeof e.kind === "string" ? e.kind.slice(0, 16) : "practice",
+          conceptKeys: Array.isArray(e.conceptKeys) ? e.conceptKeys.filter((k) => typeof k === "string").slice(0, 6) : [],
+          before: e.before && typeof e.before === "object" && !Array.isArray(e.before) ? e.before : null,
+          during: e.during && typeof e.during === "object" && !Array.isArray(e.during) ? e.during : null,
+          after: e.after && typeof e.after === "object" && !Array.isArray(e.after) ? e.after : null,
+        }))
+      : [];
     s.hazardLog = Array.isArray(s.hazardLog)
       ? s.hazardLog.filter((h) => h && typeof h === "object" && !Array.isArray(h)).slice(-120).map((h) => ({
           scenario: typeof h.scenario === "string" ? h.scenario.slice(0, 80) : "",
@@ -1016,6 +1036,123 @@ function reviewSched(sched, right, nowMs, quality) {
         : pts / (total * 5) >= 0.55 ? "developing"
         : "needs-work",
     };
+  }
+
+  /* ---------------- hazard phases & skill categories ---------------- */
+  /*
+   * Every scenario has four phases:
+   *   background — nothing threatening yet; clicking here is a false positive
+   *   potential  — early clues visible, nothing directed at your path yet
+   *   developing — the situation starts threatening your path
+   *   critical   — action required now
+   * The win window marks developing→critical. Clicking in "potential" is
+   * EARLY anticipation (a trained skill, distinct from a false positive);
+   * clicking in "background" is a false positive. Scenarios carry optional
+   * `phases: { potential: [start, end] }` so the UI can show the full arc;
+   * when absent, potential is the span from 0 to the window start.
+   */
+  const HAZARD_PHASES = ["background", "potential", "developing", "critical"];
+
+  /** Which phase a click timestamp falls in. */
+  function hazardPhaseAt(t, winStart, winEnd, potentialStart) {
+    if (t == null || !(t >= 0)) return null;
+    const potStart = potentialStart == null ? Math.max(0, winStart - 1.5) : potentialStart;
+    if (t >= winEnd) return "critical";
+    if (t >= winStart) return "developing";
+    if (t >= potStart) return "potential";
+    return "background";
+  }
+
+  /**
+   * Per-scenario timing analysis over every press: first observation,
+   * correct anticipation (click inside potential/developing), optimal-window
+   * hit, late response, repeated clicking, false-positive clicks (background).
+   */
+  function hazardTiming(analysis, presses, winStart, winEnd, potentialStart) {
+    const list = (Array.isArray(presses) ? presses : []).filter((t) => typeof t === "number" && isFinite(t) && t >= 0).sort((a, b) => a - b);
+    const phases = list.map((t) => hazardPhaseAt(t, winStart, winEnd, potentialStart));
+    const falsePositives = phases.filter((p) => p === "background").length;
+    const anticipatory = phases.some((p) => p === "potential" || p === "developing");
+    return {
+      scenario: analysis && analysis.scenario,
+      firstObservation: list.length ? list[0] : null,
+      firstObservationPhase: phases[0] || null,
+      anticipatory,
+      windowHit: !!(analysis && analysis.outcome === "window" && analysis.scoredPress != null && analysis.scoredPress <= winEnd),
+      // "late" is late RECOGNITION: the scored click landed after the window
+      // closed (the hazard was already fully under way). A missed hazard has
+      // no click at all and is reported separately.
+      late: !!(analysis && analysis.scoredPress != null && analysis.scoredPress > winEnd),
+      missed: !!(analysis && analysis.outcome === "missed"),
+      repeatedClicks: list.length,
+      falsePositives,
+      earlyClick: !!(analysis && analysis.outcome === "early"),
+    };
+  }
+
+  /**
+   * Hazard skill per category (pedestrians, cyclists, concealed hazards…).
+   * Scenarios carry `category`; analyses carry `scenario` (name). The caller
+   * passes `categoryOf: name -> category`. Returns category skill rows sorted
+   * weakest-first so the Coach can say "concealed hazards are consistently
+   * detected late" and recommend scenarios by category.
+   */
+  function hazardCategorySkill(analyses, categoryOf) {
+    const rows = new Map();
+    for (const a of analyses || []) {
+      if (!a) continue;
+      const cat = (typeof categoryOf === "function" ? categoryOf(a.scenario) : null) || "other";
+      const r = rows.get(cat) || { category: cat, attempts: 0, pts: 0, max: 0, late: 0, missed: 0, anticipatory: 0 };
+      r.attempts++;
+      r.pts += a.pts || 0;
+      r.max += 5;
+      if (a.outcome === "late") r.late++;
+      if (a.outcome === "missed") r.missed++;
+      if (a.anticipation === "anticipatory") r.anticipatory++;
+      rows.set(cat, r);
+    }
+    return [...rows.values()]
+      .map((r) => ({ ...r, rate: r.max ? r.pts / r.max : 0 }))
+      .sort((a, b) => (a.rate - b.rate) || (a.category < b.category ? -1 : 1));
+  }
+
+  /* ---------------- sign practice & confusion pairs ---------------- */
+  /**
+   * Sign learning is more than a known bit. Each sign carries a study entry
+   * (stage, due, reps, lapses) plus confusion counters: which other signs it
+   * gets mixed up with. Confusion pairs drive side-by-side comparison drills.
+   */
+  function recordSignConfusion(signStudy, a, b, nowMs) {
+    const now = nowMs == null ? Date.now() : nowMs;
+    const out = Object.assign({}, signStudy || {});
+    for (const [from, to] of [[a, b], [b, a]]) {
+      if (!from || !to || from === to) continue;
+      const prev = out[from] || { stage: "new", reps: 0, lapses: 0 };
+      const confused = prev.confused || {};
+      confused[to] = (confused[to] || 0) + 1;
+      out[from] = Object.assign({}, prev, { confused, lastSeen: now });
+    }
+    return out;
+  }
+
+  /** Signs that have been mixed up, most-confused first. */
+  function signConfusionPairs(signStudy) {
+    const out = [];
+    for (const [id, st] of Object.entries(signStudy || {})) {
+      for (const [other, count] of Object.entries((st && st.confused) || {})) {
+        if (count > 0) out.push({ a: id, b: other, count });
+      }
+    }
+    // each pair appears twice (a→b, b→a); fold to unordered pairs
+    const seen = new Set();
+    return out
+      .map((p) => {
+        const key = [p.a, p.b].sort().join("|");
+        return { key, a: p.a, b: p.b, count: p.count };
+      })
+      .filter((p) => (seen.has(p.key) ? false : (seen.add(p.key), true)))
+      .sort((a, b) => (b.count - a.count) || (a.key < b.key ? -1 : 1))
+      .map((p) => ({ a: p.a, b: p.b, count: p.count }));
   }
 
   /* ---------------- outcome journal (calibration groundwork) ---------------- */
@@ -1964,6 +2101,8 @@ function reviewSched(sched, right, nowMs, quality) {
     defaultSched, reviewSched, schedDue,
     shuffle, timeLimitSecs, gradeExam, examBlueprint, assembleExam, officialExamAvailability,
     hazardScore, HAZARD_PRESS_CAP, hazardAnalysis, hazardFeedback, hazardSummary,
+    HAZARD_PHASES, hazardPhaseAt, hazardTiming, hazardCategorySkill,
+    recordSignConfusion, signConfusionPairs,
     OUTCOME_RESULT_VALUES, appendOutcome, mockAverage, progressBucket,
     PRACTICAL_RATINGS, RATING_VALUE, COMPETENCIES, CONDITIONS, ROAD_TYPES,
     skillIds, competencyName, appendPracticalSession, competencyScores,

@@ -52,24 +52,32 @@
         </div>
       </div>
 
-      <div class="card today-plan" id="todayPlanCard">
-        <div class="plan-kicker">Today's plan</div>
+      <div class="card today-plan dominant" id="todayPlanCard">
+        <div class="plan-kicker" id="planKicker">Today's plan</div>
         <div class="plan-title" id="planTitle">Set your test date</div>
-        <p id="planDetail">Road Ready will then tell you exactly what to study each day.</p>
+        <p class="plan-detail" id="planDetail">Road Ready will then tell you exactly what to study each day.</p>
+        <div class="plan-amount" id="planAmount" hidden></div>
+        <div class="plan-noticed" id="planNoticed" hidden></div>
+        <p class="plan-why" id="planWhy" hidden></p>
+        <p class="plan-goal" id="planGoal" hidden></p>
         <div class="plan-kind" id="planKind" hidden></div>
         <ul class="plan-rationale" id="planRationale" hidden></ul>
+        <details class="plan-evidence" id="planEvidence" hidden>
+          <summary>Why Road Ready chose this</summary>
+          <ul id="planEvidenceList"></ul>
+        </details>
         <p class="plan-changed" id="planChanged" hidden></p>
         <div class="plan-meta" id="planMeta"></div>
         <button class="btn primary plan-action" id="btnPlanAction">Set test date</button>
         <button class="btn ghost plan-date" id="btnPlanDate" hidden>Set test date</button>
       </div>
 
-      <div class="quick-actions secondary-actions">
+      <div class="quick-actions secondary-actions" aria-label="More ways to practise">
         <button class="qa" id="qaPractice"><span class="qa-ico" data-icon="book" data-size="20"></span>Practice</button>
         <button class="qa" id="qaExam"><span class="qa-ico" data-icon="clipboard" data-size="20"></span>Mock Exam</button>
-        <button class="qa" id="qaPractical"><span class="qa-ico" data-icon="car" data-size="20"></span>Drive Log</button>
         <button class="qa" id="qaCards"><span class="qa-ico" data-icon="layers" data-size="20"></span>Signs</button>
-        <button class="qa" id="qaReview"><span class="qa-ico" data-icon="target" data-size="20"></span>Review</button>
+        <button class="qa" id="qaReview"><span class="qa-ico" data-icon="target" data-size="20"></span>Weaknesses</button>
+        <button class="qa" id="qaPractical"><span class="qa-ico" data-icon="car" data-size="20"></span>Drive Log</button>
       </div>
       <div class="stat-strip" id="statStrip">
         <div class="stat"><span id="stAnswered">0</span><small>answered</small></div>
@@ -142,7 +150,7 @@
         <div class="choices" id="choices" role="group" aria-label="Answer choices"></div>
         <div class="feedback" id="feedback" hidden aria-live="assertive">
           <div class="fb-head" id="fbHead"></div>
-          <p class="fb-why" id="fbWhy"></p>
+          <div class="fb-why" id="fbWhy"></div>
           <div class="fb-repair" id="fbRepair" hidden></div>
           <a class="source-link" id="fbSource" target="_blank" rel="noopener noreferrer" hidden></a>
         </div>
@@ -163,6 +171,7 @@
         <div class="score-big" id="resultScore">100%</div>
         <p class="sub" id="resultSub"></p>
         <div class="debrief" id="debrief" hidden></div>
+        <div class="debrief session-summary" id="sessionSummary" hidden></div>
         <div class="result-grid" id="resultGrid"></div>
         <div class="results-actions">
           <button class="btn primary" id="btnAgain">Try Again</button>
@@ -450,9 +459,22 @@
     <!-- ============ HAZARD PERCEPTION ============ -->
     <section class="view" id="view-hazard"><!-- rendered by js/hazard-ui.js --></section>
 
+    <!-- ============ CONCEPT MAP (per topic) ============ -->
+    <section class="view" id="view-conceptmap">
+      <h1 class="view-title" id="cmTitle">Concepts</h1>
+      <p class="view-sub" id="cmSub">How solid each concept in this topic really is.</p>
+      <div id="cmStatements" class="cm-statements"></div>
+      <div id="cmList" class="cm-list"></div>
+      <div class="results-actions">
+        <button class="btn primary" id="btnCmDrill">Practise the weakest</button>
+        <button class="btn ghost" id="btnCmBack">Back</button>
+      </div>
+    </section>
+
     <!-- ============ STATS ============ -->
     <section class="view" id="view-stats">
       <h1 class="view-title">Your Progress</h1>
+      <div class="progress-summary" id="progressSummary" hidden></div>
       <div class="stat-strip big" id="statsStrip">
         <div class="stat"><span id="ssAnswered">0</span><small>questions answered</small></div>
         <div class="stat"><span id="ssAccuracy">–</span><small>overall accuracy</small></div>
@@ -489,6 +511,12 @@
           <button class="btn ghost" id="btnOutcomePass">I passed my real test</button>
           <button class="btn ghost" id="btnOutcomeFail">I didn't pass</button>
         </div>
+      </div>
+
+      <h2 class="section-title">Learning evidence <small class="beta-pill">internal</small></h2>
+      <div class="card">
+        <p class="state-note mb-10">Does Road Ready actually help? Local measurements only — nothing leaves this device. Small samples report "insufficient evidence" instead of a number.</p>
+        <div id="evidenceReport"></div>
       </div>
 
       <h2 class="section-title">Learner study <small class="beta-pill">research</small></h2>
@@ -661,7 +689,11 @@
 <script src="js/icons.js" defer></script>
 <script src="js/questions.js" defer></script>
 <script src="js/core.js" defer></script>
+<script src="js/mastery.js" defer></script>
+<script src="js/explain.js" defer></script>
+<script src="js/evidence.js" defer></script>
 <script src="js/coach.js" defer></script>
+<script src="js/concept-map-ui.js" defer></script>
 <script src="js/format.js" defer></script>
 <script src="js/account.js" defer></script>
 <script src="js/account-ui.js" defer></script>

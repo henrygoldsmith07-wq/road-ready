@@ -52,3 +52,29 @@
   .hz-tl-track { transition: none !important; animation: none !important; }
   .hz-overlay { transition: none !important; }
 }
+
+/* phase timeline: Potential ───── Developing ───── Critical */
+.hz-tl-arc { margin-top: 8px; }
+.hz-tl-arc-line { position: relative; height: 6px; border-radius: 3px; overflow: visible; }
+.hz-tl-seg-bg { position: absolute; top: 0; height: 6px; background: var(--line); border-radius: 3px; }
+.hz-tl-seg-pot { position: absolute; top: 0; height: 6px; background: var(--muted); border-radius: 3px; }
+.hz-tl-seg-crit { position: absolute; top: 0; height: 6px; background: var(--text); border-radius: 3px; }
+.hz-tl-arc-labels { display: flex; justify-content: space-between; margin-top: 4px; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.hz-tl-mark-early, .hz-tl-mark-hit, .hz-tl-mark-late, .hz-tl-mark-fp {
+  position: absolute; top: -5px; width: 3px; height: 16px; border-radius: 2px; margin-left: -1px;
+}
+.hz-tl-mark-early { background: var(--text); }
+.hz-tl-mark-hit { background: var(--ok, var(--text)); }
+.hz-tl-mark-late { background: var(--warn, var(--muted)); }
+.hz-tl-mark-fp { background: var(--muted); opacity: .6; }
+
+/* timing lines + phase narrative in the verdict overlay */
+.hz-narrative { margin: 10px 0 0; font-style: normal; }
+.hz-timing-lines { margin: 8px 0 12px; padding-left: 18px; }
+.hz-timing-lines li { font-size: 12px; line-height: 1.65; color: var(--muted); }
+
+/* category skill list in results overlay */
+.hz-skill { margin: 12px 0 4px; text-align: left; }
+.hz-skill-head { font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+.hz-skill-list { margin: 0; padding-left: 18px; }
+.hz-skill-list li { font-size: 12.5px; line-height: 1.7; }

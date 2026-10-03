@@ -634,6 +634,90 @@ function sessionDelta(prev, curr) {
   return { lines, first: false, changed: lines.length > 0 };
 }
 
+/**
+ * End-of-session summary: not just the score, but what the session DID —
+ * concepts strengthened, misconceptions resolved, concepts still weak,
+ * coverage movement, and the best next action for tomorrow.
+ */
+function sessionSummary(input) {
+  const o = input || {};
+  const answers = Array.isArray(o.answers) ? o.answers : [];
+  const misconceptions = o.misconceptions || {};
+  const prev = o.prevSnapshot || null;
+  const curr = o.snapshot || buildSnapshot(o);
+  const delta = sessionDelta(prev, curr);
+  const nowMs = o.nowMs == null ? Date.now() : o.nowMs;
+
+  const byConcept = new Map();
+  for (const a of answers) {
+    // byId is a lookup function (id -> question) in callers, with a map
+    // accepted for convenience.
+    const q = typeof o.byId === "function" ? o.byId(a.qid) : (o.byId && o.byId[a.qid]) || null;
+    if (!q) continue;
+    const key = CoachCore.conceptKeyOf(q);
+    const c = byConcept.get(key) || { right: 0, wrong: 0 };
+    if (a.right) c.right++; else c.wrong++;
+    byConcept.set(key, c);
+  }
+  const strengthened = [];
+  const stillWeak = [];
+  for (const [key, c] of byConcept) {
+    const entry = misconceptions[key];
+    const repairedNow = entry && entry.repairedAt && entry.repairedAt >= (o.sessionStartedAt || 0);
+    if (repairedNow) continue; // counted in resolved below
+    if (c.wrong === 0 && c.right >= 2) strengthened.push(conceptLabel(key));
+    else if (c.wrong > c.right) stillWeak.push(conceptLabel(key));
+  }
+  const resolved = Object.entries(misconceptions)
+    .filter(([, m]) => m && m.repairedAt && m.repairedAt >= (o.sessionStartedAt || 0))
+    .map(([key]) => conceptLabel(key));
+
+  return {
+    questionCount: answers.length,
+    correct: answers.filter((a) => a.right).length,
+    strengthened,
+    resolvedMisconceptions: resolved,
+    stillWeak,
+    coverageDelta: prev && curr ? curr.coveragePct - prev.coveragePct : null,
+    delta,
+    nextAction: o.nextAction || null,
+    at: nowMs,
+  };
+}
+
+/**
+ * Post-mock repair report: after the targeted drill, how many of the mock's
+ * weaknesses actually got repaired. `weaknessKeys` are the concepts the mock
+ * debrief flagged; the drill's answers show which of them now hold.
+ */
+function repairReport(weaknessKeys, drillAnswers, qstats, misconceptions, nowMs) {
+  const keys = Array.isArray(weaknessKeys) ? weaknessKeys : [];
+  const answers = Array.isArray(drillAnswers) ? drillAnswers : [];
+  const byKey = new Map(keys.map((k) => [k, { key: k, right: 0, wrong: 0 }]));
+  for (const a of answers) {
+    const key = a.conceptKey || null;
+    if (!key || !byKey.has(key)) continue;
+    const r = byKey.get(key);
+    if (a.right) r.right++; else r.wrong++;
+  }
+  let repaired = 0;
+  const rows = [...byKey.values()].map((r) => {
+    const m = (misconceptions || {})[r.key];
+    const misResolved = m && m.repairedAt && m.repairedAt >= (nowMs == null ? 0 : nowMs - 86400000);
+    const ok = (r.right > r.wrong) || misResolved;
+    if (ok) repaired++;
+    return { key: r.key, label: conceptLabel(r.key), repaired: ok, right: r.right, wrong: r.wrong };
+  });
+  return {
+    total: keys.length,
+    repaired,
+    rows,
+    line: keys.length
+      ? `${repaired} of your ${keys.length} mock weakness${keys.length === 1 ? "" : "es"} ${repaired === 1 ? "was" : "were"} repaired.`
+      : "No mock weaknesses to repair — clean run.",
+  };
+}
+
 /* ---------------- Review Missed: weakness groups ---------------- */
 
 /**
@@ -961,14 +1045,103 @@ function postMockDrill(input) {
   };
 }
 
+/**
+ * THE WEAKNESS CENTRE — concept-level problems, each solvable.
+ * Groups (priority order):
+ *   misconception      — recurring errors on one rule ("4 mistakes across 7 attempts")
+ *   slow-but-correct   — right, but not automatic yet
+ *   recent-regressions — previously mastered, now slipping
+ *   overdue            — learned once, fading
+ *   unseen-high-value  — never met but heavily weighted in the test
+ * Each problem carries a concrete action set: repair misconception, drill,
+ * view rule, mark for later. Weaknesses must feel SOLVABLE, not an analytics dump.
+ */
+function weaknessCentre(input) {
+  const o = input || {};
+  const bank = Array.isArray(o.bank) ? o.bank : [];
+  const qstats = o.qstats || {};
+  const misconceptions = o.misconceptions || {};
+  const nowMs = o.nowMs == null ? Date.now() : o.nowMs;
+  const diags = conceptDiagnosis(bank, qstats, nowMs);
+  const groups = CoachCore.groupByConcept(bank);
+  const missedIds = new Set(CoachCore.missedQuestions(bank, qstats).map((q) => q.id));
+  const active = activeMisconceptions(misconceptions);
+  const activeKeys = new Set(active.map((m) => m.key));
+
+  const mkProblem = (d, category, problemLine, extra) => Object.assign({
+    key: d.key,
+    label: d.label,
+    category,
+    problem: problemLine,
+    attempts: d.encounters,
+    mistakes: d.wrong,
+    questionIds: (groups.get(d.key) || []).map((q) => q.id),
+    drillIds: drillIdsForConcept(d.key, bank, qstats, missedIds),
+    actions: category === "misconception"
+      ? ["repair", "drill", "rule", "later"]
+      : ["drill", "rule", "later"],
+  }, extra || {});
+
+  const misconceptionProblems = active
+    .filter((m) => groups.has(m.key))
+    .map((m) => {
+      const d = diags.find((x) => x.key === m.key) || { key: m.key, label: m.label, encounters: m.errors, wrong: m.errors };
+      return mkProblem(d, "misconception",
+        `You may be giving priority to the wrong rule here — ${m.errors} mistake${m.errors === 1 ? "" : "s"} across ${d.encounters} attempt${d.encounters === 1 ? "" : "s"}.`,
+        { stage: m.stage, errors: m.errors });
+    })
+    .sort((a, b) => (b.stage - a.stage) || (b.errors - a.errors));
+
+  const slowProblems = diags
+    .filter((d) => d.slowRight >= 2 && d.mastery >= 0.55 && !activeKeys.has(d.key))
+    .map((d) => mkProblem(d, "slow-but-correct",
+      `You know this rule, but it is not automatic yet — ${d.slowRight} slow-but-correct answer${d.slowRight === 1 ? "" : "s"}.`))
+    .sort((a, b) => b.mistakes - a.mistakes);
+
+  // Regressions: mastery holding but a fresh wrong after a clean period.
+  const regressionProblems = diags
+    .filter((d) => d.mastery >= 0.55 && d.wrong > 0 && d.lastWrong > (d.lastSeen - 7 * 86400000) && d.correct >= 2 && !activeKeys.has(d.key))
+    .slice(0, 4)
+    .map((d) => mkProblem(d, "recent-regression",
+      `You previously had this solid — recent answers are slipping.`));
+
+  const overdueProblems = diags
+    .filter((d) => d.overdue > 0 && d.mastery >= 0.5)
+    .map((d) => mkProblem(d, "overdue",
+      `Learned once, now ${d.overdue} review${d.overdue === 1 ? " is" : "s are"} past due — at risk of being forgotten.`))
+    .slice(0, 5);
+
+  // Unseen high-value concepts: never met and many questions available.
+  const unseenProblems = diags
+    .filter((d) => d.unseen > 0 && d.encounters === 0 && d.questions.length >= 2)
+    .slice(0, 5)
+    .map((d) => mkProblem(d, "unseen-high-value",
+      `${d.questions.length} untested question${d.questions.length === 1 ? "" : "s"} on this rule — worth meeting before test day.`));
+
+  const sections = [
+    { id: "misconception", title: "Recurring mistakes", why: "One rule keeps catching you — fix the confusion once and it stops costing marks.", problems: misconceptionProblems },
+    { id: "slow-but-correct", title: "Slow but correct", why: "You know these rules, but they are not automatic yet.", problems: slowProblems },
+    { id: "recent-regression", title: "Recent regressions", why: "You previously mastered these concepts but have recently started missing them.", problems: regressionProblems },
+    { id: "overdue", title: "Overdue", why: "Knowledge at risk of being forgotten.", problems: overdueProblems },
+    { id: "unseen-high-value", title: "Unseen high-value concepts", why: "Never tested yet — and worth marks on the real test.", problems: unseenProblems },
+  ].filter((s) => s.problems.length);
+
+  return {
+    sections,
+    totalProblems: sections.reduce((t, s) => t + s.problems.length, 0),
+    resolvedCount: Object.values(misconceptions).filter((m) => m && m.repairedAt).length,
+    recurringCount: misconceptionProblems.length,
+  };
+}
+
 const RoadReadyCoach = {
   COACH_VERSION, REC_TYPES, ISSUE_KINDS,
   conceptLabel, daysUntil, testPhase,
   conceptDiagnosis, topicDiagnosis, issueKind,
   misconceptionStage, recordMisconception, noteConceptSuccess, activeMisconceptions, confusionLine,
   candidates, recommend,
-  buildSnapshot, sessionDelta,
-  reviewGroups, drillIdsForConcept,
+  buildSnapshot, sessionDelta, sessionSummary, repairReport,
+  reviewGroups, drillIdsForConcept, weaknessCentre,
   mockDebrief, postMockDrill,
 };
 

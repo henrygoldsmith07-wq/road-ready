@@ -34,17 +34,21 @@
   }
 
   /**
-   * Concise mock debrief block under the score: concept weaknesses, repeated
-   * misconceptions, slow answers, right→wrong regressions, recently-learned
-   * wins. Exams only — practice sessions get no debrief block.
+   * Post-mock diagnostic report — not a chart farm. Answers, in order:
+   *   what limited your score (concrete errors, not categories)
+   *   biggest opportunity / strongest area
+   *   changes since the last mock
+   * and leaves ONE dominant action to the caller (the repair session).
+   * Exams only — practice sessions get no debrief block.
    */
-  function renderDebrief(d, isExam) {
+  function renderDebrief(d, isExam, prevMock) {
     const host = $("debrief");
     if (!host) return;
     host.replaceChildren();
     if (!isExam) { host.hidden = true; return; }
     host.hidden = false;
     const frag = document.createDocumentFragment();
+
     const add = (title, lines) => {
       if (!lines.length) return;
       const h = document.createElement("h3");
@@ -59,22 +63,59 @@
       });
       frag.append(h, ul);
     };
-    add("Concept-level weaknesses", d.conceptWeaknesses.slice(0, 4).map((c) =>
-      `${c.label}: ${c.missed} of ${c.total} wrong${c.kind === "misconception" ? " — repeated errors on the same rule" : c.kind === "fluency" ? " — right but slow elsewhere" : ""}.`));
-    add("Repeated misconceptions", d.repeatedMisconceptions.slice(0, 3).map((m) =>
-      `${m.label}: ${m.errors} wrong answers so far — a comparison of the confused rules is queued in Review Missed.`));
-    add("Slower answers", d.slowAnswers.slice(0, 3).map((s) =>
-      `${s.label}: correct, but slower than your own typical pace.`));
-    add("Changed since you last saw them", d.regressions.slice(0, 3).map((x) =>
-      `${x.label}: right before, wrong this time.`).concat(d.recentlyLearned.slice(0, 2).map((x) =>
-      `${x.label}: learned recently and held up this time.`)));
+
+    // What limited your score: concrete error sources, most costly first.
+    const limiters = [];
+    for (const c of d.conceptWeaknesses.slice(0, 3)) {
+      limiters.push(c.kind === "misconception"
+        ? `${c.missed} error${c.missed === 1 ? "" : "s"} from one recurring misconception — ${c.label.toLowerCase()}.`
+        : c.kind === "coverage"
+          ? `${c.missed} mistake${c.missed === 1 ? "" : "s"} from unseen concepts — ${c.label.toLowerCase()}.`
+          : `${c.missed} mistake${c.missed === 1 ? "" : "s"} in ${c.label.toLowerCase()}.`);
+    }
+    for (const s of d.slowAnswers.slice(0, 2)) {
+      limiters.push(`A slow answer in ${s.label.toLowerCase()} — correct, but under time pressure that is a risk.`);
+    }
+    add("What limited your score", limiters);
+
+    // Biggest opportunity / strongest area in one line each.
+    const opp = d.conceptWeaknesses[0];
+    const strong = d.topicBreakdown[d.topicBreakdown.length - 1];
+    if (opp) {
+      const p = document.createElement("p");
+      p.className = "debrief-highlight";
+      p.textContent = `Biggest opportunity: ${opp.label}.`;
+      frag.appendChild(p);
+    }
+    if (strong && strong.ok === strong.total && strong.total > 0) {
+      const p = document.createElement("p");
+      p.className = "debrief-highlight";
+      p.textContent = `Strongest area: ${strong.name} — ${strong.ok} of ${strong.total} correct.`;
+      frag.appendChild(p);
+    }
+
+    // Changes since the previous mock (measured, never guessed).
+    if (prevMock) {
+      const marks = d.correct - prevMock.correct;
+      const lines = [];
+      lines.push(`${marks >= 0 ? "+" : ""}${marks} mark${Math.abs(marks) === 1 ? "" : "s"} versus your last mock (${prevMock.correct}/${prevMock.total}).`);
+      const prevMis = (prevMock.repeatedMisconceptions || []).length;
+      const nowMis = d.repeatedMisconceptions.length;
+      if (nowMis < prevMis) lines.push(`${prevMis - nowMis} fewer repeated mistake${prevMis - nowMis === 1 ? "" : "s"}.`);
+      else if (nowMis > prevMis) lines.push(`${nowMis - prevMis} new repeated mistake${nowMis - prevMis === 1 ? "" : "s"} since last time.`);
+      if (prevMock.coveragePct != null && d.coveragePct != null && d.coveragePct !== prevMock.coveragePct) {
+        lines.push(`Coverage ${d.coveragePct - prevMock.coveragePct >= 0 ? "+" : ""}${d.coveragePct - prevMock.coveragePct}%.`);
+      }
+      add("Changes since your last mock", lines);
+    }
+
     if (frag.childNodes.length) frag.prepend(Object.assign(document.createElement("p"), {
       className: "debrief-intro",
       textContent: `What this mock revealed — ${d.correct} of ${d.total} correct.`,
     }));
     else frag.prepend(Object.assign(document.createElement("p"), {
       className: "debrief-intro",
-      textContent: "Clean mock — no concept-level weaknesses to report.",
+      textContent: "Clean mock — nothing held your score back this time.",
     }));
     host.appendChild(frag);
   }
@@ -85,6 +126,56 @@
    * sub}. Returns the post-mock drill (or null) so the caller can store it on
    * the session and wire the primary action.
    */
+  /**
+   * Practice session summary: not just the score, but what the session DID —
+   * concepts strengthened, misconceptions resolved, what is still weak, and
+   * the best next action. Creates a feeling of progression, honestly measured.
+   */
+  function renderSessionSummary(summary) {
+    const host = $("sessionSummary");
+    if (!host) return;
+    host.replaceChildren();
+    host.hidden = false;
+    const frag = document.createDocumentFragment();
+    const intro = document.createElement("p");
+    intro.className = "debrief-intro";
+    intro.textContent = "Session complete";
+    frag.appendChild(intro);
+
+    const lines = [];
+    if (summary.questionCount) lines.push(`${summary.questionCount} question${summary.questionCount === 1 ? "" : "s"} · ${summary.correct} correct`);
+    if (summary.strengthened.length) {
+      lines.push(`${summary.strengthened.length} concept${summary.strengthened.length === 1 ? "" : "s"} strengthened: ${summary.strengthened.slice(0, 3).join(", ")}`);
+    }
+    if (summary.resolvedMisconceptions.length) {
+      lines.push(`${summary.resolvedMisconceptions.length} misconception${summary.resolvedMisconceptions.length === 1 ? "" : "s"} resolved: ${summary.resolvedMisconceptions.slice(0, 2).join(", ")}`);
+    }
+    if (summary.stillWeak.length) {
+      lines.push(`${summary.stillWeak.length} concept${summary.stillWeak.length === 1 ? "" : "s"} still weak: ${summary.stillWeak.slice(0, 3).join(", ")}`);
+    }
+    if (summary.coverageDelta != null && summary.coverageDelta !== 0) {
+      lines.push(`Coverage ${summary.coverageDelta > 0 ? "+" : ""}${summary.coverageDelta}%`);
+    }
+    if (!lines.length) lines.push("No measurable change yet — that is fine early on; keep going.");
+
+    const ul = document.createElement("ul");
+    ul.className = "debrief-list";
+    lines.forEach((line) => {
+      const li = document.createElement("li");
+      li.textContent = line;
+      ul.appendChild(li);
+    });
+    frag.appendChild(ul);
+
+    if (summary.nextAction) {
+      const next = document.createElement("p");
+      next.className = "debrief-highlight";
+      next.textContent = `Best next action: ${summary.nextAction}.`;
+      frag.appendChild(next);
+    }
+    host.appendChild(frag);
+  }
+
   function show(r, session) {
     const { Coach, Core, CATEGORIES, getState, getBank, getQuestion, icon, escapeHTML, sourceCitationHTML, signArt, showView } = ctx;
     const state = getState();
@@ -107,7 +198,13 @@
       slowMs: Core.rtPercentiles(state.rtSamples) ? Core.rtPercentiles(state.rtSamples).p75 : null,
       nowMs: Date.now(),
     });
-    renderDebrief(debrief, isExam);
+    renderDebrief(debrief, isExam, (() => {
+      // Previous mock for the "changes since last mock" comparison: the exam
+      // row for THIS mock is already pushed, so the one before it is last-1.
+      const exams = state.exams || [];
+      const prev = isExam && exams.length >= 2 ? exams[exams.length - 2] : null;
+      return prev ? { correct: prev.correct, total: prev.total, pct: prev.pct } : null;
+    })());
 
     const grid = $("resultGrid");
     grid.innerHTML = "";
@@ -117,6 +214,24 @@
       div.innerHTML = `${icon((CATEGORIES[t.id] || {}).icon || "book", 14)} <span>${escapeHTML(t.name)}</span><b>${t.ok}/${t.total}</b>`;
       grid.appendChild(div);
     });
+
+    // Session summary for practice: what the session actually changed, not
+    // just the score — concepts strengthened, misconceptions resolved, what is
+    // still weak, and the best next action.
+    if (!isExam) {
+      const summary = Coach.sessionSummary({
+        answers: r.answers.map((a) => ({ ...a })),
+        qstats: state.qstats,
+        misconceptions: state.misconceptions,
+        byId: (id) => getQuestion(id),
+        sessionStartedAt: session.startedAt || (Date.now() - 3600000),
+        snapshot: Coach.buildSnapshot({
+          bank, qstats: state.qstats, misconceptions: state.misconceptions,
+          questionsAnswered: state.answered, nowMs: Date.now(),
+        }),
+      });
+      renderSessionSummary(summary);
+    }
 
     const missed = r.answers.filter((a) => !a.right);
     const list = $("reviewList");

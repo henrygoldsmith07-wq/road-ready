@@ -27,7 +27,7 @@
     const { Coach, Core, getState, getBank, getQuestion, icon, escapeHTML, sourceCitationHTML, signArt, startPractice, shuffle } = ctx;
     const state = getState();
     const bank = getBank();
-    const rg = Coach.reviewGroups({
+    const wc = Coach.weaknessCentre({
       bank,
       qstats: state.qstats,
       misconceptions: state.misconceptions,
@@ -39,55 +39,85 @@
     const list = $("reviewList");
     if (!host) return;
 
-    if (!rg.groups.length) {
+    if (!wc.sections.length) {
       sub.textContent = "Nothing to repair yet.";
       if (summary) summary.hidden = true;
       host.innerHTML = "";
-      list.innerHTML = `<p class="muted">No missed questions — keep practising and weak spots will gather here.</p>`;
+      list.innerHTML = `<p class="muted">No weaknesses — keep practising and anything that slips will gather here.</p>`;
       $("btnDrillMissed").style.display = "none";
       return;
     }
-    sub.textContent = "What matters most, why, and one clear next action per group.";
+    sub.textContent = "Weaknesses, sorted by what matters most — each one is solvable.";
     if (summary) {
       summary.hidden = false;
-      summary.textContent = rg.summary ? rg.summary.text : "";
+      summary.textContent = `${wc.totalProblems} weakness${wc.totalProblems === 1 ? "" : "es"} to repair · ${wc.resolvedCount} misconception${wc.resolvedCount === 1 ? "" : "s"} resolved · ${wc.recurringCount} still recurring`;
     }
     host.replaceChildren();
-    rg.groups.forEach((g) => {
+    wc.sections.forEach((section) => {
       const card = document.createElement("div");
       card.className = "card review-group";
       const head = document.createElement("div");
       head.className = "rg-head";
       const title = document.createElement("h2");
       title.className = "rg-title";
-      title.textContent = g.title;
+      title.textContent = section.title;
       const count = document.createElement("span");
       count.className = "badge warn";
-      count.textContent = String(g.items.length);
+      count.textContent = String(section.problems.length);
       head.append(title, count);
       const why = document.createElement("p");
       why.className = "rg-why";
-      why.textContent = g.why;
+      why.textContent = section.why;
       const items = document.createElement("ul");
       items.className = "rg-items";
-      g.items.slice(0, 5).forEach((it) => {
+      section.problems.slice(0, 5).forEach((it) => {
         const li = document.createElement("li");
         const label = document.createElement("b");
         label.textContent = it.label;
         const detail = document.createElement("span");
-        detail.textContent = it.why;
+        detail.textContent = it.problem;
         li.append(label, detail);
+        // One-tap actions per problem: repair/drill first, rule + later secondary.
+        const actions = document.createElement("div");
+        actions.className = "rg-actions";
+        const drill = document.createElement("button");
+        drill.type = "button";
+        drill.className = "btn ghost rg-drill";
+        drill.innerHTML = `${icon("target", 13)} ${it.actions.includes("repair") ? "Repair misconception" : "5-question drill"}`;
+        on(drill, "click", () => {
+          const qs = it.drillIds.map((id) => getQuestion(id)).filter(Boolean);
+          if (qs.length) startPractice(shuffle(qs).slice(0, 5), it.label, "review");
+        });
+        actions.appendChild(drill);
+        const rule = document.createElement("button");
+        rule.type = "button";
+        rule.className = "btn ghost rg-rule";
+        rule.textContent = "View rule";
+        on(rule, "click", () => {
+          const q = getQuestion(it.questionIds[0]);
+          if (q) {
+            const note = li.querySelector(".rg-rule-note") || document.createElement("span");
+            note.className = "rg-rule-note";
+            note.textContent = q.why;
+            li.appendChild(note);
+            rule.disabled = true;
+          }
+        });
+        actions.appendChild(rule);
+        const later = document.createElement("button");
+        later.type = "button";
+        later.className = "btn ghost rg-later";
+        later.textContent = "Mark for later";
+        on(later, "click", () => {
+          later.textContent = "Marked ✓";
+          later.disabled = true;
+          li.classList.add("rg-snoozed");
+        });
+        actions.appendChild(later);
+        li.appendChild(actions);
         items.appendChild(li);
       });
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "btn ghost rg-drill";
-      btn.innerHTML = `${icon("target", 14)} Drill ${g.drillIds.length} question${g.drillIds.length === 1 ? "" : "s"}`;
-      on(btn, "click", () => {
-        const qs = g.drillIds.map((id) => getQuestion(id)).filter(Boolean);
-        if (qs.length) startPractice(shuffle(qs), g.title, "review");
-      });
-      card.append(head, why, items, btn);
+      card.append(head, why, items);
       host.appendChild(card);
     });
     // the full missed list stays as the deep detail under the groups
