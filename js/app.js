@@ -2,6 +2,7 @@
 "use strict";
 
 const Core = window.RoadReadyCore;
+const Coach = window.RoadReadyCoach;
 const Format = window.RoadReadyFormat || {};
 const Packs = window.RoadReadyPacks;
 const BLUEPRINTS = (window.RoadReadyBlueprints || {}).EXAM_BLUEPRINTS || {};
@@ -12,6 +13,13 @@ const Guide = window.RoadReadyGuide;
 // instead of reaching into this file's scope.
 const PracticalUI = window.RoadReadyPracticalUI;
 const StudyUI = window.RoadReadyStudyUI;
+// Extracted UI domains (same DI style as practical-ui/study-ui): each gets its
+// dependencies explicitly here instead of reaching into this file's scope.
+const FlashcardsUI = window.RoadReadyFlashcardsUI;
+const ReviewUI = window.RoadReadyReviewUI;
+const ResultsUI = window.RoadReadyResultsUI;
+const HomeUI = window.RoadReadyHomeUI;
+const QuizUI = window.RoadReadyQuizUI;
 if (PracticalUI) {
   PracticalUI.init({
     Core,
@@ -42,6 +50,81 @@ if (StudyUI) {
 /** Delegates to js/study-ui.js (absent only if that script failed to load). */
 function renderStudy() {
   if (StudyUI) StudyUI.render();
+}
+
+// Shared dependencies for the extracted UI modules. Resolved lazily because
+// several helpers (bank, state, byId) are declared later in this file — a
+// direct reference here would hit the temporal dead zone at load time and
+// crash the app on boot. Every late-bound entry is a thunk or accessor.
+function extractedDeps() {
+  return {
+    Core, Coach, CATEGORIES, SIGNS, signSVG,
+    getState: () => state,
+    getBank: () => bank,
+    getQuestion: (id) => byId[id],
+    icon,
+    escapeHTML,
+    sourceCitationHTML,
+    signArt: (id, size) => signArt(id, size),
+    startPractice: (qs, label, backTo) => startPractice(qs, label, backTo),
+    shuffle: (arr) => shuffle(arr),
+    showView: (name) => showView(name),
+    unlock,
+    save: () => save(),
+    termsForPack: (packId) => termsForPack(packId),
+  };
+}
+if (FlashcardsUI) FlashcardsUI.init(extractedDeps());
+if (ReviewUI) ReviewUI.init(Object.assign(extractedDeps(), { alert: (msg) => alert(msg) }));
+if (ResultsUI) ResultsUI.init(extractedDeps());
+if (HomeUI) {
+  HomeUI.init(Object.assign(extractedDeps(), {
+    catQ: (id) => catQ(id),
+    catAccuracy: (id) => catAccuracy(id),
+    readiness: () => readiness(),
+    missedQuestions: () => missedQuestions(),
+    todayStr: () => todayStr(),
+    validTestDate: () => validTestDate(),
+    hazardInfoForPack: (packId) => hazardInfoForPack(packId),
+    hazardScenarioCount: () => HZ_SCENARIOS.length,
+    checkProgressAchievements,
+    levelFor,
+    predictionCalibrationSamples: () => predictionCalibrationSamples(),
+    buildCalibrationCurve: (samples) => buildCalibrationCurve(samples),
+    CALIBRATION_CONTEXT: () => CALIBRATION_CONTEXT(),
+  }));
+}
+
+if (QuizUI) {
+  QuizUI.init(Object.assign(extractedDeps(), {
+    getSession: () => session,
+    sourceForQuestion: (q) => Packs.sourceForQuestion(q),
+    recordAnswer: (q, right) => recordAnswer(q, right),
+    finishSession: (timedOut) => finishSession(timedOut),
+    save: () => save(),
+    speak: (text) => speak(text),
+  }));
+}
+
+/** Delegates to js/home-ui.js (absent only if that script failed to load). */
+function renderHome() { if (HomeUI) HomeUI.render(); }
+
+/** Delegates to js/flashcards-ui.js (absent only if that script failed to load). */
+function renderFlashcards() { if (FlashcardsUI) FlashcardsUI.render(); }
+function flipCard() { if (FlashcardsUI) FlashcardsUI.flipCard(); }
+function fcMove(d) { if (FlashcardsUI) FlashcardsUI.fcMove(d); }
+function fcMark(known) { if (FlashcardsUI) FlashcardsUI.fcMark(known); }
+function fcIds() { return FlashcardsUI ? FlashcardsUI.fcIds() : Object.keys(SIGNS); }
+function signArt(id, size) { return FlashcardsUI ? FlashcardsUI.signArt(id, size) : signSVG(id, size, ""); }
+
+/** Delegates to js/review-ui.js. */
+function renderReview() { if (ReviewUI) ReviewUI.render(); }
+function renderFluency() { if (ReviewUI) ReviewUI.renderFluency(); }
+
+/** Delegates to js/results-ui.js; returns the post-mock drill for the session. */
+function showResults(r) {
+  if (ResultsUI) { ResultsUI.show(r, session); return; }
+  showView("results");
 }
 
 function startDiagnostic() {
@@ -326,190 +409,6 @@ function showView(name) {
 }
 
 
-/* ---------------- readiness panel (home) ----------------
- *
- * Status only, by design. The single next action for today lives in the Today
- * Plan card above this panel, which already states the question count, the
- * reason behind it and carries the one primary Start button. This panel used
- * to restate the recommendation and offer a second Start control, so the home
- * screen gave two competing answers to "what should I do today". It now shows
- * only where the learner stands: the band, the calibration caveat, and which
- * topics are strong and which are at risk.
- */
-let rpCalNarrative = null;
-function renderReadinessPanel() {
-  const host = $("readinessPanel");
-  if (!host) return;
-  host.hidden = false;
-  const theoryPct = Math.round(readiness() * 100);
-  const pct = theoryPct;
-
-  // per-topic mastery snapshot
-  const topics = Object.keys(CATEGORIES).map((id) => {
-    const qs = catQ(id);
-    return {
-      id,
-      name: CATEGORIES[id].name,
-      mastery: Core.topicMastery(qs, state.qstats),
-      seen: qs.some((q) => state.qstats[q.id] && state.qstats[q.id].seen > 0),
-    };
-  });
-  const { strong, risk } = Core.strongAndRiskTopics(topics);
-  const spreadPts = (() => { const sp = Core.mockStability(state.exams, 3); return sp == null ? null : Math.round(sp * 100); })();
-  const predictionSamples = predictionCalibrationSamples();
-  rpCalNarrative = Core.readinessNarrative(Object.assign({
-    readinessPct: theoryPct,
-    curve: buildCalibrationCurve(predictionSamples),
-    riskTopics: risk.map((t) => t.name),
-    stabilitySpread: spreadPts,
-  }, CALIBRATION_CONTEXT()));
-
-  const calEl = $("rpCalLine");
-  if (calEl) {
-    // Readiness stays labelled uncalibrated until real results exist.
-    calEl.hidden = false;
-    calEl.textContent = rpCalNarrative.mode === "calibrated"
-      ? rpCalNarrative.text
-      : `Uncalibrated estimate — ${rpCalNarrative.text}`;
-  }
-  const band = pct <= 0 && !topics.some((t) => t.seen) ? "Not Started" : Core.readinessBand(pct).label;
-  const decidedPredictions = predictionSamples.filter((s) => s.result === "pass" || s.result === "fail");
-  $("rpBand").textContent = decidedPredictions.length ? band : `${band} · uncalibrated`;
-
-  const items = [];
-  strong.forEach((t) => items.push(`<li class="rp-strong"><span class="rp-glyph">✓</span> Strong: ${t.name.toLowerCase()}</li>`));
-  risk.forEach((t) => items.push(`<li class="rp-risk"><span class="rp-glyph">△</span> Risk: ${t.name.toLowerCase()}</li>`));
-  if (!items.length) items.push('<li class="muted">Answer a few questions and your strong/risk areas will appear here.</li>');
-  $("rpList").innerHTML = items.join("");
-}
-
-/* ---------------- HOME ---------------- */
-function renderHome() {
-  renderReadinessPanel();
-  const pct = Math.round(readiness() * 100);
-  $("ringPct").textContent = pct + "%";
-  const C = 2 * Math.PI * 52;
-  const fg = $("ringFg");
-  fg.style.strokeDasharray = C;
-  fg.style.strokeDashoffset = C * (1 - pct / 100);
-  const acc = state.answered ? Math.round(100 * state.correctCount / state.answered) : null;
-  $("stAnswered").textContent = String(state.answered);
-  $("stAccuracy").textContent = acc === null ? "–" : `${acc}%`;
-  $("stStreak").textContent = state.streak.count;
-  const best = state.exams.length ? Math.max(...state.exams.map(e => e.pct)) : null;
-  $("stBest").textContent = best === null ? "–" : Math.round(best * 100) + "%";
-
-  const passedMock = state.exams.some(e => e.pass);
-  const TERMS = termsForPack();
-  $("heroSub").textContent = state.answered === 0
-    ? `Study a little every day and walk into your ${TERMS.agencyShort} with confidence.`
-    : passedMock
-      ? "You've passed a practice mock exam — keep drilling to stay sharp."
-      : "Keep going — review your weak spots and drill the questions you missed.";
-
-  const lv = levelFor(state.xp);
-  $("heroLvl").textContent = state.answered ? `Level ${lv.lvl} · ${state.xp} XP` : "";
-  const HAZARD_INFO = hazardInfoForPack();
-  const hazardTag = HAZARD_INFO.includedInExam
-    ? "core section of your theory test (real test: 14 clips, 44/75)"
-    : "bonus training — not part of most U.S. knowledge exams";
-  $("hazardBestLabel").textContent = state.hazardBest
-    ? `Best score: ${state.hazardBest}/${HZ_SCENARIOS.length * 5} — ${hazardTag}`
-    : `Spot developing hazards early (${hazardTag})`;
-  checkProgressAchievements();
-
-  const plan = Core.studyPlan(bank, state.qstats, state.exams, state.daily, state.settings.testDate, todayStr());
-  const rec = Core.dailyStudyRecommendation({
-    bank,
-    qstats: state.qstats,
-    exams: state.exams,
-    daily: state.daily,
-    testDate: state.settings.testDate,
-    today: todayStr(),
-    nowMs: Date.now(),
-  });
-  const t = plan.todayCount;
-  const target = Math.max(1, plan.dailyTarget);
-  const goalEl = $("dailyGoal");
-  goalEl.querySelector(".dg-bar-fill").style.width = Math.min(100, 100 * t / target) + "%";
-  goalEl.querySelector(".dg-label").innerHTML = t >= target
-    ? `Daily goal complete — <b>${t}</b> answered today`
-    : `Today's goal: <b>${t}/${target}</b> questions answered`;
-
-  const planBtn = $("btnPlanAction");
-  const rationaleEl = $("planRationale");
-  if (!validTestDate()) {
-    $("planTitle").textContent = `${rec.questions} questions today`;
-    $("planDetail").textContent = `${rec.estimatedMinutes} min · adaptive mix${rec.focusConcepts.length ? ` · ${rec.focusConcepts.slice(0, 2).join(" + ")}` : ""}`;
-    $("planMeta").textContent = rec.rationale.length ? "Why this session" : "Adaptive mix — a bit of everything you need next";
-    rationaleEl.hidden = !rec.rationale.length;
-    rationaleEl.replaceChildren(...rec.rationale.map((r) => {
-      const li = document.createElement("li");
-      li.textContent = r;
-      return li;
-    }));
-    planBtn.textContent = "Set test date";
-    planBtn.dataset.action = "set-date";
-  } else if (plan.status === "past") {
-    $("planTitle").textContent = "Update your test date";
-    $("planDetail").textContent = "Your saved test date has passed. Choose a new date to rebuild the plan.";
-    $("planMeta").textContent = "Your progress is still here";
-    rationaleEl.hidden = true;
-    planBtn.textContent = "Choose a date";
-    planBtn.dataset.action = "set-date";
-  } else {
-    const dayLabel = plan.daysLeft === 0 ? "Test day" : `Test in ${plan.daysLeft} day${plan.daysLeft === 1 ? "" : "s"}`;
-    $("planTitle").textContent = `${dayLabel} · ${rec.questions} questions today`;
-    $("planDetail").textContent = `${rec.estimatedMinutes} min · ${rec.action === "exam" ? "representative mock" : rec.reviewDue ? "reviews + weak concepts" : "adaptive practice"}${rec.focusConcepts.length ? ` · ${rec.focusConcepts.slice(0, 2).join(" + ")}` : ""}`;
-    $("planMeta").textContent = `${plan.unseen} unseen · ${plan.weak} weak · ${rec.reviewDue} due · ${plan.dailyTarget}/day`;
-    rationaleEl.hidden = !rec.rationale.length;
-    rationaleEl.replaceChildren(...rec.rationale.map((r) => {
-      const li = document.createElement("li");
-      li.textContent = r;
-      return li;
-    }));
-    planBtn.dataset.action = plan.status === "today" ? "review" : rec.action;
-    planBtn.textContent = plan.status === "today"
-      ? "Short confidence review"
-      : rec.action === "exam" ? "Take representative mock" : rec.action === "review" ? "Review weak spots" : "Start today's session";
-  }
-
-  // topics
-  const grid = $("topicGrid");
-  grid.innerHTML = "";
-  Object.entries(CATEGORIES).forEach(([id, c]) => {
-    const qs = catQ(id);
-    const m = Math.round(100 * Core.topicMastery(qs, state.qstats));
-    const seenCount = qs.filter(q => state.qstats[q.id]).length;
-    const b = document.createElement("button");
-    b.className = "card topic-card";
-    b.innerHTML = `<div class="topic-head"><span class="topic-ico">${icon(c.icon, 19)}</span>
-      <div><div class="topic-name">${c.name}</div><div class="topic-desc">${c.desc}</div></div>
-      <span class="topic-count">${seenCount}/${qs.length}</span></div>
-      <div class="bar"><div class="bar-fill"></div></div>
-      <div class="topic-foot"><span>${m}% mastery</span><span class="link">Practice ${icon("chevron-right", 12)}</span></div>`;
-    const bar = /** @type {HTMLElement} */ (b.querySelector(".bar-fill"));
-    bar.style.setProperty("--w", m + "%");
-    bar.setAttribute("role", "progressbar");
-    bar.setAttribute("aria-label", c.name + " mastery");
-    bar.setAttribute("aria-valuemin", "0");
-    bar.setAttribute("aria-valuemax", "100");
-    bar.setAttribute("aria-valuenow", String(m));
-    on(b, "click", () => startPractice(shuffle(catQ(id)).slice(0, 10), c.name, "home"));
-    grid.appendChild(b);
-  });
-
-  // weak spots
-  const weak = Object.entries(CATEGORIES)
-    .map(([id, c]) => ({ id, c, acc: catAccuracy(id) }))
-    .filter(x => x.acc !== null && x.acc < 0.8)
-    .sort((a, b) => a.acc - b.acc)
-    .slice(0, 4);
-  $("weakBadge").textContent = missedQuestions().length;
-  $("weakList").innerHTML = weak.length
-    ? weak.map(x => `<li><span>${icon(x.c.icon, 15)} ${x.c.name}</span><b>${Math.round(x.acc * 100)}%</b></li>`).join("")
-    : `<li class="muted">Answer a few questions and your weak topics will appear here.</li>`;
-}
 
 /* ---------------- SETUP ---------------- */
 function startSetup(mode, focusCat) {
@@ -607,6 +506,59 @@ function setupRow(it) {
 /* ---------------- QUIZ ENGINE ---------------- */
 let session = null;
 
+/**
+ * Launch the drill the Adaptive Coach recommended. Each recommendation type
+ * maps to a concrete question set — never a generic "practise more". The
+ * misconception types prefer concept variants (fresh questions of the same
+ * concept) so the RULE is re-tested rather than the question replayed.
+ */
+function startCoachSession() {
+  const plan = Coach.recommend({
+    bank,
+    qstats: state.qstats,
+    exams: state.exams,
+    daily: state.daily,
+    misconceptions: state.misconceptions,
+    categories: CATEGORIES,
+    testDate: validTestDate() ? state.settings.testDate : "",
+    today: todayStr(),
+    nowMs: Date.now(),
+  });
+  const r = plan.primary;
+  if (!r) { startPractice(pickWeighted(adaptivePool(), 10), "Today's Plan", "home"); return; }
+  if (r.type === Coach.REC_TYPES.TAKE_MOCK) {
+    const packId = Packs.PACK_IDS.includes(state.settings.statePack) ? state.settings.statePack : null;
+    if (packId && BLUEPRINTS[packId]) { startOfficialExam(packId); return; }
+    startSetup("exam");
+    return;
+  }
+  const missedIds = new Set(missedQuestions().map((q) => q.id));
+  let qs = [];
+  for (const key of r.conceptKeys) {
+    for (const id of Coach.drillIdsForConcept(key, bank, state.qstats, missedIds)) {
+      const q = byId[id];
+      if (q && !qs.includes(q)) qs.push(q);
+    }
+    if (qs.length >= r.questionCount) break;
+  }
+  if (r.type === Coach.REC_TYPES.BUILD_COVERAGE) {
+    // coverage work is unseen-first: prefer questions never attempted
+    const unseen = bank.filter((q) => !state.qstats[q.id] || !state.qstats[q.id].seen);
+    qs = shuffle(unseen).concat(shuffle(qs.filter((q) => !unseen.includes(q))));
+  }
+  if (qs.length < r.questionCount) {
+    const pad = pickWeighted(adaptivePool().filter((p) => !qs.includes(p.q)), r.questionCount - qs.length);
+    qs = qs.concat(pad);
+  }
+  qs = qs.slice(0, Math.max(1, r.questionCount || 10));
+  session = {
+    mode: "practice", label: r.title, questions: shuffle(qs), i: 0, correct: 0,
+    answers: [], endTs: 0, timerId: null, marathon: false, requeued: {},
+  };
+  quizBackTarget = "home";
+  beginQuiz();
+}
+
 function startPractice(questions, label, backTo, marathon) {
   if (!questions.length) return;
   quizBackTarget = backTo || "home";
@@ -690,64 +642,6 @@ function tickTimer() {
   renderTimer();
   if (session.timeLeft <= 0) finishSession(true);
 }
-function renderTimer() {
-  const m = Math.floor(session.timeLeft / 60), s = session.timeLeft % 60;
-  $("qTimer").innerHTML = `${icon("clock", 13)} ${m}:${String(s).padStart(2, "0")}`;
-  $("qTimer").classList.toggle("urgent", session.timeLeft < 60);
-}
-function renderQuiz() {
-  const q = session.questions[session.i];
-  const total = session.questions.length;
-  // When this question became answerable. The gap to the answer is the only
-  // evidence we have of whether it was recalled or worked out.
-  session.shownAt = Date.now();
-  $("qprogBar").style.setProperty("--w", (100 * session.i / total) + "%");
-  $("qCounter").textContent = `Q ${session.i + 1}/${total}`;
-  $("qCategory").textContent = CATEGORIES[q.cat].name;
-  // question forms: single sign, sign combination, ASCII road-layout scene, and photo placeholder
-  const signIds = Array.isArray(q.signIds) && q.signIds.length ? q.signIds : (q.signId ? [q.signId] : []);
-  $("signFrame").hidden = !signIds.length;
-  if (signIds.length) {
-    $("signFrame").innerHTML = signIds.length > 1
-      ? `<div class="sign-row">${signIds.map(id => signArt(id, 104)).join("")}</div>`
-      : signArt(signIds[0], 150);
-  }
-  const sceneHost = $("qScene");
-  if (q.scene) {
-    const isPhoto = q.form === "photo";
-    const label = isPhoto ? "photograph — described scene" : "road layout diagram";
-    const photoHead = isPhoto ? `<div class="photo-badge">${icon("camera", 12)} PHOTO — imagine this view</div>` : "";
-    sceneHost.hidden = false;
-    sceneHost.innerHTML = `${photoHead}<pre class="scene${isPhoto ? " photo-scene" : ""}" aria-label="${label}">${escapeHTML(q.scene)}</pre>`;
-  } else {
-    sceneHost.hidden = true;
-    sceneHost.innerHTML = "";
-  }
-  $("qText").textContent = q.q;
-
-  const box = $("choices");
-  box.innerHTML = "";
-  const order = shuffle(q.choices.map((_, idx) => idx));
-  session.order = order;
-  order.forEach((origIdx, disp) => {
-    const b = document.createElement("button");
-    b.className = "choice";
-    b.innerHTML = `<span class="choice-key">${disp + 1}</span><span class="choice-text">${escapeHTML(q.choices[origIdx])}</span><span class="choice-mark"></span>`;
-    on(b, "click", () => answer(origIdx, b));
-    box.appendChild(b);
-  });
-  $("feedback").hidden = true;
-  $("fbSource").hidden = true;
-  $("fbSource").removeAttribute("href");
-  $("btnNext").disabled = true;
-  $("btnNext").textContent = session.i + 1 >= total ? "Finish" : "Next";
-  const hint = document.querySelector(".kbd-hint");
-  if (hint) hint.innerHTML = session.mode === "exam"
-    ? `Tip: press <kbd>1</kbd>–<kbd>4</kbd> to answer — it advances automatically`
-    : `Tip: press <kbd>1</kbd>–<kbd>4</kbd> to answer, <kbd>Enter</kbd> for next`;
-  updateFlagBtn();
-  speak(q.q + ". " + q.choices.map((c, i) => (i + 1) + ". " + c).join(" "));
-}
 function escapeHTML(s) { return Format.escapeHTML ? Format.escapeHTML(s) : s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 
 function sourceCitationHTML(q) {
@@ -760,68 +654,11 @@ function sourceCitationHTML(q) {
   return `<a class="source-link" href="${escapeHTML(source.url)}" target="_blank" rel="noopener noreferrer">${escapeHTML(label)}: ${escapeHTML(detail)} ↗</a>`;
 }
 
-function answer(origIdx, btnEl) {
-  if (session.answeredCurrent) return;
-  session.answeredCurrent = true;
-  const q = session.questions[session.i];
-  const right = origIdx === q.a;
-  session.answers.push({ qid: q.id, picked: origIdx, right });
+/* Quiz rendering + answer feedback live in js/quiz-ui.js; this file keeps the
+ * session lifecycle (start/finish/scoring). */
+function renderTimer() { if (QuizUI) QuizUI.renderTimer(); }
+function renderQuiz() { if (QuizUI) QuizUI.renderQuiz(); }
 
-  if (session.mode === "practice") {
-    markChoiceButtons(q);
-    const fb = $("feedback");
-    fb.hidden = !state.settings.feedback;
-    $("fbHead").innerHTML = right ? `<span class="ok">${icon("check", 15)} Correct</span>` : `<span class="bad">${icon("x", 15)} Not quite</span>`;
-    $("fbWhy").textContent = q.why;
-    const source = Packs.sourceForQuestion(q);
-    const sourceLink = $("fbSource");
-    sourceLink.hidden = !source;
-    if (source) {
-      sourceLink.href = source.url;
-      sourceLink.textContent = `Official source: ${source.agency} · ${q.sourceSection} ↗`;
-      sourceLink.setAttribute("aria-label", `Open ${source.title}, section ${q.sourceSection}, in a new tab`);
-    } else {
-      sourceLink.removeAttribute("href");
-      sourceLink.removeAttribute("aria-label");
-    }
-    btnEl && btnEl.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    $("btnNext").disabled = false;
-    $("btnNext").focus();
-    speak((right ? "Correct. " : "Not quite. ") + q.why);
-    // marathon: missed questions come back once
-    if (session.marathon && !right && !session.requeued[q.id]) {
-      session.requeued[q.id] = true;
-      session.questions.push(q);
-    }
-  } else {
-    // exam: brief visual acknowledge, then auto-advance
-    $("btnNext").disabled = true;
-    const btns = document.querySelectorAll("#choices .choice");
-    /** @type {NodeListOf<HTMLButtonElement>} */(btns).forEach(b => (b.disabled = true));
-    session.advanceId = setTimeout(() => {
-      session.answeredCurrent = false;
-      session.i++;
-      if (session.i >= session.questions.length) finishSession();
-      else renderQuiz();
-    }, 420);
-  }
-  recordAnswer(q, right);
-}
-function markChoiceButtons(q) {
-  const btns = /** @type {NodeListOf<HTMLElement>} */(document.querySelectorAll("#choices .choice"));
-  btns.forEach((b, disp) => {
-    const orig = session.order[disp];
-    const picked = b === document.activeElement || b.classList.contains("picked");
-    /** @type {HTMLButtonElement} */(b).disabled = true;
-    if (orig === q.a) {
-      b.classList.add("correct");
-      b.querySelector(".choice-mark").innerHTML = icon("check", 16);
-    } else if (picked) {
-      b.classList.add("wrong");
-      b.querySelector(".choice-mark").innerHTML = icon("x", 16);
-    }
-  });
-}
 function recordAnswer(q, right) {
   const now = Date.now();
   const s = state.qstats[q.id] || (state.qstats[q.id] = { seen: 0, correct: 0, wrong: 0 });
@@ -829,6 +666,17 @@ function recordAnswer(q, right) {
   s.lastSeen = now;
   if (!right) s.lastWrong = now;
   s.sched = Core.reviewSched(s.sched, right, now);   // weak-topic resurfacing
+  // Misconception ledger: wrong answers open/escalate a concept case in every
+  // mode (practice AND mock); correct answers are repair evidence — one lucky
+  // repeat of the same question proves nothing, a variant does (see Coach).
+  const conceptKey = Core.conceptKeyOf(q);
+  if (right) {
+    if (state.misconceptions[conceptKey]) {
+      state.misconceptions = Coach.noteConceptSuccess(state.misconceptions, conceptKey, q.id, now);
+    }
+  } else {
+    state.misconceptions = Coach.recordMisconception(state.misconceptions, conceptKey, q.id, now);
+  }
   // Answer fluency: classify against the learner's own response-time distribution.
   const elapsed = session.shownAt ? now - session.shownAt : null;
   state.rtSamples = Core.pushRtSample(state.rtSamples, elapsed);
@@ -911,170 +759,9 @@ function finishSession(timedOut) {
   }
   stopSpeaking();
 }
-function updateFlagBtn() {
-  const q = session.questions[session.i];
-  const f = !!state.flagged[q.id];
-  $("btnFlag").classList.toggle("flagged", f);
-  $("btnFlag").innerHTML = `${icon("flag", 13)} ${f ? "Flagged" : "Flag"}`;
-}
-function toggleFlag() {
-  if (!session) return;
-  const q = session.questions[session.i];
-  if (state.flagged[q.id]) delete state.flagged[q.id];
-  else state.flagged[q.id] = true;
-  save();
-  updateFlagBtn();
-}
-
-/* ---------------- RESULTS ---------------- */
-function confetti() {
-  const host = document.querySelector(".results-card");
-  if (!host) return;
-  const colors = ["#f4f4f5", "#a1a1aa", "#d4d4d8", "#71717a", "#e4e4e7", "#52525b"];
-  for (let i = 0; i < 36; i++) {
-    const p = document.createElement("div");
-    p.className = "confetti";
-    p.style.left = Math.random() * 100 + "%";
-    p.style.background = colors[i % colors.length];
-    p.style.animationDelay = (Math.random() * 0.9).toFixed(2) + "s";
-    p.style.animationDuration = (2.2 + Math.random() * 1.6).toFixed(2) + "s";
-    p.style.transform = `rotate(${Math.random() * 360}deg)`;
-    host.appendChild(p);
-    setTimeout(() => p.remove(), 4200);
-  }
-}
-function showResults(r) {
-  $("resultEmoji").innerHTML = icon(r.pass ? "trophy" : "x-circle", 54);
-  $("resultTitle").textContent = r.title;
-  $("resultScore").textContent = Math.round(100 * r.correct / r.total) + "%";
-  $("resultScore").className = "score-big " + (r.pass ? "pass" : "fail");
-  $("resultSub").textContent = (r.timedOut ? "Time ran out — your unanswered questions were counted. " : "") + r.sub;
-
-  const grid = $("resultGrid");
-  grid.innerHTML = "";
-  const byCat = {};
-  r.answers.forEach(a => {
-    const q = byId[a.qid];
-    (byCat[q.cat] = byCat[q.cat] || []).push(a);
-  });
-  Object.entries(byCat).forEach(([cat, arr]) => {
-    const ok = arr.filter(a => a.right).length;
-    const div = document.createElement("div");
-    div.className = "result-cat " + (ok === arr.length ? "good" : ok / arr.length >= 0.5 ? "mid" : "bad");
-    div.innerHTML = `${icon(CATEGORIES[cat].icon, 14)} <span>${CATEGORIES[cat].name}</span><b>${ok}/${arr.length}</b>`;
-    grid.appendChild(div);
-  });
-
-  const missed = r.answers.filter(a => !a.right);
-  const list = $("reviewList");
-  list.innerHTML = missed.length
-    ? missed.map(a => {
-        const q = byId[a.qid];
-        return `<div class="review-item card">
-          ${q.signId ? `<div class="sign-frame small">${signArt(q.signId, 70)}</div>` : ""}
-          <div>
-            <div class="ri-q">${escapeHTML(q.q)}</div>
-             <div class="ri-a ok">${icon("check", 14)} ${escapeHTML(q.choices[q.a])}</div>
-             <div class="ri-why">${escapeHTML(q.why)}</div>
-             ${sourceCitationHTML(q)}
-           </div></div>`;
-      }).join("")
-    : `<p class="muted">Nothing missed — flawless.</p>`;
-  $("reviewSub").textContent = `${missed.length} question${missed.length === 1 ? "" : "s"} to review`;
-  $("btnDrillMissed").style.display = missed.length ? "" : "none";
-  $("btnDrillMissed").innerHTML = `${icon("target", 15)} Drill These Questions`;
-  session.lastMissed = missed.map(a => a.qid);
-  showView("results");
-  if (r.pass && session.mode === "exam") confetti();
-}
-
-/* ---------------- FLASHCARDS ---------------- */
-/* Sign ARTWORK is shared across jurisdictions, but the WORDING attached to a sign
- * is not: GB says level crossing and 1.5 m when passing a cyclist, where the US
- * text says railroad and 3 feet. A sign that appears in more than one
- * jurisdiction's bank carries a per-jurisdiction variant under `alt`, which wins.
- */
-function signCopy(id) {
-  const s = SIGNS[id];
-  if (!s) return { name: "", meaning: "" };
-  const alt = s.alt && s.alt[state.settings.statePack];
-  return alt ? { name: alt.name || s.name, meaning: alt.meaning || s.meaning } : s;
-}
-function signArt(id, size) {
-  return signSVG(id, size, signCopy(id).name);
-}
-
-let fcIndex = 0;
-function fcIds() {
-  /* Deck is scoped to the signs this jurisdiction's questions actually use, so
-     a GB learner is never drilled on US-only artwork (and vice versa). Falls
-     back to the full library only if the bank references no signs at all. */
-  const used = Core.signIdsInBank(bank).filter((id) => SIGNS[id]);
-  const ids = used.length ? used : Object.keys(SIGNS);
-  if (state.fcOrder && state.fcOrder.length === ids.length &&
-      state.fcOrder.every((id) => ids.includes(id))) return state.fcOrder;
-  return ids;
-}
-function renderFlashcards() {
-  const ids = fcIds();
-  fcIndex = Math.min(fcIndex, ids.length - 1);
-  const id = ids[fcIndex];
-  const copy = signCopy(id);
-  $("fcSign").innerHTML = signArt(id, 200);
-  $("fcName").textContent = copy.name;
-  $("fcMeaning").textContent = copy.meaning;
-  $("fcCounter").textContent = `${fcIndex + 1} / ${ids.length}`;
-  const scope = $("fcScope");
-  if (scope) {
-    const t = termsForPack();
-    scope.textContent = `${ids.length} signs used in your ${t.regionLabel} pack \u2014 cards for signs that appear in that jurisdiction's questions, not the whole shared library.`;
-  }
-  const known = ids.filter((k) => state.fcKnown[k]).length;
-  $("fcKnownPill").innerHTML = `${icon("check", 13)} ${known}/${ids.length} known`;
-  const card = $("flashcard");
-  card.classList.remove("flipped");
-  card.classList.toggle("known", !!state.fcKnown[id]);
-  $("btnFcYes").innerHTML = `${icon("check", 16)} ${state.fcKnown[id] ? "Known" : "I Know It"}`;
-}
-function flipCard() { $("flashcard").classList.toggle("flipped"); }
-function fcMove(d) { fcIndex = (fcIndex + d + fcIds().length) % fcIds().length; renderFlashcards(); }
-function fcMark(known) {
-  const id = fcIds()[fcIndex];
-  if (known) state.fcKnown[id] = true; else delete state.fcKnown[id];
-  save();
-  if (fcIds().every(s => state.fcKnown[s])) unlock("signs");
-  fcMove(1);
-}
+function toggleFlag() { if (QuizUI) QuizUI.toggleFlag(); }
 
 /* ---------------- STATS ---------------- */
-
-function renderFluency() {
-  const f = Core.answerFluency(bank, state.qstats, state.rtSamples);
-  const body = $("fluencyBody");
-  if (!f.ready) {
-    body.innerHTML = `<p class="muted">How quickly you answer says something the right/wrong count cannot:
-      a fast wrong answer is a misconception, a slow right one is knowledge that is not automatic yet.
-      Answer ${f.needed} more question${f.needed === 1 ? "" : "s"} and this fills in — the thresholds are
-      your own typical speed, not a fixed stopwatch.</p>`;
-    return;
-  }
-  const secs = (ms) => (ms / 1000).toFixed(1) + "s";
-  const list = (items, empty) => items.length
-    ? `<ul class="fluency-list">${items.slice(0, 5).map(x =>
-        `<li><span>${escapeHTML(x.q.q)}</span><b>&times;${x.count}</b></li>`).join("")}</ul>`
-    : `<p class="muted">${empty}</p>`;
-  body.innerHTML = `
-    <p class="muted">Measured against your own pace: about ${secs(f.medianMs)} is typical,
-      over ${secs(f.slowMs)} is slow for you. Based on your last ${f.samples} answers.</p>
-    <h3 class="fluency-head">Answered fast and wrong &mdash; ${f.misconceptions.length}</h3>
-    <p class="muted">You were sure and you were wrong. These are the ones you cannot catch yourself on,
-      so practice surfaces them first.</p>
-    ${list(f.misconceptions, "None — nothing you got wrong came quickly.")}
-    <h3 class="fluency-head">Answered slow and right &mdash; ${f.fragile.length}</h3>
-    <p class="muted">You worked these out rather than knowing them. That holds up in practice and
-      slips under exam time pressure.</p>
-    ${list(f.fragile, "None — the ones you get right, you get right quickly.")}`;
-}
 
 function renderStats() {
   const acc = state.answered ? Math.round(100 * state.correctCount / state.answered) : null;
@@ -1328,313 +1015,33 @@ function renderCalibration() {
 
 /* ---------------- learner study (research) ---------------- */
 
-/* ---------------- HAZARD PERCEPTION ---------------- */
-const HZ = { V: 110, W: 360, H: 420, RL: 96, RR: 264, CARX: 158, CARY: 344 };
-const Y = (t, ts) => -46 + HZ.V * (t - ts);           // scroll position of an object spawned at ts
-const HZ_SCENARIOS = [
-  {
-    name: "Ball & child", win: [2.6, 6.0], max: 7.6,
-    hazard: "A child runs out from between parked vehicles while chasing a ball.",
-    clues: ["A ball rolls into the road", "Parked vehicles block the view", "Residential street"],
-    response: "Ease off immediately and prepare to stop; a child may follow the ball.",
-    tip: "A rolling ball means a child is close behind — react the moment you see it.",
-    objs: t => {
-      let s = "";
-      if (t >= 1.2) s += hzBall(300 - 50 * (t - 2.6), Y(t, 2.6));
-      if (t >= 4.0) s += hzPerson(320 - 70 * (t - 4.0), Y(t, 4.0));
-      return s;
-    },
-  },
-  {
-    name: "Parked car door", win: [3.0, 5.6], max: 7.2,
-    hazard: "A door opens from a parked vehicle into your path.",
-    clues: ["A silhouette appears in the parked vehicle", "You are passing close to parked cars", "The gap narrows"],
-    response: "Drop back or move left if clear and give the door zone space.",
-    tip: "Park beside the door zone — expect doors to open and leave a gap.",
-    objs: t => {
-      let s = hzParked(Y(t, 2.0));
-      if (t >= 3.2) s += hzDoor(Y(t, 2.0), Math.min(1, (t - 3.2) / 1.1));
-      return s;
-    },
-  },
-  {
-    name: "Brake lights ahead", win: [3.0, 5.1], max: 6.8,
-    hazard: "Traffic ahead brakes suddenly after a crest.",
-    clues: ["Brake lights appear ahead", "Following distance is short", "The view beyond the crest is limited"],
-    response: "Ease off and increase your gap before the queue reaches you.",
-    tip: "Brake lights far ahead are your first warning — ease off the gas early.",
-    objs: t => {
-      const y = -46 + HZ.V * (t - 3.0) + (t > 3.6 ? 30 * (t - 3.6) * (t - 3.6) : 0);
-      return hzCarAhead(178, y, t > 3.4 && Math.floor(t * 4) % 2 === 0);
-    },
-  },
-  {
-    name: "Rural animal crossing", win: [3.2, 4.9], max: 6.5,
-    hazard: "An animal crosses from a rural verge.",
-    clues: ["Warning signs or open fields", "Movement at the road edge", "One animal often precedes another"],
-    response: "Brake in your lane and be ready to stop; do not swerve at speed.",
-    tip: "Where one animal crosses, more follow — brake in your lane, don't swerve.",
-    objs: t => hzDeer(30 + (t >= 3.2 ? 60 * (t - 3.2) : 0), Y(t, 1.6)),
-  },
-  {
-    name: "Waiting pedestrian", win: [3.0, 5.4], max: 7.0,
-    hazard: "A pedestrian waiting at a crossing starts to move toward the road.",
-    clues: ["Crosswalk markings ahead", "A person waits near the kerb", "Their attention is on traffic, not you"],
-    response: "Slow down before they step out and prepare to give way.",
-    tip: "A waiting pedestrian plus a crosswalk = slow now, not when they step out.",
-    objs: t => {
-      let s = hzCrosswalk(Y(t, 1.4));
-      s += hzPerson(292 - (t >= 4.0 ? 60 * (t - 4.0) : 0), Y(t, 1.4) + 8);
-      return s;
-    },
-  },
-  {
-    name: "Cyclist ahead", win: [2.6, 4.6], max: 6.2,
-    hazard: "A cyclist moves around a parked vehicle into your lane.",
-    clues: ["The cyclist looks over their shoulder", "A parked vehicle narrows the lane", "No safe passing gap yet"],
-    response: "Ease off and hold back until you can pass with at least 1.5 metres.",
-    tip: "Riders swerve for hazards you can't see — give them room to do it.",
-    objs: t => hzCyclist(246 - (t >= 2.6 ? 38 * (t - 2.6) : 0), Y(t, 1.8)),
-  },
-  {
-    name: "Emerging vehicle", win: [2.8, 5.0], max: 6.8,
-    hazard: "A vehicle emerges from a side road into your path.",
-    clues: ["A junction is ahead", "Wheels move before the vehicle appears", "The side-road view is partly blocked"],
-    response: "Cover the brake and prepare to slow; give the emerging driver time to react.",
-    tip: "At junctions, watch wheels and nose movement — they often move before the car appears.",
-    objs: t => {
-      let s = hzJunction(Y(t, 1.2));
-      const k = Math.min(1, Math.max(0, (t - 2.8) / 1.5));
-      if (t >= 2.8) s += hzCarAhead(126 + 45 * k, Y(t, 1.2) + 18, false);
-      return s;
-    },
-  },
-  {
-    name: "Merging traffic", win: [3.1, 5.5], max: 7.0,
-    hazard: "A vehicle accelerates down a slip road into your lane.",
-    clues: ["A merge arrow or slip road appears", "The other vehicle's speed is still changing", "Your lane becomes the through lane"],
-    response: "Adjust speed or change lane early; avoid competing for the same space.",
-    tip: "Merge conflicts are about space and speed — make room before the lane line ends.",
-    objs: t => {
-      let s = hzMergeLine(Y(t, 1.6));
-      const k = Math.min(1, Math.max(0, (t - 3.1) / 1.7));
-      s += hzCarAhead(92 + 88 * k, Y(t, 1.6) + 30, false);
-      return s;
-    },
-  },
-  {
-    name: "Motorcycle filtering", win: [2.9, 4.9], max: 6.5,
-    hazard: "A motorcycle filters between slow vehicles into your lane.",
-    clues: ["A narrow moving shape appears between vehicles", "Traffic ahead is slow", "Mirror checks are essential"],
-    response: "Hold steady, check mirrors, and leave room; do not move suddenly.",
-    tip: "Filtering riders rely on predictable drivers — avoid abrupt lane movement.",
-    objs: t => {
-      const k = Math.min(1, Math.max(0, (t - 2.9) / 1.4));
-      return hzMotorcycle(132 + 66 * k, Y(t, 1.5));
-    },
-  },
-  {
-    name: "Restricted visibility", win: [3.0, 5.2], max: 6.8,
-    hazard: "A parked van blocks your view of a crossing pedestrian.",
-    clues: ["A large vehicle hides the near-side view", "A school or shop is nearby", "Speed makes the hidden risk worse"],
-    response: "Slow until you can see past the obstruction and be ready to stop.",
-    tip: "If you cannot see, assume something may be there — slow to see.",
-    objs: t => {
-      let s = hzVan(220, Y(t, 1.4));
-      if (t >= 4.0) s += hzPerson(302 - 70 * (t - 4.0), Y(t, 1.4) + 10);
-      return s;
-    },
-  },
-  {
-    name: "Roadworks ahead", win: [3.0, 5.3], max: 6.9,
-    hazard: "Workers and cones narrow the carriageway.",
-    clues: ["Temporary cones appear", "Signals or workers are present", "Lanes merge ahead"],
-    response: "Reduce speed before the cone taper and follow the temporary lane.",
-    tip: "Treat roadworks as a speed problem first — deal with the merge second.",
-    objs: t => {
-      let s = hzCones(Y(t, 1.5));
-      if (t >= 3.4) s += hzPerson(278, Y(t, 1.5) + 5);
-      return s;
-    },
-  },
-  {
-    name: "Emergency vehicle", win: [2.8, 4.8], max: 6.4,
-    hazard: "An emergency vehicle approaches from behind while the road ahead narrows.",
-    clues: ["Flashing blue lights in mirrors", "Traffic starts pulling right", "Sirens change direction"],
-    response: "Check mirrors, then pull right or stop where it is safe and legal.",
-    tip: "Never block an intersection to make room — move right only when it is safe.",
-    objs: t => {
-      const k = Math.min(1, Math.max(0, (t - 2.8) / 1.5));
-      let s = hzCarAhead(168, 70 + 90 * (1 - k), false);
-      if (t >= 2.8) s += hzBlueLights(168, 70 + 90 * (1 - k));
-      return s;
-    },
-  },
-];
 
-function hzRR(x, y, w, h, fill, rx, extra) {
-  return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w}" height="${h}" rx="${rx || 4}" fill="${fill}" ${extra || ""}/>`;
+/* ---------------- HAZARD PERCEPTION ----------------
+ * Scenario bank + scene drawing live in js/hazard-scenarios.js; the game UI in
+ * js/hazard-ui.js. This file only wires the home card and stats labels. */
+const HazardUI = window.RoadReadyHazardUI;
+const HazardScenarios = (typeof window !== "undefined" ? window.RoadReadyHazardScenarios : null)
+  || (typeof globalThis !== "undefined" ? globalThis.RoadReadyHazardScenarios : null);
+const HZ_SCENARIOS = (HazardScenarios && HazardScenarios.scenarios) || [];
+if (HazardUI) {
+  HazardUI.init({
+    Core,
+    Scenarios: HazardScenarios,
+    getState: () => state,
+    save: () => save(),
+    showView: (name) => showView(name),
+    toast,
+    icon,
+    addXP,
+    unlock,
+    checkProgressAchievements,
+    hazardInfoForPack: () => hazardInfoForPack(),
+    termsForPack: () => termsForPack(),
+    renderHome: () => renderHome(),
+    escapeHTML,
+  });
 }
-function hzC(x, y, r, fill) { return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" fill="${fill}"/>`; }
-function hzBall(x, y) { return hzC(x, y, 7, "#c1272d") + hzC(x - 2, y - 2, 2, "rgba(255,255,255,.35)"); }
-function hzPerson(x, y) { return hzC(x, y, 7, "#e8e8ec") + hzRR(x - 6, y + 6, 12, 16, "#8b8b93", 4) + hzRR(x - 8, y + 8, 16, 4, "#c1272d", 2); }
-function hzParked(y) { return hzRR(226, y, 34, 64, "#3a3a44", 6) + hzRR(230, y + 8, 26, 18, "#26262e", 3); }
-function hzDoor(y, k) { return hzRR(226 - 24 * k, y + 14, 24 * k, 34, "#8b8b93", 3); }
-function hzCarAhead(x, y, braking) {
-  let s = hzRR(x - 20, y, 40, 58, "#4a4a55", 6) + hzRR(x - 14, y + 8, 28, 16, "#26262e", 3);
-  if (braking) s += hzC(x - 12, y + 54, 4, "#c1272d") + hzC(x + 12, y + 54, 4, "#c1272d");
-  return s;
-}
-function hzDeer(x, y) { return hzRR(x - 16, y - 6, 34, 14, "#8a6d4f", 6) + hzRR(x + 14, y - 12, 12, 8, "#8a6d4f", 3) + hzRR(x - 12, y + 8, 4, 10, "#6f573d", 1) + hzRR(x + 6, y + 8, 4, 10, "#6f573d", 1); }
-function hzCrosswalk(y) {
-  let s = "";
-  for (let i = 0; i < 5; i++) s += hzRR(102, y + i * 15, 156, 8, "rgba(255,255,255,.75)", 2);
-  return s;
-}
-function hzCyclist(x, y) { return hzRR(x - 5, y - 8, 12, 14, "#e8e8ec", 4) + hzC(x - 10, y + 12, 6, "#0b0b0d") + hzC(x + 12, y + 12, 6, "#0b0b0d") + hzRR(x - 16, y - 4, 8, 3, "#8b8b93", 1); }
-function hzJunction(y) { return hzRR(HZ.RR - 20, y, 76, 4, "rgba(255,255,255,.45)", 1) + hzRR(HZ.RR - 20, y + 7, 4, 4, "rgba(255,255,255,.45)", 1) + hzRR(HZ.RR - 20, y + 14, 4, 4, "rgba(255,255,255,.45)", 1); }
-function hzMergeLine(y) { return hzRR(214, y, 4, 108, "rgba(255,255,255,.35)", 1) + hzRR(214, y + 114, 4, 4, "rgba(255,255,255,.35)", 1); }
-function hzMotorcycle(x, y) { return hzRR(x - 4, y - 5, 10, 14, "#e8e8ec", 3) + hzC(x - 4, y + 11, 5, "#0b0b0d") + hzC(x + 7, y + 11, 5, "#0b0b0d"); }
-function hzVan(x, y) { return hzRR(x - 28, y, 56, 84, "#4d4d58", 7) + hzRR(x - 22, y + 8, 20, 22, "#222229", 4); }
-function hzCones(y) { let s = ""; for (let i = 0; i < 3; i++) { const cy = y + i * 26; s += hzC(204 + (i % 2) * 7, cy, 6, "#e07b18") + hzRR(199 + (i % 2) * 7, cy + 5, 12, 3, "#e07b18", 1); } return s; }
-function hzBlueLights(x, y) { return hzC(x - 14, y + 2, 5, "#4287f5") + hzC(x + 14, y + 2, 5, "#4287f5"); }
-
-let hz = null;
-function hzScene(t, sc) {
-  const W = HZ.W, H = HZ.H, RL = HZ.RL, RR = HZ.RR;
-  let s = `<rect width="${W}" height="${H}" fill="#0b0b0d"/>`;
-  s += hzRR(0, 0, W, H, "#101013");
-  s += hzRR(RL - 18, 0, 18, H, "#1b1b21", 0) + hzRR(RR, 0, 18, H, "#1b1b21", 0);
-  s += hzRR(RL, 0, RR - RL, H, "#17171c", 0);
-  s += hzRR(RL - 4, 0, 4, H, "rgba(255,255,255,.25)", 0) + hzRR(RR, 0, 4, H, "rgba(255,255,255,.25)", 0);
-  const mod = (HZ.V * t) % 46;
-  for (let y = -46 + mod; y < H + 40; y += 46) s += hzRR(W / 2 - 2, y, 4, 24, "rgba(255,255,255,.28)", 1);
-  const tm = (HZ.V * t) % 150;
-  for (let k = -1; k < 4; k++) {
-    const ty = k * 150 + tm - 30;
-    s += hzC(44, ty, 13, "#1d1d24") + hzRR(41, ty + 8, 6, 12, "#141419", 2);
-    s += hzC(316, ty + 75, 13, "#1d1d24") + hzRR(313, ty + 83, 6, 12, "#141419", 2);
-  }
-  s += sc.objs(t);
-  s += hzRR(HZ.CARX, HZ.CARY, 44, 66, "#e8e8ec", 10) + hzRR(HZ.CARX + 6, HZ.CARY + 10, 32, 14, "#0b0b0d", 4) + hzRR(HZ.CARX + 6, HZ.CARY + 40, 32, 10, "#b9b9c2", 3);
-  return s;
-}
-function hzShowOverlay(html) { $("hzOverlay").innerHTML = html; $("hzOverlay").classList.add("show"); }
-function hzHideOverlay() { $("hzOverlay").classList.remove("show"); }
-function hzStartGame() {
-  hz = { i: 0, scores: [], press: null, t0: 0, timer: null, running: false, marked: false };
-  const sub = $("hazardSub");
-  if (sub) {
-    const hzInfo = hazardInfoForPack();
-    const terms = termsForPack();
-    const base = "Tap <b>SLOW</b> (or press <b>Space</b>) the moment a hazard starts to develop — before you'd need to brake hard. Earlier = more points. ";
-    sub.innerHTML = hzInfo.includedInExam
-      ? `${base}Core section of your ${escapeHTML(terms.examName)}${hzInfo.officialFormat ? ` (real test: ${escapeHTML(hzInfo.officialFormat)})` : ""} — this trainer builds the same early-spotting skill.`
-      : `${base}Bonus training: your ${escapeHTML(terms.examName)} does not include this scored section, but the skill saves lives.`;
-  }
-  showView("hazard");
-  hzIntro();
-}
-function hzIntro() {
-  const best = state.hazardBest ? ` · best ${state.hazardBest}/${HZ_SCENARIOS.length * 5}` : "";
-  hzShowOverlay(`
-    <div class="ov-inner">
-      <span class="ov-ico">${icon("eye", 34)}</span>
-      <h2>Hazard identification training</h2>
-      <p>${HZ_SCENARIOS.length} original scenarios. One developing hazard each.<br>Tap <b>SLOW</b> — or press <b>Space</b> — as soon as the hazard starts to develop.</p>
-      <p class="ov-dim">5 points for instant recognition, down to 1. Too early or too late scores 0${best}.</p>
-      <button class="btn primary" id="hzGo">Start</button>
-    </div>`);
-  renderHazardAccessibleList();
-  $("hzGo").focus();
-  on($("hzGo"), "click", hzNextScenario);
-}
-function renderHazardAccessibleList() {
-  const host = $("hzAccessibleList");
-  if (!host) return;
-  host.innerHTML = HZ_SCENARIOS.map((sc, i) => `<article class="hz-access-list">
-    <b>${i + 1}. ${sc.name}</b>
-    <p><b>Developing hazard:</b> ${sc.hazard}</p>
-    <p><b>Early clues:</b></p><ul>${sc.clues.map((c) => `<li>${c}</li>`).join("")}</ul>
-    <p><b>Best response:</b> ${sc.response}</p>
-  </article>`).join("");
-}
-function hzNextScenario() {
-  if (hz.i >= HZ_SCENARIOS.length) return hzResults();
-  const sc = HZ_SCENARIOS[hz.i];
-  hz.press = null; hz.marked = false; hz.running = false;
-  $("hzSlow").classList.remove("pressed");
-  $("hzFlash").hidden = true;
-  hzShowOverlay(`<div class="ov-inner"><p class="ov-count">${hz.i + 1} / ${HZ_SCENARIOS.length}</p><h2>${sc.name}</h2><p class="ov-dim">Get ready…</p></div>`);
-  $("hzSvg").innerHTML = hzScene(0, { objs: () => "" });
-  setTimeout(() => {
-    hzHideOverlay();
-    hz.running = true;
-    hz.t0 = performance.now();
-    hz.timer = setInterval(() => {
-      const t = (performance.now() - hz.t0) / 1000;
-      $("hzSvg").innerHTML = hzScene(t, sc);
-      if (t >= sc.max) hzEndScenario(sc);
-    }, 60);
-  }, 1400);
-}
-function hzPress() {
-  if (!hz || !hz.running || hz.marked) return;
-  hz.marked = true;
-  hz.press = (performance.now() - hz.t0) / 1000;
-  $("hzSlow").classList.add("pressed");
-}
-function hzEndScenario(sc) {
-  clearInterval(hz.timer);
-  hz.running = false;
-  const [s, e] = sc.win;
-  const press = hz.press;
-  const r = Core.hazardScore(press, s, e);
-  let pts = r.pts, verdict;
-  if (r.band === "late") { verdict = "Too late — the hazard fully developed"; $("hzFlash").hidden = false; }
-  else if (r.band === "early") { verdict = "Too early — that was not yet a developing hazard"; }
-  else if (r.band === "instant") verdict = "Instant recognition";
-  else if (r.band === "good") verdict = "Good early recognition";
-  else verdict = "Recognised, but late";
-  hz.scores.push(pts);
-  hzShowOverlay(`
-    <div class="ov-inner">
-      <p class="ov-count">${hz.i + 1} / ${HZ_SCENARIOS.length} · ${sc.name}</p>
-      <div class="ov-pts ${pts ? "" : "zero"}">${pts ? "+" + pts : "0"} pts</div>
-      <p><b>${verdict}</b></p>
-      <p class="ov-dim"><b>Developing hazard:</b> ${sc.hazard}</p>
-      <p class="ov-dim"><b>Early clues:</b> ${sc.clues.join(" · ")}</p>
-      <p class="ov-dim"><b>Best response:</b> ${sc.response}</p>
-      <p class="ov-dim">${sc.tip}</p>
-    </div>`);
-  hz.i++;
-  setTimeout(() => { if (hz) hzNextScenario(); }, 2600);
-}
-function hzResults() {
-  const maxScore = HZ_SCENARIOS.length * 5;
-  const total = hz.scores.reduce((a, b) => a + b, 0);
-  const best = Math.min(maxScore, Math.max(state.hazardBest, total));
-  const isNew = total > state.hazardBest;
-  state.hazardBest = best;
-  state.hazardPct = total / maxScore;
-  addXP(total * Core.XP_PER_HAZARD_POINT);
-  if (total >= Math.round(maxScore * 0.7)) unlock("hawk");
-  save();
-  checkProgressAchievements();
-  hzShowOverlay(`
-    <div class="ov-inner">
-      <span class="ov-ico">${icon(total >= maxScore * 0.6 ? "trophy" : "eye", 34)}</span>
-      <h2>${total} / ${maxScore}</h2>
-      <p>${total >= maxScore * 0.7 ? "Hawk-level awareness." : total >= maxScore * 0.6 ? "Solid instincts — polish the early spots." : "Keep training — early recognition is the skill."}</p>
-      ${isNew ? `<p class="ov-dim">New personal best</p>` : `<p class="ov-dim">Best: ${best}/${maxScore}</p>`}
-      <div class="ov-btns">
-        <button class="btn ghost" id="hzAgain">Play Again</button>
-        <button class="btn primary" id="hzDone">Done</button>
-      </div>
-    </div>`);
-  on($("hzAgain"), "click", hzStartGame);
-  on($("hzDone"), "click", () => { hz = null; renderHome(); showView("home"); });
-}
+function hzStartGame() { if (HazardUI) HazardUI.start(); }
 
 /* ---------------- theme ---------------- */
 function applyTheme() {
@@ -1766,14 +1173,9 @@ function init() {
     else stopSpeaking();
   });
 
-  // hazard perception
+  // hazard perception: #fcHazard starts the training; the module owns #hzSlow,
+  // #hzQuit and the Space key handler once rendered.
   on($("fcHazard"), "click", hzStartGame);
-  on($("hzSlow"), "click", hzPress);
-  on($("hzQuit"), "click", () => {
-    if (hz && hz.timer) clearInterval(hz.timer);
-    hz = null;
-    renderHome(); showView("home");
-  });
 
   on($("btnTheme"), "click", () => {
     state.settings.theme = state.settings.theme === "dark" ? "light" : "dark";
@@ -1794,6 +1196,12 @@ function init() {
   });
   on($("btnFlag"), "click", toggleFlag);
   on($("btnAgain"), "click", () => {
+    // Post-mock: the primary action is the targeted drill built from the
+    // concepts missed — not a blind replay of the same mock.
+    if (session && session.lastDrill && session.lastDrill.questions.length) {
+      startPractice(shuffle(session.lastDrill.questions), session.lastDrill.label, "home");
+      return;
+    }
     if (session && session.official && session.blueprint) {
       const packId = Packs.PACK_IDS.includes(state.settings.statePack) ? state.settings.statePack : null;
       if (packId && BLUEPRINTS[packId]) { startOfficialExam(packId); return; }
@@ -1801,7 +1209,7 @@ function init() {
     if (session && session.mode === "exam") startExam(session.questions.length);
     else startPractice(pickWeighted(adaptivePool(), session ? session.questions.length : 10), "Today's Set", "home");
   });
-  on($("btnReviewMissed"), "click", () => showView("review"));
+  on($("btnReviewMissed"), "click", () => { renderReview(); showView("review"); });
   on($("btnHomeR"), "click", () => { renderHome(); showView("home"); });
   on($("btnDrillMissed"), "click", () => {
     const ids = (session && session.lastMissed) || missedQuestions().map(q => q.id);
@@ -1835,17 +1243,16 @@ function init() {
     if (!m.length) { alert("Nothing missed yet — keep practicing!"); return; }
     startPractice(pickWeighted(m.map(q => ({ q, w: 1 })), Math.min(10, m.length)), "Missed Questions", "home");
   });
+  on($("btnPlanDate"), "click", () => {
+    showView("settings");
+    setTimeout(() => { $("inpTestDate").scrollIntoView({ block: "center" }); $("inpTestDate").focus(); }, 0);
+  });
   on($("btnPlanAction"), "click", e => {
     const action = e.currentTarget.dataset.action;
     if (action === "set-date") {
       showView("settings");
       setTimeout(() => { $("inpTestDate").scrollIntoView({ block: "center" }); $("inpTestDate").focus(); }, 0);
       return;
-    }
-    if (action === "exam") {
-      const packId = Packs.PACK_IDS.includes(state.settings.statePack) ? state.settings.statePack : null;
-      if (packId && BLUEPRINTS[packId]) { startOfficialExam(packId); return; }
-      startSetup("exam"); return;
     }
     if (action === "review") {
       const missed = missedQuestions();
@@ -1857,12 +1264,17 @@ function init() {
       startPractice(pickWeighted(adaptivePool(), size), "Test Day Review", "home");
       return;
     }
+    if (action === "coach") {
+      startCoachSession();
+      return;
+    }
+    if (action === "exam") {
+      const packId = Packs.PACK_IDS.includes(state.settings.statePack) ? state.settings.statePack : null;
+      if (packId && BLUEPRINTS[packId]) { startOfficialExam(packId); return; }
+      startSetup("exam"); return;
+    }
     const plan = Core.studyPlan(bank, state.qstats, state.exams, state.daily, state.settings.testDate, todayStr());
-    const rec = Core.dailyStudyRecommendation({
-      bank, qstats: state.qstats, exams: state.exams, daily: state.daily,
-      testDate: state.settings.testDate, today: todayStr(), nowMs: Date.now(),
-    });
-    const size = Math.min(Math.max(rec.questions, 5), bank.length);
+    const size = Math.min(Math.max(plan.dailyTarget, 5), bank.length);
     startPractice(pickWeighted(adaptivePool(), size), "Today's Plan", "home");
     void plan;
   });
@@ -1874,14 +1286,8 @@ function init() {
   on($("btnFcNext"), "click", () => fcMove(1));
   on($("btnFcYes"), "click", () => fcMark(true));
   on($("btnFcNo"), "click", () => fcMark(false));
-  on($("btnFcShuffle"), "click", () => {
-    state.fcOrder = shuffle(fcIds());
-    fcIndex = 0; save(); renderFlashcards();
-  });
-  on($("btnFcReset"), "click", () => {
-    if (!confirm("Reset all 'known' marks?")) return;
-    state.fcKnown = {}; state.fcOrder = null; save(); renderFlashcards();
-  });
+  on($("btnFcShuffle"), "click", () => { if (FlashcardsUI) FlashcardsUI.shuffleDeck(); });
+  on($("btnFcReset"), "click", () => { if (FlashcardsUI) FlashcardsUI.resetDeck(); });
 
   // settings
   on($("selPassMark"), "change", e => { state.settings.passMark = parseFloat(e.target.value); save(); });
@@ -1970,9 +1376,8 @@ function init() {
       else if (e.key === "ArrowLeft") fcMove(-1);
       else if (e.key.toLowerCase() === "k") fcMark(true);
       else if (e.key.toLowerCase() === "l") fcMark(false);
-    } else if (active.id === "view-hazard") {
-      if (e.key === " ") { e.preventDefault(); hzPress(); }
     }
+    // view-hazard keyboard handling lives in js/hazard-ui.js (Space to react)
   });
 
   showView("home");

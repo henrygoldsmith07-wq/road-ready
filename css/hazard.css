@@ -1,0 +1,54 @@
+/* Road Ready — hazard-perception specific styles.
+ * Reuses the css/styles.css tokens and classes (.card, .btn, .ov-*,
+ * .kbd-hint, :focus-visible) and adds only what the hazard training needs:
+ * the timeline, the live region, the accessible list details, and the
+ * reduced-motion behaviour. Monochrome minimal, consistent with the app.
+ */
+
+/* ---------- timeline ---------- */
+.hz-timeline-wrap { margin: 12px 0 4px; }
+.hz-progress { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
+.hz-tl-track {
+  position: relative; height: 14px; border-radius: 7px;
+  background: var(--line); overflow: visible;
+}
+.hz-tl-window {
+  position: absolute; top: 0; bottom: 0;
+  background: color-mix(in srgb, var(--text) 22%, transparent);
+  border: 1px solid var(--line-strong); border-radius: 7px;
+}
+.hz-tl-mark {
+  position: absolute; top: -3px; width: 4px; height: 20px;
+  margin-left: -2px; border-radius: 2px;
+  background: var(--text); border: 1px solid var(--bg);
+}
+.hz-tl-mark:first-of-type { background: var(--accent); }
+.hz-tl-axis { display: flex; justify-content: space-between; color: var(--muted); font-size: 10px; margin-top: 3px; }
+.hz-tl-text { color: var(--muted); font-size: 12.5px; margin: 6px 0 0; }
+.hz-verdict { font-size: 13.5px; margin: 8px 0 0; min-height: 1.4em; }
+
+/* ---------- live region & summary ---------- */
+.hz-live {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0; padding: 0; margin: -1px;
+}
+.hz-sum-list { margin: 8px 0; padding-left: 18px; color: var(--muted); font-size: 12.5px; }
+.hz-sum-list li { margin-bottom: 4px; }
+
+/* ---------- accessible list ---------- */
+.hz-access-list ul { margin: 4px 0 4px 18px; }
+.hz-access-list li { margin-bottom: 3px; }
+.hz-access-details[open] { margin-bottom: 14px; }
+
+/* ---------- scene stage polish ---------- */
+.hz-stage { touch-action: manipulation; }
+.hz-actions .hz-slow { min-width: 44px; min-height: 48px; }
+.hz-actions .btn.ghost { min-width: 88px; min-height: 44px; }
+
+/* ---------- reduced motion: static scene + instant transitions ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .hz-tl-window,
+  .hz-tl-mark,
+  .hz-tl-track { transition: none !important; animation: none !important; }
+  .hz-overlay { transition: none !important; }
+}

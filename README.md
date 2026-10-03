@@ -4,7 +4,7 @@ A self-contained driving-theory study app with no client build step and no inter
 
 ## What Road Ready is (product decision)
 
-**Jurisdiction-pluggable driving-theory trainer. Shipped with two jurisdiction modules: the United States** (universal bank + CA, TX, NY, FL, WA, PA region packs with official exam simulations) **and Great Britain** (England, Scotland and Wales; Highway Code car-theory pack with a 60-question verified bank feeding the DVSA 50/43-in-57-minutes official simulation; hazard perception is a core section there).
+**Jurisdiction-pluggable driving-theory trainer. Shipped with two jurisdiction modules: the United States** (universal bank + CA, TX, NY, FL, WA, PA region packs with official exam simulations) **and Great Britain** (England, Scotland and Wales; Highway Code car-theory pack with a 355-question verified bank feeding the DVSA 50/43-in-57-minutes official simulation; hazard perception is a core section there).
 
 The architecture grows by adding jurisdiction modules, not by
 special-casing content: concepts, terminology, signs, scoring and test formats are jurisdiction modules (`js/jurisdictions.js` defines the contract; `js/state-packs.js`, `js/exam-blueprints.js` and the source registry are each module's data). The content QA system enforces the contract — packs and blueprints must be registered regions or CI fails. Country packs are strictly scoped: the Great Britain bank contains only GB-scoped Highway Code questions, so U.S. rules (right-on-red, U.S. BAC limits) never leak into GB study.
@@ -25,23 +25,25 @@ Two honest scoping calls that follow from this:
 | Feature | What it does |
 |---|---|
 | Onboarding | A 4-step first-run intro: what's inside, theme + read-aloud setup, and how the daily habit works — skippable, shown once |
-| Adaptive Practice | 267 universal U.S. questions plus jurisdiction packs (605 verified questions total) across 10 topics — the Great Britain pack alone is 300 questions across 302 concepts, spanning 9 **question forms** — junction-priority road-layout diagrams, lane-selection scenarios, sign combinations, what-happens-next chains, prioritisation drills, multi-step ordering, photo-described scenes, deliberately similar alternatives, same-concept rewording variants, and classic recall; mastery aggregates per concept (coverage × depth), then topic, then overall score |
+| Adaptive Coach | The Today Plan card answers "what should I study now" with one ranked, deterministic recommendation (fix-misconception, review-overdue, build-coverage, improve-fluency, strengthen-weak-topic, take-mock, maintain-strong, light-review): what to practise, why (measured evidence), how much, which misconception or weak concept is behind it — knowledge, retention, fluency or coverage — and what changed since your previous session |
+| Adaptive Practice | 267 universal U.S. questions plus jurisdiction packs (660 verified questions total) across 10 topics — the Great Britain pack alone is 355 questions across 351 concepts, spanning 9 **question forms** — junction-priority road-layout diagrams, lane-selection scenarios, sign combinations, what-happens-next chains, prioritisation drills, multi-step ordering, photo-described scenes, deliberately similar alternatives, same-concept rewording variants, and classic recall; mastery aggregates per concept (coverage × depth), then topic, then overall score |
 | Marathon Mode | The full active-jurisdiction bank in one run — anything you miss comes back until you've seen it through |
-| Mock Exams | An **Official Simulation** locked to the selected jurisdiction's real published count, time limit and pass bar (e.g. DVSA car: 50 questions, 43 to pass, 57 minutes), plus two clearly-labelled extras: **Quick Check** (10 questions) and **Weak Topics Exam** (20 questions weighted toward your lowest categories) — timed, with no feedback until you submit |
+| Mock Exams | An **Official Simulation** locked to the selected jurisdiction's real published count, time limit and pass bar (e.g. DVSA car: 50 questions, 43 to pass, 57 minutes), plus two clearly-labelled extras: **Quick Check** (10 questions) and **Weak Topics Exam** (20 questions weighted toward your lowest categories) — timed, with no feedback until you submit. Afterwards, a concise debrief (concept-level weaknesses, repeated misconceptions, slow answers, right→wrong regressions) and one primary action: **turn the mock into a targeted drill** built from the concepts missed — different questions, same rules |
 | Official Simulations | Pick a jurisdiction and the exam locks to its real published count, time and pass bar **only when the bank has enough unique questions**. Full pools run as locked official-format simulations; incomplete pools are explicitly labelled practice previews and cannot award an official-standard pass. Specs include CA 46/38, TX 30/21, NY 20/14, FL 50/40 in 60 min, WA 40/32, PA 18/15, GB 50/43 in 57 min (`js/exam-blueprints.js`, source-cited) |
-| Hazard Perception | Interactive trainer with 12 animated scenarios (children, doors, deer, cyclists…) — labeled bonus training where exams don't include it (most U.S. states) and a core section where they do (GB DVSA test: 14 clips, 44/75); jurisdiction modules declare this via `hazardPerception.includedInExam` |
-| Sign Flashcards | 31 hand-drawn SVG road signs with flip animation and known/still-learning tracking |
+| Hazard Perception | A first-class training mode: 25 original animated scenarios (children, doors, cyclists, motorcyclists, buses, delivery vehicles, country roads, rain, darkness, concealed hazards, and multi-hazard scenes where only one situation develops) with per-scenario click analytics — first useful click, early anticipation, developing-window hits, late recognition, excessive clicking, misses — and a visual timeline after each scenario showing when the hazard started developing and where you clicked, plus a full text alternative. Original training material, never DVSA clips or scoring. Labeled bonus training where exams don't include it (most U.S. states) and a core section where they do (GB DVSA test: 14 clips, 44/75); jurisdiction modules declare this via `hazardPerception.includedInExam` |
+| Sign Flashcards | 53 hand-drawn SVG road signs (jurisdiction-aware wording) with spaced review — new, learning, familiar, mastered and due-for-review states, not a bare known/not-known bit |
 | Study Guide | Jurisdiction-native guidance. U.S. packs show the U.S. cheat sheets/road-test material; Great Britain hides those sections and relies on its verified GB fact card and theory question bank instead |
 | Read Aloud | Text-to-speech for questions, choices, and explanations — great for commutes and accessibility |
 | XP & Achievements | Earn XP for every answer, climb levels, and unlock 12 achievements from First Steps to Hawk Eye |
-| Review Missed | Every question you've ever missed, with the correct answer and why — plus one-tap drills |
+| Review Missed | A weakness-management area: mistakes grouped by misconception pattern, persistent vs recent errors, fast-wrong, slow-right and overdue review — with a "11 missed questions map to only 4 underlying concepts" summary and one-tap drills per group |
 | Progress | Study-progress score, per-topic mastery, accuracy, day streak, daily goal, study time, exam history |
+| Misconception Repair | A wrong answer becomes a learning sequence: the correct rule, the distinction you may have missed (hedged — Road Ready never claims to know your reasoning), a fresh concept variant later in the session, and escalating intervention on repeats — explicit rule comparison plus a targeted drill, then a tracked misconception card |
 | Answer Fluency *(new)* | How fast you answered, not just whether you were right. A question answered **fast and wrong** is a misconception you don't know you hold — invisible to a wrong-count, and surfaced first in practice and Review Missed. One answered **slow and right** is knowledge that isn't automatic yet, which is what slips under exam time pressure. Thresholds are your own percentiles, never a fixed stopwatch, and nothing is classified until you've answered enough for them to mean anything |
 | Drive Log *(new)* | Log supervised sessions (duration, conditions, road types, ✓/△/✗ per skill, instructor notes); skills roll up into 7 competencies (Observation, Vehicle control, Junctions, Roundabouts, Lane discipline, Parking, Independent driving) with a next-lesson-focus recommendation |
 | Training Progress | Theory progress and practical-session evidence stay separate in the UI; Road Ready does not combine them into a single driving-readiness/pass score |
 | Outcome Journal *(beta)* | The progress % is an **uncalibrated heuristic**, not a predicted pass probability. Log your real test result (opt-in, on-device only) — progress %, mock average, **coverage**, **stability**, questions seen and study time are snapshotted with the outcome to ground a future P(pass) model |
 | Calibration | Pooled outcome exports feed a **calibration curve** (progress bucket → observed pass rate). Buckets with fewer than 8 outcomes report "insufficient" — the app never states a probability it hasn't measured, and never implies theory readiness means safe independent practical driving |
-| Test Day Plan | Save your knowledge-test date and get an adaptive daily question target plus the best next action; private and fully offline |
+| Test Day Plan | Save your knowledge-test date and the plan adapts to it: far out it broadens coverage; 1–2 weeks out it adds mixed recall, persistent weaknesses and more mocks; the final days prioritise weak/high-value concepts; the day before is a light review — never a cram target and never a pass prediction |
 | Official Sources | Jurisdiction-rule explanations and Study Guide facts link directly to the issuing authority's source; dedicated local-rules drills keep cited material together |
 | Settings & Data | Separate screen for jurisdiction, practice preferences, test date, backups, optional account sync and reset controls; research/calibration is collapsed under an advanced section on Progress |
 
@@ -68,13 +70,16 @@ Questions follow general U.S. rules of the road common across state DMV handbook
 - `index.html` — app shell, views, and the study guide content
 - `css/styles.css` — monochrome dark/light theming, minimal component styles
 - `js/icons.js` — stroke icon set (~34 icons, currentColor)
-- `js/questions.js` — the question bank (267 Qs with explanations, 9 question forms)
-- `js/signs.js` — SVG road-sign library (32 signs)
-- `js/core.js` — pure engine: scoring, readiness, adaptive selection, spaced scheduling, exam assembly/grading, hazard scoring, XP/levels, achievements, state migration, import/export
+- `js/questions.js` — the universal U.S. question bank (267 Qs with explanations, 9 question forms)
+- `js/packs/uk.js` — the Great Britain (DVSA car theory) pack: region fact table + its 355-question bank
+- `js/signs.js` — SVG road-sign library (shared artwork, per-jurisdiction wording)
+- `js/core.js` — pure engine: scoring, readiness, concept mastery, adaptive selection, spaced scheduling (questions + sign flashcards), exam assembly/grading, hazard scoring + analytics, misconception ledger, XP/levels, achievements, state migration, import/export
+- `js/coach.js` — Adaptive Coach engine (DOM-free): deterministic recommendations, concept diagnosis, misconception tracking, review grouping, mock debrief + post-mock drill generation
 - `js/account.js` / `js/account-ui.js` — optional account transport and isolated sync/settings controller
-- `js/practical-ui.js` / `js/study-ui.js` — practical-log and learner-study UI modules (dependency-injected, no shared globals)
+- `js/practical-ui.js` / `js/study-ui.js` / `js/home-ui.js` / `js/quiz-ui.js` / `js/flashcards-ui.js` / `js/review-ui.js` / `js/results-ui.js` — UI-domain modules (dependency-injected, no shared globals): practical log, learner study, home/Today Plan, quiz, sign flashcards, weakness review, results/debrief
+- `js/hazard-scenarios.js` / `js/hazard-ui.js` / `css/hazard.css` — hazard-perception scenario bank (25 original scenes, SVG scene builders) and the training-mode UI (timeline feedback, analytics, accessible alternative)
 - `js/guide.js` — jurisdiction-native guide visibility/source controller
-- `js/state-packs.js` — state-specific content packs (CA, TX, NY, FL, WA, PA)
+- `js/state-packs.js` — jurisdiction content packs (CA, TX, NY, FL, WA, PA, UK) and the source registry
 - `js/app.js` — orchestration: router, quiz engine, shared state, view wiring
 - `serve.js` — tiny static server for local testing (serves the production CSP)
 - `docs/DEPLOYMENT.md` — deploy targets, security headers, migrations, rollback
@@ -98,8 +103,11 @@ npm run test:e2e     # Playwright E2E (desktop + mobile projects)
 **Unit tests (`tests/`, Vitest)** cover question scoring/mastery, pass/fail grading,
 exam timing, adaptive selection, missed-question resurfacing, weak-topic
 scheduling (SM-2-lite), progress statistics/readiness, XP & levels,
-achievements, hazard scoring, localStorage migration/versioning, import/export
-and state packs.
+achievements, hazard scoring and hazard analytics, localStorage
+migration/versioning, import/export and state packs — plus the Adaptive Coach
+engine (deterministic recommendations, misconception detection and
+repeated-error escalation, post-mock drill generation, test-date phase shifts,
+recommendation prioritisation), spaced sign review and jurisdiction isolation.
 
 **Content QA system (`scripts/`)** validates every commit's content:
 question-bank schema, duplicate questions (prompt+sign identity), duplicate

@@ -19,7 +19,7 @@
 "use strict";
 
 // scripts/update-sw.mjs rewrites the line below — do not edit by hand.
-const VERSION = "v.e28f81441a40";
+const VERSION = "v.5333f0d00564";
 const CACHE = `roadready-${VERSION}`;
 const SHELL = [
   "./",
@@ -30,6 +30,7 @@ const SHELL = [
   "css/styles.css",
   "js/boot-error.js",
   "js/core.js",
+  "js/coach.js",
   "js/format.js",
   "js/jurisdictions.js",
   "js/packs/uk.js",
@@ -42,6 +43,14 @@ const SHELL = [
   "js/account-ui.js",
   "js/practical-ui.js",
   "js/study-ui.js",
+  "js/flashcards-ui.js",
+  "js/review-ui.js",
+  "js/results-ui.js",
+  "js/home-ui.js",
+  "js/quiz-ui.js",
+  "js/hazard-scenarios.js",
+  "js/hazard-ui.js",
+  "css/hazard.css",
   "js/guide.js",
   "js/app.js",
 ];

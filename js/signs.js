@@ -296,6 +296,141 @@ const SIGNS = {
       <line x1="12" y1="74" x2="88" y2="74" stroke="#111" stroke-width="6" stroke-linecap="round"/>
       <g fill="#111" stroke="none"><rect x="42" y="20" width="28" height="14" rx="3"/><rect x="48" y="34" width="16" height="10"/></g>`)
   },
+  noOvertaking: {
+    name: "No Overtaking", family: "Regulatory — prohibition",
+    meaning: "You must not overtake moving traffic on this stretch of road. The ban applies from the sign until you pass the sign that cancels it, and the red ring marks it as an order, not advice.",
+    svg: `<circle cx="50" cy="50" r="46" fill="#fff" stroke="${RED}" stroke-width="9"/>` +
+      `<g fill="#111" stroke="none"><rect x="14" y="46" width="28" height="13" rx="3"/><rect x="19" y="39" width="15" height="8" rx="2"/><circle cx="22" cy="61" r="4"/><circle cx="37" cy="61" r="4"/></g>` +
+      `<g fill="${RED}" stroke="none"><rect x="54" y="46" width="28" height="13" rx="3"/><rect x="61" y="39" width="15" height="8" rx="2"/><circle cx="59" cy="61" r="4"/><circle cx="74" cy="61" r="4"/></g>`
+  },
+  noWaiting: {
+    name: "No Waiting", family: "Regulatory — prohibition",
+    meaning: "Waiting is prohibited along this road during the times shown on the plate below the sign. Stopping briefly for passengers to board or alight, or to load where loading is not also restricted, is different from waiting.",
+    svg: `<circle cx="50" cy="50" r="45" fill="${BLU}" stroke="${RED}" stroke-width="10"/><line x1="22" y1="78" x2="78" y2="22" stroke="${RED}" stroke-width="11" stroke-linecap="round"/>`
+  },
+  noStopping: {
+    name: "No Stopping (Clearway)", family: "Regulatory — prohibition",
+    meaning: "Stopping is prohibited on this length of road, even to set down or pick up passengers, except as a plate below the sign allows. The red cross on blue makes it the strictest of the circular prohibitions.",
+    svg: `<circle cx="50" cy="50" r="45" fill="${BLU}" stroke="${RED}" stroke-width="10"/>` +
+      `<line x1="24" y1="76" x2="76" y2="24" stroke="${RED}" stroke-width="10" stroke-linecap="round"/>` +
+      `<line x1="24" y1="24" x2="76" y2="76" stroke="${RED}" stroke-width="10" stroke-linecap="round"/>`
+  },
+  speedLimit30: {
+    name: "Speed Limit 30", family: "Regulatory — speed limit",
+    meaning: "You must not exceed 30 mph on this road. The figure is a maximum for ideal conditions; rain, fog, parked vehicles and people walking may all make a lower speed appropriate.",
+    svg: `<circle cx="50" cy="50" r="45" fill="#fff" stroke="${RED}" stroke-width="10"/>${txt(50, 66, "30", 44, "#111")}`
+  },
+  turnLeftAhead: {
+    name: "Turn Left Ahead", family: "Mandatory — blue circle",
+    meaning: "You must turn left where the instruction applies. Blue circles give orders rather than advice, so continuing straight past this sign is an offence.",
+    svg: `<circle cx="50" cy="50" r="45" fill="#1c4e9c"/>` +
+      `<g fill="#fff" stroke="none"><rect x="44" y="26" width="13" height="42"/><polygon points="28,36 50.5,16 73,36"/><rect x="30" y="56" width="27" height="13"/><polygon points="38,48 14,62.5 38,77"/></g>`
+  },
+  miniRoundabout: {
+    name: "Mini-roundabout", family: "Mandatory — blue circle",
+    meaning: "A mini-roundabout is ahead. Give way to traffic coming from your right and pass around the central marking, except where your vehicle is physically unable to do so.",
+    svg: `<circle cx="50" cy="50" r="45" fill="#1c4e9c"/>` +
+      `<circle cx="50" cy="50" r="9" fill="#fff"/>` +
+      `<g fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round"><path d="M20,54 A30,30 0 0 1 40,22"/><path d="M62,22 A30,30 0 0 1 80,54"/><path d="M72,78 A30,30 0 0 1 28,78"/></g>` +
+      `<polygon points="34,17 52,26 36,33" fill="#fff"/><polygon points="86,46 84,64 70,54" fill="#fff"/><polygon points="16,72 26,86 32,71" fill="#fff"/>`
+  },
+  busLane: {
+    name: "Bus Lane", family: "Mandatory — route for specified traffic",
+    meaning: "The lane ahead is reserved for buses during the hours shown on the plate. Other traffic should not use the lane at those times, although you may enter it to stop or to load and unload where that is not prohibited.",
+    svg: `<circle cx="50" cy="40" r="34" fill="#1c4e9c" stroke="#fff" stroke-width="3"/>` +
+      `<g fill="#fff" stroke="none"><rect x="28" y="24" width="44" height="24" rx="4"/><rect x="33" y="29" width="11" height="8"/><rect x="47" y="29" width="11" height="8"/><rect x="61" y="29" width="7" height="8"/><circle cx="38" cy="52" r="5"/><circle cx="62" cy="52" r="5"/></g>` +
+      `<rect x="14" y="78" width="72" height="16" fill="#fff" stroke="#111" stroke-width="2"/>${txt(50, 91, "BUS LANE", 11, "#111")}`
+  },
+  cycleRoute: {
+    name: "Route for Pedal Cycles", family: "Mandatory — route for specified traffic",
+    meaning: "This route is reserved for pedal cycles. Expect cyclists ahead, and when you pass one leave at least 1.5 metres of space at speeds up to 30 mph, and more at higher speeds.",
+    svg: `<circle cx="50" cy="50" r="45" fill="#1c4e9c"/>` +
+      `<g fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"><circle cx="32" cy="64" r="13"/><circle cx="68" cy="64" r="13"/><path d="M32,64 L45,42 L62,42 M58,64 L48,42 M45,42 L41,34 M62,42 L66,34"/></g>` +
+      `<circle cx="41" cy="29" r="5" fill="#fff"/>`
+  },
+  crossroadsAhead: {
+    name: "Crossroads Ahead", family: "Warning — red triangle",
+    meaning: "A crossroads is ahead where neither road has priority over the other. Slow down and be ready to give way, and watch for traffic turning across you.",
+    svg: `<polygon points="50,6 96,88 4,88" fill="#fff" stroke="${RED}" stroke-width="8"/>` +
+      `<g fill="#111" stroke="none"><rect x="45" y="32" width="10" height="40"/><rect x="27" y="46" width="46" height="10"/></g>`
+  },
+  roadNarrowsBoth: {
+    name: "Road Narrows on Both Sides", family: "Warning — red triangle",
+    meaning: "The carriageway narrows on both sides ahead. Slow down in good time, check for oncoming vehicles, and be ready to give way where there is no longer room for two.",
+    svg: `<polygon points="50,6 96,88 4,88" fill="#fff" stroke="${RED}" stroke-width="8"/>` +
+      `<g fill="none" stroke="#111" stroke-width="8" stroke-linecap="round"><path d="M28,78 L38,38 L46,26"/><path d="M72,78 L62,38 L54,26"/></g>`
+  },
+  levelCrossingGate: {
+    name: "Level Crossing with Gate or Barrier", family: "Warning — level crossing",
+    meaning: "A level crossing with a gate or barrier is ahead. Slow to a speed that lets you stop, obey the flashing lights and the barriers, and never cross while they are lowering or down.",
+    svg: `<polygon points="50,6 96,88 4,88" fill="#fff" stroke="${RED}" stroke-width="8"/>` +
+      `<g fill="#111" stroke="none"><rect x="22" y="34" width="8" height="38"/><rect x="32" y="38" width="46" height="6"/><rect x="32" y="52" width="46" height="6"/><rect x="38" y="38" width="5" height="20"/><rect x="52" y="38" width="5" height="20"/><rect x="66" y="38" width="5" height="20"/></g>`
+  },
+  levelCrossingOpen: {
+    name: "Level Crossing without Gate or Barrier", family: "Warning — level crossing",
+    meaning: "A level crossing with no gate or barrier is ahead. Stop where you can see the line, look both ways, listen for trains, and cross only when you are sure none is coming.",
+    svg: `<polygon points="50,6 96,88 4,88" fill="#fff" stroke="${RED}" stroke-width="8"/>` +
+      `<g fill="#111" stroke="none"><rect x="26" y="58" width="48" height="16"/><rect x="36" y="44" width="16" height="14"/><rect x="34" y="36" width="7" height="9"/><rect x="58" y="50" width="12" height="8"/><rect x="24" y="74" width="52" height="4"/><circle cx="34" cy="78" r="4"/><circle cx="50" cy="78" r="4"/><circle cx="66" cy="78" r="4"/></g>`
+  },
+  levelCrossingWigwag: {
+    name: "Level Crossing Lights (Wigwag)", family: "Level crossing — signals",
+    meaning: "Twin flashing red lights at a level crossing mean STOP, and the steady amber light that shows first also means stop unless it is unsafe to do so. Wait until the lights go out before crossing.",
+    svg: `<rect x="16" y="8" width="68" height="84" rx="5" fill="#111" stroke="#fff" stroke-width="3"/>` +
+      `<g fill="${RED}" stroke="none"><rect x="16" y="8" width="11" height="9"/><rect x="39" y="8" width="11" height="9"/><rect x="62" y="8" width="11" height="9"/><rect x="27" y="83" width="11" height="9"/><rect x="50" y="83" width="11" height="9"/><rect x="73" y="83" width="11" height="9"/></g>` +
+      `<circle cx="35" cy="36" r="11" fill="${RED}"/><circle cx="65" cy="36" r="11" fill="${RED}"/><circle cx="50" cy="68" r="11" fill="#e8b31a"/>`
+  },
+  stAndrewsCross: {
+    name: "St Andrew's Cross (Level Crossing)", family: "Level crossing",
+    meaning: "This saltire marks a level crossing that has no gate or barrier and often no lights. Stop, look both ways and listen for trains, give way to them, and never stop on the crossing.",
+    svg: `<g transform="rotate(45 50 50)"><rect x="16" y="42" width="68" height="16" fill="#fff" stroke="${RED}" stroke-width="5"/><rect x="42" y="16" width="16" height="68" fill="#fff" stroke="${RED}" stroke-width="5"/></g>`
+  },
+  tempRoadWorks: {
+    name: "Road Works Ahead (temporary)", family: "Temporary — yellow ground",
+    meaning: "Road works or an obstruction of the carriageway is ahead. Slow down, obey any temporary speed limit and signals, and expect workers and machines close to the traffic lanes.",
+    svg: `<rect x="4" y="14" width="92" height="72" fill="${YEL}" stroke="#111" stroke-width="3"/>` +
+      `<polygon points="50,20 78,70 22,70" fill="#fff" stroke="${RED}" stroke-width="6"/>` +
+      `<g stroke="#111" stroke-width="5" stroke-linecap="round"><circle cx="42" cy="34" r="5" fill="#111"/><line x1="42" y1="40" x2="42" y2="56"/><line x1="42" y1="44" x2="33" y2="53"/><line x1="42" y1="44" x2="52" y2="52"/><line x1="42" y1="56" x2="36" y2="68"/><line x1="42" y1="56" x2="48" y2="68"/><line x1="58" y1="68" x2="58" y2="48"/><rect x="53" y="41" width="10" height="8" fill="#111"/></g>`
+  },
+  tempEndRoadWorks: {
+    name: "End of Road Works (temporary)", family: "Temporary — yellow ground",
+    meaning: "The works and any temporary restrictions end here, so the permanent signs and speed limits apply again from this point onward.",
+    svg: `<rect x="4" y="10" width="92" height="80" fill="${YEL}" stroke="#111" stroke-width="3"/>` +
+      `<polygon points="50,16 74,58 26,58" fill="#fff" stroke="${RED}" stroke-width="5"/>` +
+      `<g stroke="#111" stroke-width="4" stroke-linecap="round"><circle cx="43" cy="28" r="4" fill="#111"/><line x1="43" y1="33" x2="43" y2="46"/><line x1="43" y1="36" x2="36" y2="43"/><line x1="43" y1="36" x2="51" y2="42"/><line x1="43" y1="46" x2="38" y2="55"/><line x1="43" y1="46" x2="48" y2="55"/><line x1="56" y1="55" x2="56" y2="39"/><rect x="52" y="33" width="8" height="7" fill="#111"/></g>` +
+      `${txt(50, 82, "END", 16, "#111")}`
+  },
+  tempRoadClosed: {
+    name: "Road Closed (temporary)", family: "Temporary — yellow ground",
+    meaning: "The road ahead is closed to traffic, often for works or an incident. Follow the signed diversion route and do not pass the sign.",
+    svg: `<rect x="4" y="24" width="92" height="52" fill="${YEL}" stroke="#111" stroke-width="3"/>${txt(50, 46, "ROAD", 19, "#111")}${txt(50, 67, "CLOSED", 19, "#111")}`
+  },
+  motorwayDirection: {
+    name: "Motorway Direction Sign", family: "Direction — motorway",
+    meaning: "Blue backgrounds with white lettering and symbols are the motorway signing system, showing destinations, route numbers and junction numbers ahead.",
+    svg: `<rect x="6" y="14" width="88" height="72" rx="4" fill="${BLU}" stroke="#fff" stroke-width="3"/>` +
+      `${txt(50, 44, "M6 NORTH", 15, "#fff")}${txt(50, 66, "Birmingham", 13, "#fff")}` +
+      `<rect x="68" y="20" width="20" height="13" fill="#111"/>${txt(78, 30, "J28", 9, "#fff")}`
+  },
+  directionPrimary: {
+    name: "Primary Route Direction Sign", family: "Direction — primary route",
+    meaning: "Green backgrounds with white lettering and yellow route numbers sign primary routes, the main roads that carry long-distance traffic between major towns and cities.",
+    svg: `<rect x="6" y="14" width="88" height="72" rx="4" fill="${GRN}" stroke="#fff" stroke-width="3"/>` +
+      `${txt(50, 44, "Exeter", 16, "#fff")}${txt(50, 66, "Plymouth", 13, "#fff")}${txt(80, 30, "A38", 11, "#ffd400")}`
+  },
+  directionLocal: {
+    name: "Local Direction Sign", family: "Direction — non-primary route",
+    meaning: "White backgrounds with black lettering and black route numbers sign local or non-primary routes, the everyday destinations away from the strategic network.",
+    svg: `<rect x="6" y="14" width="88" height="72" rx="4" fill="#fff" stroke="#111" stroke-width="3"/>` +
+      `${txt(50, 44, "Town Centre", 13, "#111")}${txt(50, 66, "Station", 13, "#111")}`
+  },
+  motorwayServices: {
+    name: "Motorway Services", family: "Information — motorway services",
+    meaning: "Blue panels with white symbols show motorway service areas ahead, with the distance to the exit. Leave the motorway at the signposted exit; stopping on the hard shoulder is not allowed.",
+    svg: `<rect x="6" y="14" width="88" height="72" rx="4" fill="${BLU}" stroke="#fff" stroke-width="3"/>` +
+      `${txt(50, 38, "SERVICES", 13, "#fff")}` +
+      `<path d="M36,52 L62,52 L58,72 L40,72 Z" fill="#fff" stroke="none"/><path d="M63,57 q9,2 7,10 q-2,7 -9,6" fill="none" stroke="#fff" stroke-width="4"/>` +
+      `<path d="M30,48 q2,-8 6,-10 M42,48 q2,-8 6,-10" fill="none" stroke="#fff" stroke-width="3"/>`
+  },
 };
 
 /* Consumed as globals by app.js (classic scripts, one shared scope). */

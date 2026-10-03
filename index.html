@@ -12,6 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="css/hazard.css">
 <!-- The question bank is the largest script; warm it up before the deferred queue below. -->
 <link rel="preload" as="script" href="js/questions.js">
 </head>
@@ -55,9 +56,12 @@
         <div class="plan-kicker">Today's plan</div>
         <div class="plan-title" id="planTitle">Set your test date</div>
         <p id="planDetail">Road Ready will then tell you exactly what to study each day.</p>
+        <div class="plan-kind" id="planKind" hidden></div>
         <ul class="plan-rationale" id="planRationale" hidden></ul>
+        <p class="plan-changed" id="planChanged" hidden></p>
         <div class="plan-meta" id="planMeta"></div>
         <button class="btn primary plan-action" id="btnPlanAction">Set test date</button>
+        <button class="btn ghost plan-date" id="btnPlanDate" hidden>Set test date</button>
       </div>
 
       <div class="quick-actions secondary-actions">
@@ -139,6 +143,7 @@
         <div class="feedback" id="feedback" hidden aria-live="assertive">
           <div class="fb-head" id="fbHead"></div>
           <p class="fb-why" id="fbWhy"></p>
+          <div class="fb-repair" id="fbRepair" hidden></div>
           <a class="source-link" id="fbSource" target="_blank" rel="noopener noreferrer" hidden></a>
         </div>
       </div>
@@ -157,6 +162,7 @@
         <h1 id="resultTitle">You passed!</h1>
         <div class="score-big" id="resultScore">100%</div>
         <p class="sub" id="resultSub"></p>
+        <div class="debrief" id="debrief" hidden></div>
         <div class="result-grid" id="resultGrid"></div>
         <div class="results-actions">
           <button class="btn primary" id="btnAgain">Try Again</button>
@@ -172,6 +178,7 @@
       <p class="view-sub" id="fcScope"></p>
       <div class="fc-meta">
         <span class="pill" id="fcCounter">1 / 1</span>
+        <span class="pill stage-pill" id="fcStage" hidden>New</span>
         <span class="pill" id="fcKnownPill"></span>
         <span class="flex-spacer"></span>
         <button class="pill" id="btnFcShuffle"><span data-icon="shuffle" data-size="13"></span>Shuffle</button>
@@ -199,8 +206,10 @@
 
     <!-- ============ REVIEW MISSED ============ -->
     <section class="view" id="view-review">
-      <h1 class="view-title">Review Missed Questions</h1>
+      <h1 class="view-title">Repair Your Weaknesses</h1>
       <p class="view-sub" id="reviewSub"></p>
+      <div id="reviewSummary" class="review-summary" hidden></div>
+      <div id="reviewGroups" class="review-groups"></div>
       <div id="reviewList" class="review-list"></div>
       <div class="results-actions">
         <button class="btn primary" id="btnDrillMissed">Drill These Questions</button>
@@ -439,24 +448,7 @@
     </section>
 
     <!-- ============ HAZARD PERCEPTION ============ -->
-    <section class="view" id="view-hazard">
-      <h1 class="view-title">Hazard Perception</h1>
-      <p class="view-sub" id="hazardSub">Tap <b>SLOW</b> (or press <b>Space</b>) the moment a hazard starts to develop — before you'd need to brake hard. Earlier = more points.</p>
-      <details class="hz-access-details">
-        <summary>Text-based hazard descriptions</summary>
-        <div id="hzAccessibleList"></div>
-      </details>
-      <div class="hz-stage card" id="hzStage">
-        <svg id="hzSvg" viewBox="0 0 360 420" preserveAspectRatio="xMidYMid meet"></svg>
-        <div class="hz-flash" id="hzFlash" hidden></div>
-        <div class="hz-overlay" id="hzOverlay"></div>
-      </div>
-      <div class="hz-actions">
-        <button class="btn ghost" id="hzQuit">Exit</button>
-        <button class="btn primary hz-slow" id="hzSlow">SLOW DOWN</button>
-      </div>
-      <p class="kbd-hint">Press <kbd>Space</kbd> to react</p>
-    </section>
+    <section class="view" id="view-hazard"><!-- rendered by js/hazard-ui.js --></section>
 
     <!-- ============ STATS ============ -->
     <section class="view" id="view-stats">
@@ -669,11 +661,19 @@
 <script src="js/icons.js" defer></script>
 <script src="js/questions.js" defer></script>
 <script src="js/core.js" defer></script>
+<script src="js/coach.js" defer></script>
 <script src="js/format.js" defer></script>
 <script src="js/account.js" defer></script>
 <script src="js/account-ui.js" defer></script>
 <script src="js/practical-ui.js" defer></script>
 <script src="js/study-ui.js" defer></script>
+<script src="js/flashcards-ui.js" defer></script>
+<script src="js/review-ui.js" defer></script>
+<script src="js/results-ui.js" defer></script>
+<script src="js/home-ui.js" defer></script>
+<script src="js/quiz-ui.js" defer></script>
+<script src="js/hazard-scenarios.js" defer></script>
+<script src="js/hazard-ui.js" defer></script>
 <script src="js/guide.js" defer></script>
 <script src="js/jurisdictions.js" defer></script>
 <script src="js/packs/uk.js" defer></script>

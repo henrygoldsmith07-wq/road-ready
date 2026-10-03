@@ -7,6 +7,8 @@ interface Window {
   /** Set by js/boot-error.js for the E2E console-error check. */
   __lastError?: string;
   RoadReadyCore: any;
+  /** Present only when js/coach.js has loaded before app.js. */
+  RoadReadyCoach: any;
   /** Present only when js/format.js has loaded before app.js. */
   RoadReadyFormat: any;
   RoadReadyPacks: any;
@@ -20,4 +22,18 @@ interface Window {
   RoadReadyPracticalUI: any;
   /** Present only when js/study-ui.js has loaded before app.js. */
   RoadReadyStudyUI: any;
+  /** Present only when js/home-ui.js has loaded before app.js. */
+  RoadReadyHomeUI: any;
+  /** Present only when js/quiz-ui.js has loaded before app.js. */
+  RoadReadyQuizUI: any;
+  /** Present only when js/flashcards-ui.js has loaded before app.js. */
+  RoadReadyFlashcardsUI: any;
+  /** Present only when js/review-ui.js has loaded before app.js. */
+  RoadReadyReviewUI: any;
+  /** Present only when js/results-ui.js has loaded before app.js. */
+  RoadReadyResultsUI: any;
+  /** Present only when js/hazard-ui.js has loaded before app.js. */
+  RoadReadyHazardUI: any;
+  /** Present only when js/hazard-scenarios.js has loaded before app.js. */
+  RoadReadyHazardScenarios: any;
 }

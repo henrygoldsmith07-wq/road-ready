@@ -161,6 +161,8 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
 .today-plan .plan-action { white-space: nowrap; padding: 12px 16px; min-height: 44px; }
 .plan-rationale { margin: 8px 0 0; padding-left: 18px; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .plan-rationale li + li { margin-top: 3px; }
+.plan-kind { margin-top: 5px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.plan-changed { margin-top: 6px; font-size: 11.5px; color: var(--muted); }
 .secondary-actions { margin-top: 8px; }
 @media (max-width: 480px) {
   .today-plan { grid-template-columns: 1fr; }
@@ -282,6 +284,41 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
 .fb-head .ok { display: inline-flex; align-items: center; gap: 5px; }
 .fb-head .bad { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); }
 .fb-why { font-size: 13.5px; color: var(--muted); line-height: 1.55; }
+
+/* misconception-repair panel (practice feedback) */
+.fb-repair { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.fb-repair .repair-head { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 5px; }
+.fb-repair .repair-contrast { font-size: 13px; line-height: 1.55; margin: 0; }
+.fb-repair .repair-note { font-size: 12px; color: var(--muted); margin: 7px 0 0; }
+
+/* mock debrief (results screen) */
+.debrief { margin-top: 12px; text-align: left; }
+.debrief-intro { font-size: 13px; font-weight: 700; margin: 0 0 6px; }
+.debrief-head { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 10px 0 4px; }
+.debrief-list { margin: 0; padding-left: 18px; font-size: 12.5px; color: var(--muted); line-height: 1.55; }
+.debrief-list li + li { margin-top: 2px; }
+.debrief-drill-note { font-size: 12px; color: var(--muted); margin: 10px 0 0; }
+
+/* review weakness groups */
+.review-summary { font-size: 13px; font-weight: 700; margin: 2px 0 10px; }
+.review-groups { display: grid; gap: 10px; }
+.review-group { padding: 14px 15px; }
+.rg-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.rg-title { font-size: 14px; font-weight: 800; margin: 0; letter-spacing: -.01em; }
+.rg-why { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 5px 0 8px; }
+.rg-items { margin: 0 0 10px; padding-left: 18px; }
+.rg-items li { font-size: 12.5px; line-height: 1.55; }
+.rg-items li b { font-weight: 700; }
+.rg-items li span { color: var(--muted); display: block; }
+.rg-drill { min-height: 40px; }
+.review-details summary { cursor: pointer; font-size: 13px; font-weight: 700; margin: 12px 0 8px; }
+
+/* sign flashcard stage pill */
+.stage-pill[data-stage="new"] { color: var(--muted); }
+.stage-pill[data-stage="learning"] { color: var(--text); }
+.stage-pill[data-stage="familiar"] { color: var(--text); }
+.stage-pill[data-stage="mastered"] { color: var(--ok, var(--text)); font-weight: 700; }
+.stage-pill[data-stage="due"] { color: var(--warn, var(--text)); font-weight: 700; }
 .source-link {
   display: inline-flex; align-items: center; margin-top: 9px;
   color: var(--text); font-size: 11.5px; font-weight: 600;

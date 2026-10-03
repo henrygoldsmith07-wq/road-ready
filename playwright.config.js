@@ -14,7 +14,9 @@ export default defineConfig({
     command: "node serve.js",
     port: 8321,
     reuseExistingServer: !process.env.CI,
-    timeout: 15_000,
+    // On slow machines node startup alone can exceed 15s, which turns device
+    // overhead into a web-server failure before any test runs.
+    timeout: 60_000,
   },
   projects: [
     { name: "desktop-chrome", use: { ...devices["Desktop Chrome"] } },

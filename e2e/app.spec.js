@@ -150,7 +150,7 @@ test.describe("flashcards & settings", () => {
   test("test date builds a persistent daily plan", async ({ page }) => {
     await freshApp(page);
     if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
-    await page.locator("#btnPlanAction").click();
+    await page.locator("#btnPlanDate").click();
     await expect(page.locator("#view-settings")).toHaveClass(/active/);
     const future = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
     await page.locator("#inpTestDate").fill(future);

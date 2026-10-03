@@ -35,13 +35,17 @@
       correctCount: 0,
       streak: { count: 0, last: "" },
       daily: {},         // date -> answers count (progress statistics history)
-      fcKnown: {},       // signId -> true
+      fcKnown: {},       // signId -> true (legacy; signStudy supersedes, kept in sync)
+      signStudy: {},     // signId -> {stage, due, reps, lapses, lastSeen} — spaced sign review
+      misconceptions: {},// conceptKey -> {errors, questionIds[], firstSeen, lastSeen, stage, solvedIds[], repairedAt}
+      coach: { lastSnapshot: null, lastPlanType: "" }, // session-over-session delta for the Adaptive Coach
       fcOrder: null,
       achievements: {},  // id -> unlock timestamp
       xp: 0,
       timeStudied: 0,    // seconds
       hazardBest: 0,
       hazardPct: 0,
+      hazardLog: [],     // per-scenario analytics: {scenario, press, band, pts, at}
       outcomes: [],      // retrospective outcome journal (secondary to predictions)
       predictions: [],  // immutable pre-test snapshots, primary calibration dataset
       practical: { log: [] }, // driving-log sessions: {date, minutes, conditions[], roadTypes[], skills{skillId:rating}, notes}
@@ -121,6 +125,61 @@ function sanitizeState(s, opts) {
     Object.keys(s.daily).forEach((k) => { s.daily[k] = num(s.daily[k], 0, 0, 1e6); });
     s.fcKnown = plainObject(s.fcKnown);
     s.fcOrder = Array.isArray(s.fcOrder) ? s.fcOrder.filter((x) => typeof x === "string") : null;
+    s.signStudy = plainObject(s.signStudy);
+    Object.keys(s.signStudy).forEach((signId) => {
+      const st = plainObject(s.signStudy[signId]);
+      s.signStudy[signId] = {
+        stage: strEnum(st.stage, SIGN_STAGES, "new"),
+        due: num(st.due, 0, 0, 8.64e15) || undefined,
+        reps: num(st.reps, 0, 0, 1e6),
+        lapses: num(st.lapses, 0, 0, 1e6),
+        lastSeen: num(st.lastSeen, 0, 0, 8.64e15) || undefined,
+      };
+    });
+    // legacy fcKnown flags seed signStudy as mastered so an upgrade never
+    // re-drills a learner on signs they already marked as known
+    Object.keys(s.fcKnown).forEach((signId) => {
+      if (s.fcKnown[signId] && !s.signStudy[signId]) {
+        s.signStudy[signId] = { stage: "mastered", due: undefined, reps: 1, lapses: 0, lastSeen: undefined };
+      }
+    });
+    s.misconceptions = plainObject(s.misconceptions);
+    Object.keys(s.misconceptions).forEach((key) => {
+      const m = plainObject(s.misconceptions[key]);
+      s.misconceptions[key] = {
+        errors: num(m.errors, 0, 0, 1e6),
+        questionIds: Array.isArray(m.questionIds) ? m.questionIds.filter((x) => typeof x === "string").slice(-12) : [],
+        firstSeen: num(m.firstSeen, 0, 0, 8.64e15) || undefined,
+        lastSeen: num(m.lastSeen, 0, 0, 8.64e15) || undefined,
+        stage: num(m.stage, 1, 1, 3),
+        solvedIds: Array.isArray(m.solvedIds) ? m.solvedIds.filter((x) => typeof x === "string").slice(-12) : [],
+        repairedAt: num(m.repairedAt, 0, 0, 8.64e15) || null,
+      };
+    });
+    const coach = plainObject(s.coach);
+    coach.lastSnapshot = coach.lastSnapshot && typeof coach.lastSnapshot === "object" && !Array.isArray(coach.lastSnapshot)
+      ? {
+          at: num(coach.lastSnapshot.at, 0, 0, 8.64e15) || undefined,
+          coveragePct: num(coach.lastSnapshot.coveragePct, 0, 0, 100),
+          masteryPct: num(coach.lastSnapshot.masteryPct, 0, 0, 100),
+          masteredConcepts: num(coach.lastSnapshot.masteredConcepts, 0, 0, 1e6),
+          misconceptionConcepts: num(coach.lastSnapshot.misconceptionConcepts, 0, 0, 1e6),
+          overdue: num(coach.lastSnapshot.overdue, 0, 0, 1e6),
+          mockPct: coach.lastSnapshot.mockPct == null ? null : num(coach.lastSnapshot.mockPct, 0, 0, 1),
+          questionsAnswered: num(coach.lastSnapshot.questionsAnswered, 0, 0, 1e9),
+        }
+      : null;
+    coach.lastPlanType = typeof coach.lastPlanType === "string" ? coach.lastPlanType.slice(0, 32) : "";
+    s.coach = coach;
+    s.hazardLog = Array.isArray(s.hazardLog)
+      ? s.hazardLog.filter((h) => h && typeof h === "object" && !Array.isArray(h)).slice(-120).map((h) => ({
+          scenario: typeof h.scenario === "string" ? h.scenario.slice(0, 80) : "",
+          press: h.press == null ? null : num(h.press, 0, 0, 3600),
+          band: strEnum(h.band, ["instant", "good", "close", "late", "early"], "late"),
+          pts: num(h.pts, 0, 0, 5),
+          at: num(h.at, 0, 0, 8.64e15) || undefined,
+        }))
+      : [];
     s.achievements = plainObject(s.achievements);
     s.xp = num(s.xp, 0, 0, 1e9);
     s.timeStudied = num(s.timeStudied, 0, 0, 1e9);
@@ -868,6 +927,97 @@ function reviewSched(sched, right, nowMs, quality) {
     return { pts, band };
   }
 
+  /* ---------------- hazard-perception analytics ---------------- */
+  /*
+   * One developing hazard per scenario. The analysis records the evidence a
+   * learner needs to improve: first USEFUL click (the click that was scored),
+   * whether it anticipated early, landed in the developing window, arrived
+   * late, whether clicking was excessive, and whether the hazard was missed
+   * entirely. Original training material — never DVSA scoring.
+   */
+  const HAZARD_PRESS_CAP = 5; // beyond this per scenario, clicking is excessive
+
+  /**
+   * Analyse one scenario attempt. `presses` is every press timestamp (s),
+   * `firstPress` the one that was scored (or null).
+   * @returns {{scenario, winStart, winEnd, firstPress, scoredPress, pts, band,
+   *            outcome, anticipation, pressCount, excessive, feedback}}
+   */
+  function hazardAnalysis(scenario, presses, winStart, winEnd) {
+    const list = (Array.isArray(presses) ? presses : [])
+      .filter((t) => typeof t === "number" && isFinite(t) && t >= 0)
+      .sort((a, b) => a - b);
+    const scoredPress = list.length ? list[0] : null;
+    const r = hazardScore(scoredPress, winStart, winEnd);
+    const pressCount = list.length;
+    const excessive = pressCount > HAZARD_PRESS_CAP;
+    let outcome, anticipation;
+    if (scoredPress == null) { outcome = "missed"; anticipation = "none"; }
+    else if (r.band === "early") { outcome = "early"; anticipation = "over-eager"; }
+    else if (r.band === "late") { outcome = "late"; anticipation = "reactive"; }
+    else if (r.band === "instant") { outcome = "window"; anticipation = "anticipatory"; }
+    else if (r.band === "good") { outcome = "window"; anticipation = "anticipatory"; }
+    else { outcome = "window"; anticipation = "reactive"; }
+    return {
+      scenario: typeof scenario === "string" ? scenario : "",
+      winStart, winEnd,
+      firstPress: scoredPress,
+      scoredPress,
+      pts: r.pts,
+      band: r.band,
+      outcome, // "window" | "early" | "late" | "missed"
+      anticipation,
+      pressCount,
+      excessive,
+      feedback: hazardFeedback(scenario, outcome, anticipation, pressCount, winStart),
+    };
+  }
+
+  /**
+   * Concrete, situation-specific feedback — never a bare score. References the
+   * hazard's actual development point so the learner can see the gap between
+   * "noticed" and "acted".
+   */
+  function hazardFeedback(scenario, outcome, anticipation, pressCount, winStart) {
+    const name = scenario || "the hazard";
+    if (outcome === "missed") return `No click at all — ${name} developed fully without a response. Watch the road edges and the space ahead of parked vehicles.`;
+    if (outcome === "early") return `You clicked before ${name} started developing. Early is good, but a reaction to nothing is not anticipation — wait for a movement that threatens your path.`;
+    if (outcome === "late") return `You identified ${name}, but only after the situation had already started developing (around ${winStart.toFixed(1)}s). Look one step further ahead next time.`;
+    if (anticipation === "anticipatory") return `Good early recognition — you responded as ${name} began to develop.`;
+    return `Recognised, but late in the developing window — ${name} was already well under way.`;
+  }
+
+  /** Aggregate a run of hazardAnalysis rows into training-level patterns. */
+  function hazardSummary(analyses) {
+    const rows = (Array.isArray(analyses) ? analyses : []).filter(Boolean);
+    const total = rows.length;
+    const by = { anticipatory: 0, reactive: 0, "over-eager": 0, none: 0 };
+    let pts = 0, missed = 0, early = 0, late = 0, windowHits = 0, excessive = 0;
+    for (const a of rows) {
+      pts += a.pts || 0;
+      if (a.outcome === "missed") missed++;
+      if (a.outcome === "early") early++;
+      if (a.outcome === "late") late++;
+      if (a.outcome === "window") windowHits++;
+      if (a.excessive) excessive++;
+      if (a.anticipation in by) by[a.anticipation]++;
+    }
+    return {
+      total,
+      pts,
+      maxPts: total * 5,
+      missed, early, late, windowHits, excessive,
+      anticipatoryRate: total ? by.anticipatory / total : 0,
+      lateRate: total ? late / total : 0,
+      // Training-language only: this is not DVSA scoring and must never be
+      // presented as an official hazard-perception result.
+      verdict: total === 0 ? "no-data"
+        : pts / (total * 5) >= 0.75 ? "sharp"
+        : pts / (total * 5) >= 0.55 ? "developing"
+        : "needs-work",
+    };
+  }
+
   /* ---------------- outcome journal (calibration groundwork) ---------------- */
   /**
    * The readiness/progress score is an UNCALIBRATED heuristic. These helpers
@@ -1233,6 +1383,78 @@ function reviewSched(sched, right, nowMs, quality) {
       if (Array.isArray(q.signIds)) for (const s of q.signIds) if (s) ids.add(s);
     }
     return [...ids].sort();
+  }
+
+  /* ---------------- sign flashcards: spaced review stages ---------------- */
+  /**
+   * Five honest card states instead of a bare known/not-known bit:
+   *   new        never studied
+   *   learning   seen but still shaky (or lapsed from a later stage)
+   *   familiar   answered correctly more than once, review date in the future
+   *   mastered   several clean reviews, intervals long
+   *   due        any learned card whose spaced-review date has arrived
+   * ("due" is computed from stage + due date, never stored — a card cannot be
+   * both mastered and not-due in the data.)
+   */
+  const SIGN_STAGES = ["new", "learning", "familiar", "mastered"];
+  const SIGN_INTERVALS = { learning: 1, familiar: 3, mastered: 12 }; // days by stage
+
+  /** Effective stage including the due overlay. Pure. */
+  function signStage(entry, nowMs) {
+    if (!entry || !entry.stage || entry.stage === "new") return "new";
+    const due = entry.due;
+    if (due && nowMs != null && nowMs >= due) return "due";
+    if (due && nowMs == null && Date.now() >= due) return "due";
+    return entry.stage;
+  }
+
+  /**
+   * Review update after a flip + self-grade. `known` is the learner's honest
+   * self-report ("I know it" / "Still learning"): knowing promotes one stage,
+   * not knowing lapses to learning and counts a lapse. Deterministic intervals
+   * per stage — no randomness in the schedule.
+   */
+  function reviewSign(entry, known, nowMs) {
+    const now = nowMs == null ? Date.now() : nowMs;
+    const prev = entry || { stage: "new", reps: 0, lapses: 0 };
+    let stage;
+    if (!known) {
+      stage = "learning";
+      return {
+        stage,
+        due: now + (SIGN_INTERVALS.learning * DAY_MS),
+        reps: (prev.reps || 0),
+        lapses: (prev.lapses || 0) + 1,
+        lastSeen: now,
+      };
+    }
+    const order = ["new", "learning", "familiar", "mastered"];
+    const idx = order.indexOf(prev.stage && prev.stage !== "new" ? prev.stage : "new");
+    stage = order[Math.min(order.length - 1, idx + 1)];
+    return {
+      stage,
+      due: now + (SIGN_INTERVALS[stage] * DAY_MS),
+      reps: (prev.reps || 0) + 1,
+      lapses: prev.lapses || 0,
+      lastSeen: now,
+    };
+  }
+
+  /** Due-or-new sign ids first (study order), then the rest. Pure. */
+  function signStudyOrder(ids, signStudy, nowMs) {
+    const now = nowMs == null ? Date.now() : nowMs;
+    const rank = (id) => {
+      const s = signStage((signStudy || {})[id], now);
+      return s === "new" ? 0 : s === "due" ? 1 : s === "learning" ? 2 : s === "familiar" ? 3 : 4;
+    };
+    return (ids || []).slice().sort((a, b) => (rank(a) - rank(b)) || (a < b ? -1 : 1));
+  }
+
+  /** Count of cards per effective stage — for the flashcard header. Pure. */
+  function signStageCounts(ids, signStudy, nowMs) {
+    const counts = { new: 0, learning: 0, familiar: 0, mastered: 0, due: 0 };
+    for (const id of ids || []) counts[signStage((signStudy || {})[id], nowMs)]++;
+    return counts;
   }
 
   /** Band labels for the combined readiness heuristic. */
@@ -1741,7 +1963,7 @@ function reviewSched(sched, right, nowMs, quality) {
     adaptiveWeights, buildAdaptivePool, pickWeighted, missedQuestions,
     defaultSched, reviewSched, schedDue,
     shuffle, timeLimitSecs, gradeExam, examBlueprint, assembleExam, officialExamAvailability,
-    hazardScore,
+    hazardScore, HAZARD_PRESS_CAP, hazardAnalysis, hazardFeedback, hazardSummary,
     OUTCOME_RESULT_VALUES, appendOutcome, mockAverage, progressBucket,
     PRACTICAL_RATINGS, RATING_VALUE, COMPETENCIES, CONDITIONS, ROAD_TYPES,
     skillIds, competencyName, appendPracticalSession, competencyScores,
@@ -1750,7 +1972,7 @@ function reviewSched(sched, right, nowMs, quality) {
     retentionProbePool, studyMetrics, buildStudyExport,
     PROTOCOL_VERSION, SCORING_VERSION, MASTERY_VERSION, bankFingerprint,
     readinessBand, strongAndRiskTopics, recommendedToday, dailyStudyRecommendation,
-    signIdsInBank,
+    signIdsInBank, SIGN_STAGES, SIGN_INTERVALS, signStage, reviewSign, signStudyOrder, signStageCounts,
     MIN_BUCKET_N, MAX_INTERVAL_WIDTH, CALIBRATION_BUCKETS, mockStability, bankCoverage,
     freezePrediction, attachOutcome, resolveAttemptPrediction, recordOfficialOutcome,
     wilsonInterval, bucketFor, calibrationCurve, calibrationRowFor, readinessNarrative, confidenceCalibration,
