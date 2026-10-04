@@ -179,8 +179,8 @@
     const similarIds = (Core.groupByConcept(getBank()).get(Core.conceptKeyOf(q)) || [])
       .filter((v) => v.id !== q.id).map((v) => v.id);
     const mistake = Explain
-      ? Explain.classifyMistake({
-          q, stat, rtMs, pct,
+      ? Explain.classifyMistakeWithTrap({
+          q, pickedIdx, stat, rtMs, pct,
           conceptRow: Mastery ? Mastery.conceptState([q], state.qstats, state.misconceptions[Core.conceptKeyOf(q)], Date.now()) : null,
           similarIds,
         })

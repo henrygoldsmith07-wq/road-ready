@@ -38,6 +38,7 @@ const REC_TYPES = {
   TAKE_MOCK: "take-mock",
   MAINTAIN_STRONG: "maintain-strong",
   LIGHT_REVIEW: "light-review",
+  HAZARD_TRAINING: "hazard-training",
 };
 
 const ISSUE_KINDS = ["misconception", "knowledge", "retention", "fluency", "coverage", "stable"];
@@ -146,6 +147,82 @@ function issueKind(d, misconceptionEntry) {
   if (d.unseen > 0 && d.encounters === 0) return "coverage";
   if (d.unseen > 0 && d.mastery < 0.65) return "coverage";
   return "stable";
+}
+
+/* ---------------- hazard perception diagnosis ---------------- */
+
+/**
+ * Turn the learner's hazard-perception history into ranked, cited weakness.
+ *
+ * Reads `state.hazardLog` ({ scenario, press, band, pts }) and rolls it up by
+ * scenario category using Core's existing analytics, so the coach cites the
+ * same evidence the stats screen shows rather than a second, divergent model.
+ *
+ * `eligible` is deliberately narrow: hazard perception only competes for the
+ * plan where the selected jurisdiction actually SCORES it. In bonus-training
+ * jurisdictions this returns ineligible and the candidate is never built.
+ *
+ * Small samples never produce a confident claim — below MIN_HAZARD_ATTEMPTS
+ * the copy reports what has been seen rather than a rate, matching the
+ * discipline used everywhere else in the engine.
+ */
+const MIN_HAZARD_ATTEMPTS = 6;
+
+function hazardDiagnosis(input) {
+  const o = input || {};
+  const hz = o.hazardPerception || null;
+  const log = Array.isArray(o.hazardLog) ? o.hazardLog.filter((h) => h && typeof h === "object") : [];
+  const categoryOf = typeof o.hazardCategoryOf === "function" ? o.hazardCategoryOf : null;
+  const labelOf = typeof o.hazardCategoryLabel === "function" ? o.hazardCategoryLabel : null;
+
+  const base = { eligible: false, neverPlayed: true, attempts: 0, rate: null, weak: [], describeWeak: () => "" };
+  if (!hz || hz.includedInExam !== true) return base;
+  if (!log.length) {
+    return Object.assign({}, base, {
+      eligible: true,
+      why: "Hazard perception is a scored section of your test and you have not tried it yet.",
+    });
+  }
+
+  // Reuse Core's roll-up so coach and stats can never disagree.
+  const rows = CoachCore.hazardCategorySkill(
+    log.map((h) => ({
+      scenario: h.scenario,
+      pts: h.pts,
+      outcome: h.band === "late" || h.band === "early" ? "late" : "window",
+      anticipation: h.band === "instant" || h.band === "good" ? "anticipatory" : "reactive",
+    })),
+    categoryOf,
+  ).map((r) => Object.assign({}, r, { label: labelOf ? labelOf(r.category) : r.category }));
+
+  const attempts = rows.reduce((t, r) => t + r.attempts, 0);
+  const pts = rows.reduce((t, r) => t + r.pts, 0);
+  const max = rows.reduce((t, r) => t + r.max, 0);
+  // Categories where the learner is measurably behind their own average.
+  const overall = max ? pts / max : 0;
+  const weak = rows
+    .filter((r) => r.attempts >= 2 && r.rate < overall - 0.1)
+    .sort((a, b) => (a.rate - b.rate) || (a.category < b.category ? -1 : 1))
+    .slice(0, 3);
+
+  const describeWeak = (r) => {
+    const bits = [];
+    if (r.late) bits.push(`detected late in ${r.late} of ${r.attempts}`);
+    if (r.missed) bits.push(`missed entirely ${r.missed} time${r.missed === 1 ? "" : "s"}`);
+    if (!bits.length) bits.push(`${Math.round(r.rate * 100)}% of points earned`);
+    return bits.join(", ");
+  };
+
+  return {
+    eligible: true,
+    neverPlayed: false,
+    attempts,
+    rate: max ? pts / max : 0,
+    // Below the floor a "weak category" claim is not supportable, so the
+    // candidate still runs but stays generic instead of naming a category.
+    weak: attempts >= MIN_HAZARD_ATTEMPTS ? weak : [],
+    describeWeak,
+  };
 }
 
 /* ---------------- misconception ledger (pure) ---------------- */
@@ -412,6 +489,52 @@ function candidates(input) {
       ],
       detail: `Start with ${unseenConcepts.slice(0, 2).map((d) => d.label).join(" and ")}.`,
       evidence: unseenConcepts.slice(0, 6).map((d) => ({ key: d.key, unseen: d.unseen })),
+    });
+  }
+
+  /* --- hazard perception: a scored section that no question drill covers --- */
+  /*
+   * Where the exam scores hazard perception (GB), it is roughly a third of the
+   * test and NO amount of question practice touches it. The Coach previously
+   * only ever read the question bank, so the single largest scored component
+   * of the Great Britain test could never appear in the plan — a learner with
+   * a 100% question bank and a collapsing hazard score was told everything was
+   * fine. The candidate is built from the learner's OWN per-category hazard
+   * analytics, so it names the hazard type actually costing them marks rather
+   * than offering generic "do hazards".
+   *
+   * It is gated on `includedInExam`: where hazard perception is bonus training
+   * (most US states) this must never compete with real exam preparation.
+   */
+  const hazard = hazardDiagnosis(o);
+  if (hazard.eligible) {
+    out.push({
+      type: REC_TYPES.HAZARD_TRAINING,
+      // Sits ahead of build-coverage and weak-topic, behind misconceptions and
+      // overdue review: a scored section with measured weakness outranks new
+      // coverage, but a known misconception still comes first.
+      rank: 26,
+      issueKind: "knowledge",
+      drillKind: "hazard-training",
+      conceptKeys: [],
+      questionCount: 0,
+      minutes: 6,
+      hazardCategories: hazard.weak.map((r) => r.category),
+      title: hazard.weak.length
+        ? `Train your weakest hazard type: ${hazard.weak[0].label || hazard.weak[0].category}`
+        : "Practise hazard perception",
+      why: [
+        hazard.neverPlayed
+          ? `Hazard perception is a scored section of your ${(o.terminology && o.terminology.examName) || "theory test"} and you have not tried it yet.`
+          : `You are at ${Math.round(hazard.rate * 100)}% across ${hazard.attempts} hazard scenarios.`,
+        hazard.weak.length
+          ? `${hazard.weak[0].label || hazard.weak[0].category} is your weakest hazard type — ${hazard.describeWeak(hazard.weak[0])}.`
+          : "Keeping a scored section practised matters as much as the questions.",
+      ],
+      detail: hazard.weak.length
+        ? `A short hazard run weighted to ${(hazard.weak[0].label || hazard.weak[0].category).toLowerCase()}.`
+        : "One short hazard run to keep the scored section warm.",
+      evidence: hazard.weak.slice(0, 4).map((r) => ({ category: r.category, rate: Math.round(r.rate * 100), attempts: r.attempts })),
     });
   }
 
@@ -1228,6 +1351,7 @@ const RoadReadyCoach = {
   COACH_VERSION, REC_TYPES, ISSUE_KINDS,
   conceptLabel, daysUntil, testPhase,
   conceptDiagnosis, topicDiagnosis, issueKind,
+  hazardDiagnosis, MIN_HAZARD_ATTEMPTS,
   misconceptionStage, recordMisconception, noteConceptSuccess, activeMisconceptions, confusionLine,
   candidates, recommend, cooldownState, applyEvidenceRanking,
   buildSnapshot, sessionDelta, sessionSummary, repairReport,

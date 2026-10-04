@@ -3,6 +3,10 @@
    imported by the test suite (CommonJS export below). No DOM access here. */
 "use strict";
 
+/* `root` is the dual-mode host: globalThis in the browser, or `this` under a
+   CommonJS loader. It is typed loosely because the module assigns its own
+   export onto it on the non-CommonJS branch. */
+/** @param {any} root */
 (function (root) {
   "use strict";
 
@@ -80,8 +84,11 @@
     },
   };
 
+  /** Days of retrieval history kept per question (bounded save-file size). */
+  const MAX_RETRIEVAL_DAYS = 12;
+
   /** @param {any} s @param {{packIds?: string[]}} [opts] */
-function sanitizeState(s, opts) {
+  function sanitizeState(s, opts) {
     const packIds = (opts && Array.isArray(opts.packIds) && opts.packIds.length)
       ? opts.packIds : null;
     s.v = SCHEMA_VERSION;
@@ -95,6 +102,17 @@ function sanitizeState(s, opts) {
       st.lastWrong = num(st.lastWrong, 0, 0, 8.64e15) || undefined;
       st.fastWrong = num(st.fastWrong, 0, 0, 1e9);
       st.slowRight = num(st.slowRight, 0, 0, 1e9);
+      // Retrieval-day history: bounded, ISO-day strings only. Legacy saves have
+      // none, which simply reports a learner as having retrieved on one day.
+      if (Array.isArray(st.retrievalDays)) {
+        const days = st.retrievalDays
+          .filter((d) => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d))
+          .slice(-MAX_RETRIEVAL_DAYS);
+        if (days.length) st.retrievalDays = days;
+        else delete st.retrievalDays;
+      } else {
+        delete st.retrievalDays;
+      }
       const sc = plainObject(st.sched);
       st.sched = {
         due: num(sc.due, 0, 0, 8.64e15) || undefined,
@@ -648,6 +666,29 @@ function sanitizeState(s, opts) {
     if (label === "confident-error") st.fastWrong = (st.fastWrong || 0) + 1;
     if (label === "effortful-correct") st.slowRight = (st.slowRight || 0) + 1;
     return st;
+  }
+
+  /**
+   * Record that a question was answered correctly on this calendar day.
+   *
+   * The per-question stat only kept `lastSeen`, a single timestamp, so any
+   * "distinct days with a successful retrieval" measure derived from it could
+   * never exceed 1 — making every multi-day retention gate unreachable no
+   * matter how well a learner actually spaced their practice. Storing the
+   * distinct ISO days fixes that at the source and keeps the existing stat
+   * shape otherwise untouched.
+   *
+   * @param {{retrievalDays?: string[]}} stat mutated per-question stat
+   * @param {boolean} right whether this answer was correct
+   * @param {number} nowMs answer time
+   */
+  function noteRetrieval(stat, right, nowMs) {
+    if (!stat || right !== true) return stat;
+    const day = isoDay(nowMs == null ? Date.now() : nowMs);
+    const prev = Array.isArray(stat.retrievalDays) ? stat.retrievalDays : [];
+    if (prev.indexOf(day) !== -1) return stat;
+    stat.retrievalDays = prev.concat(day).slice(-MAX_RETRIEVAL_DAYS);
+    return stat;
   }
 
   /**
@@ -1481,6 +1522,7 @@ function reviewSched(sched, right, nowMs, quality) {
     "sign-comparison",           // side-by-side sign confusion drill
     "fluency-drill",             // slow-but-correct speed work
     "post-mock-drill",           // targeted repair session after a mock
+    "hazard-training",           // hazard-perception scene practice
     "today-plan",                // any other Today Plan recommendation
   ];
   /** Recommend an intervention for a coach recommendation type (pure). */
@@ -1489,6 +1531,7 @@ function reviewSched(sched, right, nowMs, quality) {
       case "fix-misconception": return escalated ? "misconception-escalation" : "misconception-repair";
       case "review-overdue": return "spaced-review";
       case "improve-fluency": return "fluency-drill";
+      case "hazard-training": return "hazard-training";
       case "build-coverage":
       case "strengthen-weak-topic": return "concept-drill";
       default: return "today-plan";
@@ -2169,9 +2212,10 @@ function reviewSched(sched, right, nowMs, quality) {
     wilsonInterval, bucketFor, calibrationCurve, calibrationRowFor, readinessNarrative, confidenceCalibration,
     MIN_RT_SAMPLES, MAX_RT_SAMPLES, MIN_RT_MS, MAX_RT_MS,
     normalizeRt, pushRtSample, rtPercentiles, classifyResponse, applyFluency, answerFluency,
+    MAX_RETRIEVAL_DAYS, noteRetrieval,
     exportBundle, parseImport,
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = RoadReadyCore;
-  else root.RoadReadyCore = RoadReadyCore;
+  else /** @type {any} */ (root).RoadReadyCore = RoadReadyCore;
 })(typeof globalThis !== "undefined" ? globalThis : this);

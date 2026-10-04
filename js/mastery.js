@@ -61,6 +61,51 @@ const MIN_FORMS_SECURE = 2;
 /** Separate days with a successful retrieval (repeated retrieval). */
 const MIN_RETRIEVAL_DAYS = 2;
 
+/**
+ * Transfer credit must be bounded by what the bank can actually offer.
+ *
+ * The state gates above ask for several DISTINCT questions and several DISTINCT
+ * forms. That instinct is right — five near-identical recalls should not earn
+ * what recall + scenario + visual earns — but a flat count silently makes some
+ * concepts unmasterable. A concept shipped as ONE question can never show 2
+ * variants or 2 forms, so it is pinned at `learning` for good no matter how
+ * well it is answered.
+ *
+ * This is not hypothetical in the Great Britain pack: 348 of its 359 concepts
+ * ship exactly one question and 351 are confined to a single form. A learner
+ * who answered every GB question correctly, five times across five days,
+ * reached `secure` on 8 concepts and was still shown as "Learning" on the other
+ * 351 — a map contradicting their real performance, with a permanent ceiling
+ * baked into the app's main diagnostic surface.
+ *
+ * So each concept declares the transfer it COULD have shown, and each gate is
+ * the lesser of "what mastery asks for" and "what the bank makes possible". A
+ * single-question concept is not penalised for variants it has no way to
+ * demonstrate — and is never awarded transfer it did not demonstrate either:
+ * the signals it CAN show (repeated retrieval across separate days, accuracy,
+ * fluency, no active misconception) must carry the state instead, and must be
+ * met more strictly to compensate.
+ */
+function transferCeiling(conceptQuestions) {
+  const qs = Array.isArray(conceptQuestions) ? conceptQuestions : [];
+  const offered = qs.length;
+  const offeredForms = new Set(qs.map((q) => q.form || "recall")).size;
+  return {
+    offered,
+    offeredForms,
+    // One question can demonstrate at most one distinct item and one form.
+    variantsCapable: Math.max(1, offered),
+    formsCapable: Math.max(1, offeredForms),
+    // Transfer is only genuinely demonstrable when the bank offers it at all.
+    canShowTransfer: offered >= MIN_VARIANTS_SECURE && offeredForms >= MIN_FORMS_SECURE,
+  };
+}
+
+/** A gate never demands more distinct evidence than the bank can supply. */
+function attainable(asked, capable) {
+  return Math.max(1, Math.min(asked, capable));
+}
+
 const DAY_MS = 86400000;
 
 /**
@@ -92,6 +137,13 @@ function conceptEvidence(conceptQuestions, qstats, nowMs) {
     if (st.correct > 0) {
       rightVariants.add(q.id);
       rightForms.add(q.form || "recall");
+      // Distinct DAYS with a correct retrieval. The stat now records the ISO
+      // day of every correct answer (Core.noteRetrieval); before that only a
+      // single `lastSeen` existed, so this could never exceed 1 and every
+      // multi-day retention gate was permanently out of reach.
+      if (Array.isArray(st.retrievalDays)) {
+        for (const d of st.retrievalDays) rightDays.add(d);
+      }
       if (st.lastSeen) rightDays.add(new Date(st.lastSeen).toISOString().slice(0, 10));
       lastRight = Math.max(lastRight, st.lastSeen || 0);
     }
@@ -136,15 +188,32 @@ function conceptState(questions, qstats, misconceptionEntry, nowMs) {
   const freshEnough = ev.recencyDays == null || ev.recencyDays <= 21;
   const clean = ev.wrong === 0 || ev.accuracy >= 0.75;
   const fluent = ev.slowRight <= Math.max(1, Math.floor(ev.attempts / 4));
-  const transfer = ev.variants >= MIN_VARIANTS_STRONG && ev.forms >= MIN_FORMS_SECURE;
-  const retained = ev.retrievalDays >= MIN_RETRIEVAL_DAYS;
+
+  // Transfer gates, bounded by what the bank offers for THIS concept. A
+  // concept with a single question cannot demonstrate wording/form transfer,
+  // so demanding it would cap the state permanently; instead the accuracy,
+  // spaced-retention and fluency bars are raised so the state still has to be
+  // earned on evidence the learner can actually produce.
+  const cap = transferCeiling(qs);
+  const variantsNeeded = cap.canShowTransfer ? MIN_VARIANTS_SECURE : 1;
+  const variantsNeededStrong = cap.canShowTransfer ? MIN_VARIANTS_STRONG : 1;
+  const formsNeeded = cap.canShowTransfer ? MIN_FORMS_SECURE : 1;
+  const formsNeededStrong = cap.canShowTransfer ? 3 : 1;
+  // Compensating strictness where transfer is unavailable: at least two
+  // separate days of successful retrieval and a very high accuracy bar, so a
+  // narrow concept cannot drift to Secure on one lucky session.
+  const accSecure = cap.canShowTransfer ? 0.75 : 0.85;
+  const accStrong = cap.canShowTransfer ? 0.9 : 0.95;
+  const retrievalNeeded = cap.canShowTransfer ? MIN_RETRIEVAL_DAYS : MIN_RETRIEVAL_DAYS + 1;
 
   let state;
-  if (ev.accuracy >= 0.9 && ev.variants >= MIN_VARIANTS_STRONG && ev.forms >= 3 &&
-      retained && freshEnough && clean && fluent && !activeMis) {
+  if (ev.accuracy >= accStrong && ev.variants >= attainable(variantsNeededStrong, cap.variantsCapable) &&
+      ev.forms >= attainable(formsNeededStrong, cap.formsCapable) &&
+      ev.retrievalDays >= retrievalNeeded && freshEnough && clean && fluent && !activeMis) {
     state = "strong";
-  } else if (ev.accuracy >= 0.75 && ev.variants >= MIN_VARIANTS_SECURE &&
-             (ev.forms >= MIN_FORMS_SECURE || transfer) && clean && freshEnough && !activeMis) {
+  } else if (ev.accuracy >= accSecure && ev.variants >= attainable(variantsNeeded, cap.variantsCapable) &&
+             (ev.forms >= attainable(formsNeeded, cap.formsCapable)) && clean && freshEnough &&
+             ev.retrievalDays >= MIN_RETRIEVAL_DAYS && !activeMis) {
     state = "secure";
   } else if (ev.attempts >= 1 && ev.correct > 0) {
     state = "learning";
@@ -157,6 +226,7 @@ function conceptState(questions, qstats, misconceptionEntry, nowMs) {
     display: MASTERY_DISPLAY[overlay || state],
     overlay,
     evidence: ev,
+    transfer: cap,
   };
 }
 
@@ -255,6 +325,7 @@ function masteryStatements(counts, total) {
 const RoadReadyMastery = {
   MASTERY_ENGINE_VERSION, MASTERY_STATES, MASTERY_DISPLAY, MASTERY_PLAIN,
   MIN_VARIANTS_STRONG, MIN_VARIANTS_SECURE, MIN_FORMS_SECURE,
+  transferCeiling, attainable,
   conceptEvidence, conceptState, conceptMap, stateRank, nextActionFor,
   masterySummary, masteryStatements,
 };

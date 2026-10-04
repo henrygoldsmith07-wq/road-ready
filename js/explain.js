@@ -92,6 +92,111 @@ const T = {
   weak: { kind: "weak", label: "weak underlying concept", hint: "The wider concept is still shaky — a short drill on it will help more than re-reading." },
 };
 
+/* ---------------- curated distractor traps ---------------- */
+/*
+ * The bank can name the trap behind each WRONG choice directly. GB questions
+ * carry `distractors: { "<choiceIndex>": "<trap tag>" }` — an editorial,
+ * per-distractor label written against the Highway Code and the DVSA
+ * content list, e.g.
+ *
+ *   uk-366  sign-combo  min-vs-max-speed
+ *           { 1: "min-vs-max-speed", 2: "uk-vs-us-rule", 3: "sign-shape" }
+ *
+ * This is much stronger evidence than any timing heuristic can produce: it
+ * states WHICH misunderstanding the choice was written to catch, rather than
+ * guessing one from response time. The heuristic taxonomy below exists for
+ * questions with no tag; when the bank has already named the trap, that name
+ * wins and the heuristic is not consulted.
+ *
+ * Each tag maps to plain-English copy. `uk-vs-us-rule` is deliberately
+ * jurisdiction-specific: it is the tag for a choice that is true in the United
+ * States but false in Great Britain, which is the single most damaging
+ * cross-jurisdiction error a GB learner can make.
+ */
+const DISTRACTOR_TRAPS = {
+  "min-vs-max-speed": {
+    kind: "confusion",
+    label: "minimum and maximum limits reversed",
+    hint: "This choice reverses a minimum and a maximum. The shape decides which is which: red ring = maximum, blue circle = minimum.",
+  },
+  "yellow-line-confusion": {
+    kind: "confusion",
+    label: "single and double yellow lines confused",
+    hint: "This choice treats single and double yellow lines as the same rule. Single yellow means no WAITING during the plate's times; double yellow means no waiting at any time, with no plate.",
+  },
+  "loading-vs-waiting": {
+    kind: "confusion",
+    label: "waiting and loading restrictions confused",
+    hint: "This choice merges two separate restrictions. Waiting is controlled by the yellow lines; loading and unloading is controlled separately by kerb marks or a plate.",
+  },
+  "sign-shape": {
+    kind: "visual",
+    label: "sign shape or colour confused",
+    hint: "This choice belongs to a different sign family. In GB sign theory, shape and colour carry the meaning before the symbol does.",
+  },
+  "speed-assumption": {
+    kind: "rule",
+    label: "assumed the wrong speed",
+    hint: "This choice assumes a limit that the road and the conditions do not give you. A sign states the maximum; your speed must still let you stop within what you can see.",
+  },
+  "stopping-vs-thinking": {
+    kind: "confusion",
+    label: "thinking and braking distance confused",
+    hint: "This choice swaps the two parts of stopping distance. Thinking distance is the travel during your reaction; braking distance is the travel once the brakes are on.",
+  },
+  "following-gap": {
+    kind: "rule",
+    label: "following gap too short",
+    hint: "This choice leaves too little room. The gap must cover the whole stopping distance of the vehicle ahead, and it roughly doubles in the wet.",
+  },
+  "tyre-condition": {
+    kind: "rule",
+    label: "tyre condition ignored",
+    hint: "This choice ignores grip. Worn tyres and poor road surfaces lengthen braking distance regardless of anything else on the road.",
+  },
+  "normal-weather-in-rain": {
+    kind: "rule",
+    label: "dry-weather rule applied in rain",
+    hint: "This choice applies a dry-weather figure. In rain, braking distances at least double and the usual following gap should double too.",
+  },
+  "uk-vs-us-rule": {
+    kind: "confusion",
+    label: "a rule that is not a Great Britain rule",
+    hint: "This choice is a common US rule that does not apply here. Good Britain learners meet right-of-way, signage and stopping rules that differ from those in the United States.",
+  },
+};
+
+/**
+ * The bank's own trap name for the choice the learner picked, or null.
+ * `pickedIdx` is the index they chose; `q.distractors` maps distractor index
+ * → trap tag. A question may tag several choices with the same trap; only the
+ * chosen one is ever reported, because that is the error actually made.
+ */
+function distractorTrap(q, pickedIdx) {
+  const d = (q && q.distractors) || null;
+  if (!d || pickedIdx == null || pickedIdx < 0) return null;
+  const tag = d[String(pickedIdx)];
+  if (!tag) return null;
+  const def = DISTRACTOR_TRAPS[tag];
+  if (!def) return null;
+  return { tag, ...def };
+}
+
+/**
+ * Classify a wrong answer, preferring the bank's curated trap.
+ *
+ * When the bank names the trap behind the chosen distractor, that label is
+ * returned with a `curated: true` flag and no heuristic guess is attached —
+ * hedged "you may be…" wording would understate what is actually known about
+ * this item. Otherwise the existing timing/structure heuristics run unchanged.
+ */
+function classifyMistakeWithTrap(ctx) {
+  const trap = distractorTrap(ctx && ctx.q, ctx && ctx.pickedIdx);
+  if (trap) return Object.assign({}, trap, { curated: true });
+  const fallback = classifyMistake(ctx);
+  return Object.assign({}, fallback, { curated: false });
+}
+
 /* ---------------- coach explanations ---------------- */
 
 /**
@@ -214,6 +319,10 @@ function wrongAnswerBreakdown({ q, pickedIdx, mistake, contrast }) {
 function temptingReason(q, pickedIdx, mistake) {
   const choice = q.choices[pickedIdx];
   const short = String(choice).length < 80;
+  // A curated trap already names the mistake in plain English. Re-explaining it
+  // with a generic opener would throw away the bank's better explanation, so
+  // the curated hint is returned on its own.
+  if (mistake && mistake.curated) return mistake.hint;
   const openers = {
     confusion: "This choice is the rule most often confused with this one —",
     wording: "This choice looks right if you go by a quick reading —",
@@ -237,7 +346,7 @@ function firstSentence(s) {
 }
 
 const RoadReadyExplain = {
-  T, classifyMistake,
+  T, DISTRACTOR_TRAPS, distractorTrap, classifyMistake, classifyMistakeWithTrap,
   explainRecommendation,
   wrongAnswerBreakdown, temptingReason, firstSentence,
 };

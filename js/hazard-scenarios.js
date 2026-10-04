@@ -47,6 +47,7 @@
 /* exported RoadReadyHazardScenarios */
 "use strict";
 
+/* @param {any} root dual-mode host: globalThis in the browser, `this` under CommonJS */
 (function (root) {
   "use strict";
 
@@ -1064,5 +1065,5 @@
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = RoadReadyHazardScenarios;
-  else root.RoadReadyHazardScenarios = RoadReadyHazardScenarios;
+  else /** @type {any} */ (root).RoadReadyHazardScenarios = RoadReadyHazardScenarios;
 })(typeof globalThis !== "undefined" ? globalThis : this);

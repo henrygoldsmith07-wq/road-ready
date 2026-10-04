@@ -302,7 +302,15 @@
     if (sub) {
       const hzInfo = ctx.hazardInfoForPack ? ctx.hazardInfoForPack() : {};
       const terms = ctx.termsForPack ? ctx.termsForPack() : {};
-      const base = `Tap <b>SLOW</b> (or press <b>Space</b>) the moment a hazard starts to develop — before you'd need to brake hard. Earlier = more points. `;
+      // Where the exam SCORES this section, the real rule is a two-sided window:
+      // DVSA gives 0 for clicking before the hazard develops, so the instruction
+      // must never imply that earlier is better. Where hazard perception is
+      // bonus training there is no such penalty, so the copy is free to reward
+      // early spotting. The wording is declared per jurisdiction, not hardcoded.
+      const scored = !!(hzInfo.includedInExam && hzInfo.scoring);
+      const base = scored
+        ? `Tap <b>SLOW</b> (or press <b>Space</b>) the moment a hazard starts to develop. ${esc(hzInfo.scoring.instruction)} `
+        : `Tap <b>SLOW</b> (or press <b>Space</b>) as soon as a hazard starts to develop — earlier recognition is rewarded. `;
       sub.innerHTML = hzInfo.includedInExam
         ? `${base}Core section of your ${esc(terms.examName)}${hzInfo.officialFormat ? ` (real test: ${esc(hzInfo.officialFormat)})` : ""} — this trainer builds the same early-spotting skill.`
         : `${base}Bonus training: your ${esc(terms.examName)} does not include this scored section, but the skill saves lives.`;
@@ -531,7 +539,7 @@
     if (!host || !ctx) return;
     host.innerHTML = `
       <h1 class="view-title">Hazard Perception</h1>
-      <p class="view-sub" id="hazardSub">Tap <b>SLOW</b> (or press <b>Space</b>) the moment a hazard starts to develop — before you'd need to brake hard. Earlier = more points.</p>
+      <p class="view-sub" id="hazardSub">Tap <b>SLOW</b> (or press <b>Space</b>) as a hazard starts to develop. start() replaces this with the wording your jurisdiction's exam actually uses.</p>
       <details class="hz-access-details">
         <summary>Text-based hazard descriptions</summary>
         <div id="hzAccessibleList"></div>
