@@ -30,19 +30,52 @@ const MIN_PAIRS = 8;        // before/after pairs needed to say anything
 const MIN_RESOLUTIONS = 5;  // misconception cases needed for a rate
 const RETENTION_DAYS = [1, 3, 7, 14];
 
+/* Every intervention Road Ready performs, so its effect can be measured.
+   Privacy: only ids, scores, counts and timestamps — never question text,
+   free-text notes, or anything account-like. */
+const INTERVENTIONS = [
+  "misconception-repair",   // wrong answer → structured repair on one concept
+  "concept-drill",          // targeted drill on a weak concept
+  "spaced-review",          // due/overdue retrieval practice
+  "sign-comparison",        // side-by-side sign confusion drill
+  "fluency-drill",          // slow-but-correct speed work
+  "misconception-escalation", // repeated failure → comparison + escalation
+  "post-mock-drill",        // targeted repair session after a mock
+  "today-plan",             // any Today Plan recommendation
+];
+/* Minimum paired observations before a per-intervention measure is reported. */
+const MIN_INTERVENTION_PAIRS = 4;
+
 /**
- * Append one recommendation event. Events are append-only and small; the
- * list is capped so long-term use cannot bloat the save file.
+ * Append one recommendation/intervention event. Events are append-only and
+ * small; the list is capped so long-term use cannot bloat the save file.
+ * `entry.intervention` names one of INTERVENTIONS; the rest is measurement
+ * metadata (ids, counts, scores, timestamps only — never question text or
+ * anything account-like).
  */
 function recordRecommendation(events, entry, nowMs) {
   const list = Array.isArray(events) ? events.slice() : [];
   const e = entry || {};
   list.push({
     at: num(e.at, nowMs == null ? Date.now() : nowMs, 0, 8.64e15),
+    // A session's start and its closing outcome share a sessionId so one
+    // session is measured once and never double-counted.
+    sessionId: typeof e.sessionId === "string" ? e.sessionId.slice(0, 32) : "",
     type: typeof e.type === "string" ? e.type.slice(0, 32) : "unknown",
     followed: e.followed === true,
-    kind: typeof e.kind === "string" ? e.kind.slice(0, 16) : "practice", // practice | drill | review | mock
+    kind: typeof e.kind === "string" ? e.kind.slice(0, 16) : "practice", // practice | drill | review | mock | plan-display
     conceptKeys: Array.isArray(e.conceptKeys) ? e.conceptKeys.filter((k) => typeof k === "string").slice(0, 6) : [],
+    // Intervention measurement metadata (optional, sanitized).
+    intervention: INTERVENTIONS.includes(e.intervention) ? e.intervention : undefined,
+    jurisdiction: typeof e.jurisdiction === "string" ? e.jurisdiction.slice(0, 8) : undefined,
+    questionForm: typeof e.questionForm === "string" ? e.questionForm.slice(0, 20) : undefined,
+    misconceptionType: typeof e.misconceptionType === "string" ? e.misconceptionType.slice(0, 24) : undefined,
+    priorMasteryState: typeof e.priorMasteryState === "string" ? e.priorMasteryState.slice(0, 16) : undefined,
+    priorLatency: e.priorLatency == null ? null : num(e.priorLatency, null, 0, 360000),
+    subsequentAttempts: e.subsequentAttempts == null ? null : num(e.subsequentAttempts, null, 0, 1e6),
+    subsequentLatency: e.subsequentLatency == null ? null : num(e.subsequentLatency, null, 0, 360000),
+    retentionIntervalDays: e.retentionIntervalDays == null ? null : num(e.retentionIntervalDays, null, 0, 3650),
+    misconceptionRecurred: e.misconceptionRecurred == null ? null : e.misconceptionRecurred === true,
     before: metricBlock(e.before),
     during: metricBlock(e.during),
     after: metricBlock(e.after),
@@ -101,15 +134,20 @@ function evaluate(events, opts) {
     ? { rate: round3(resolved / misEvents.length), n: misEvents.length }
     : { insufficient: true, n: misEvents.length, need: MIN_RESOLUTIONS };
 
-  // 3. coach-selected vs self-directed practice
+  // 3. coach-selected vs self-directed practice. A pair only counts when BOTH
+  //    accuracies were actually measured — treating a missing "before" as 0
+  //    fabricated a positive delta for every session.
   const coachSessions = followed.filter((e) => e.during && e.before);
   const selfSessions = list.filter((e) => !e.followed && e.during && e.before);
-  const lift = (arr) => (arr.length >= MIN_PAIRS
-    ? {
-        meanAccuracyDelta: round3(arr.reduce((t, e) => t + ((e.during.accuracy || 0) - (e.before.accuracy || 0)), 0) / arr.length),
-        n: arr.length,
-      }
-    : { insufficient: true, n: arr.length, need: MIN_PAIRS });
+  const lift = (arr) => {
+    const paired = arr.filter((e) => e.during.accuracy != null && e.before.accuracy != null);
+    return paired.length >= MIN_PAIRS
+      ? {
+          meanAccuracyDelta: round3(paired.reduce((t, e) => t + (e.during.accuracy - e.before.accuracy), 0) / paired.length),
+          n: paired.length,
+        }
+      : { insufficient: true, n: paired.length, need: MIN_PAIRS };
+  };
   const coachLift = lift(coachSessions);
   const selfLift = lift(selfSessions);
 
@@ -124,18 +162,110 @@ function evaluate(events, opts) {
       : { insufficient: true, n: inWindow.length };
   }
 
+  // 5. misconception RECURRENCE: repair followed by the same case reopening.
+  const repaired = list.filter((e) => e.intervention === "misconception-repair" || e.intervention === "misconception-escalation");
+  const recurrenceEvents = repaired.filter((e) => e.misconceptionRecurred != null);
+  const recurred = recurrenceEvents.filter((e) => e.misconceptionRecurred === true).length;
+  const recurrence = recurrenceEvents.length >= MIN_RESOLUTIONS
+    ? { rate: round3(recurred / recurrenceEvents.length), n: recurrenceEvents.length }
+    : { insufficient: true, n: recurrenceEvents.length, need: MIN_RESOLUTIONS };
+
+  // 6. delayed retention: interventions whose follow-up came days later.
+  const delayed = list.filter((e) => e.retentionIntervalDays != null && e.after && e.after.accuracy != null);
+  const delayedRetention = delayed.length >= MIN_PAIRS
+    ? {
+        rate: round3(delayed.filter((e) => e.after.accuracy >= 0.75).length / delayed.length),
+        meanDays: round3(delayed.reduce((t, e) => t + e.retentionIntervalDays, 0) / delayed.length),
+        n: delayed.length,
+      }
+    : { insufficient: true, n: delayed.length, need: MIN_PAIRS };
+
+  // 7. form transfer: did follow-up performance hold when the question form
+  //    changed? Paired events carrying a questionForm plus during/after.
+  const formPaired = followed.filter((e) => e.questionForm && e.during && e.after && e.after.accuracy != null);
+  const formTransfer = formPaired.length >= MIN_INTERVENTION_PAIRS
+    ? {
+        meanAfterAccuracy: round3(formPaired.reduce((t, e) => t + e.after.accuracy, 0) / formPaired.length),
+        n: formPaired.length,
+      }
+    : { insufficient: true, n: formPaired.length, need: MIN_INTERVENTION_PAIRS };
+
+  // 8. per-intervention effectiveness: before vs after, each scoped to its
+  //    own minimum sample. Never ranked against each other below threshold.
+  const byType = {};
+  for (const type of INTERVENTIONS) {
+    const rows = list.filter((e) => e.intervention === type && e.before && e.after
+      && (e.before.accuracy != null || e.before.conceptMastery != null));
+    const deltas = rows.map((e) => {
+      const base = e.after.conceptMastery != null && e.before.conceptMastery != null
+        ? e.after.conceptMastery - e.before.conceptMastery
+        : e.after.accuracy != null && e.before.accuracy != null
+          ? e.after.accuracy - e.before.accuracy : null;
+      return base;
+    }).filter((d) => d != null);
+    byType[type] = deltas.length >= MIN_INTERVENTION_PAIRS
+      ? { meanDelta: round3(deltas.reduce((t, d) => t + d, 0) / deltas.length), n: deltas.length }
+      : { insufficient: true, n: deltas.length, need: MIN_INTERVENTION_PAIRS };
+  }
+
+  // 9. recommendation completion: of the plans shown, how many were started
+  //    and how many were finished. `plan-display` events are the denominator —
+  //    completion is a real ratio only when a shown-but-ignored plan can be
+  //    counted, so a log with no display events reports insufficient evidence
+  //    instead of a decorative 100%.
+  const displays = list.filter((e) => e.kind === "plan-display");
+  const started = new Set(followed.map((e) => e.sessionId || `${e.at}:${e.type}`));
+  const finished = new Set(followed.filter((e) => e.during && e.after).map((e) => e.sessionId || `${e.at}:${e.type}`));
+  const completion = displays.length
+    ? {
+        startedRate: round3(Math.min(1, started.size / displays.length)),
+        finishedRate: round3(Math.min(1, finished.size / displays.length)),
+        shown: displays.length,
+        started: started.size,
+        finished: finished.size,
+        masteryChange: improvement,
+      }
+    : { insufficient: true, n: 0, need: 1, note: "no plan-display events recorded yet" };
+
+  // 10. time-to-secure: how long after first contact a concept reached
+  //     "secure", from priorMasteryState + timestamps. Needs several concepts.
+  const secureTracks = [];
+  const firstByConcept = new Map();
+  for (const e of list) {
+    for (const key of e.conceptKeys || []) {
+      const first = firstByConcept.get(key);
+      if (!first) { firstByConcept.set(key, e); continue; }
+      if (e.priorMasteryState === "secure" || e.priorMasteryState === "strong") {
+        secureTracks.push((e.at - first.at) / 86400000);
+        firstByConcept.delete(key);
+      }
+    }
+  }
+  const timeToSecure = secureTracks.length >= 3
+    ? {
+        meanDays: round3(secureTracks.reduce((t, d) => t + d, 0) / secureTracks.length),
+        n: secureTracks.length,
+      }
+    : { insufficient: true, n: secureTracks.length, need: 3 };
+
   return {
     version: EVIDENCE_VERSION,
     recorded: list.length,
     followedRate: list.length ? round3(followed.length / list.length) : null,
     improvement,
     misconceptionResolution: resolution,
+    misconceptionRecurrence: recurrence,
+    delayedRetention,
+    formTransfer,
+    interventions: byType,
+    recommendationCompletion: completion,
+    timeToSecure,
     coachSelectedLift: coachLift,
     selfDirectedLift: selfLift,
     retention,
     hazardTiming: o.hazardTiming || { insufficient: true, n: 0 },
     // The only claims the product may make from this report:
-    statements: buildStatements({ improvement, resolution, coachLift, selfLift, retention }),
+    statements: buildStatements({ improvement, resolution, coachLift, selfLift, retention, recurrence, delayedRetention }),
   };
 }
 
@@ -154,9 +284,11 @@ function buildStatements(m) {
     out.push("Not enough misconception cases yet to report a resolution rate.");
   }
   if (m.coachLift && !m.coachLift.insufficient && m.selfLift && !m.selfLift.insufficient) {
+    // Correlational wording only: this compares measured pairs; it never
+    // claims the recommendation strategy caused the difference.
     out.push(m.coachLift.meanAccuracyDelta > m.selfLift.meanAccuracyDelta
-      ? "Coach-selected practice is producing larger accuracy gains than self-directed practice in this data — still a small sample."
-      : "Self-directed practice is holding up well against Coach-selected practice in this data.");
+      ? "Sessions started from a recommendation have larger measured accuracy gains in this data than self-directed ones — a small sample, and not proof the recommendation caused it."
+      : "Self-directed sessions are holding up well against recommendation-started ones in this data.");
   }
   return out;
 }

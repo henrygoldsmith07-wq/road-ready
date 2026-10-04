@@ -38,6 +38,9 @@
     const span = document.createElement("span");
     span.className = `cm-chip cm-${state}`;
     span.textContent = (ctx.Mastery.MASTERY_DISPLAY[state] || state);
+    // The chip stays compact; the PLAIN sentence explains it in learner words.
+    const plain = ctx.Mastery.MASTERY_PLAIN && ctx.Mastery.MASTERY_PLAIN[state];
+    if (plain) span.title = plain;
     return span;
   }
 
@@ -82,6 +85,9 @@
       sub.className = "cm-sub";
       const ev = row.evidence;
       const parts = [];
+      // Plain learner sentence first: what the state means in their words.
+      const plainSentence = ctx.Mastery.MASTERY_PLAIN && ctx.Mastery.MASTERY_PLAIN[row.state];
+      if (plainSentence) parts.push(plainSentence);
       if (ev.attempts) {
         parts.push(`${ev.attempts} answer${ev.attempts === 1 ? "" : "s"} · ${Math.round(ev.accuracy * 100)}% correct`);
       } else {
@@ -128,6 +134,9 @@
       } else if (row.evidence.wrong > 0) {
         addFact(`Mistake history: ${row.evidence.wrong} wrong answer${row.evidence.wrong === 1 ? "" : "s"} so far.`);
       }
+      // Learner language first: what the state means in plain words.
+      const plain = ctx.Mastery.MASTERY_PLAIN && ctx.Mastery.MASTERY_PLAIN[row.state];
+      if (plain) addFact(plain);
       addFact(`Recommended next: ${row.nextAction.label}.`);
       details.appendChild(ul);
 

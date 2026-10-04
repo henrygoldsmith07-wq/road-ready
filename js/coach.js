@@ -559,17 +559,107 @@ function topicDiagnosis(bank, qstats, categories) {
 /**
  * THE plan: one primary recommendation, up to two supporting ones, and the
  * measured evidence behind them. Deterministic — same inputs, same plan.
+ *
+ * The ranking consults RECENT INTERVENTION EFFECTIVENESS (input.coachEvents,
+ * the js/evidence.js log): an intervention that recently failed to move its
+ * signals goes on cooldown and its slot escalates instead of repeating.
  */
 function recommend(input) {
-  const list = candidates(input);
+  const list = applyEvidenceRanking(input, candidates(input));
   const primary = list[0] || null;
   return {
     coachVersion: COACH_VERSION,
     primary,
     secondary: list.slice(1, 3),
     all: list,
+    cooldowns: cooldownState(input && input.coachEvents),
     phase: testPhase(input && input.daysLeft != null ? input.daysLeft : daysUntil(input && input.testDate, input && input.today)),
   };
+}
+
+/**
+ * Which interventions recently failed to help, from the evidence log.
+ * An event counts as "ineffective" when it was followed and its after-signal
+ * did not improve on its before-signal (or the misconception recurred). Two
+ * ineffective events of the same type trigger a cooldown; three escalate.
+ * Deterministic: pure function of the log, order-stable.
+ */
+function cooldownState(coachEvents) {
+  const list = Array.isArray(coachEvents) ? coachEvents.filter((e) => e && typeof e === "object") : [];
+  const byType = new Map();
+  for (const e of list) {
+    if (!e.followed) continue;
+    const type = e.intervention || e.type;
+    if (!type) continue;
+    const s = byType.get(type) || { ineffective: 0, effective: 0, lastAt: 0 };
+    const before = e.before || {};
+    const after = e.after || {};
+    const moved = (after.conceptMastery != null && before.conceptMastery != null && after.conceptMastery > before.conceptMastery)
+      || (after.accuracy != null && before.accuracy != null && after.accuracy > before.accuracy)
+      || (after.misconceptions != null && before.misconceptions != null && after.misconceptions < before.misconceptions);
+    const recurred = e.misconceptionRecurred === true;
+    if (recurred || (!moved && (e.after || e.during))) s.ineffective++;
+    else if (e.after || e.during) s.effective++;
+    s.lastAt = Math.max(s.lastAt, e.at || 0);
+    byType.set(type, s);
+  }
+  const out = { cooldown: [], escalate: [], recent: [] };
+  for (const [type, s] of byType) {
+    if (s.ineffective >= 3) out.escalate.push(type);
+    else if (s.ineffective >= 2 && s.effective === 0) out.cooldown.push(type);
+    else out.recent.push({ type, effective: s.effective, ineffective: s.ineffective });
+  }
+  out.cooldown.sort();
+  out.escalate.sort();
+  out.recent.sort((a, b) => (a.type < b.type ? -1 : a.type > b.type ? 1 : 0));
+  return out;
+}
+
+/**
+ * Demote candidates whose intervention type is on cooldown, and escalate the
+ * misconception repair when repair keeps failing (repeated failure → explicit
+ * comparison of the confused rules and a different question form, not the
+ * same drill again). Never suppresses the only candidate: a cooldown can
+ * demote and reword, never leave the learner with no plan.
+ */
+function applyEvidenceRanking(input, list) {
+  const events = input && input.coachEvents;
+  if (!Array.isArray(events) || !events.length) return list;
+  const state = cooldownState(events);
+  if (!state.cooldown.length && !state.escalate.length) return list;
+
+  // Candidate → evidence intervention, via the ONE canonical mapping in
+  // js/core.js. A local copy of this mapping is what made cooldowns inert in
+  // production while tests stayed green — never duplicate the vocabulary.
+  const interventionOf = (rec) =>
+    (CoachCore.interventionFor ? CoachCore.interventionFor(rec.type, rec.escalated) : "today-plan");
+
+  const adjusted = list.map((rec) => {
+    const intervention = interventionOf(rec);
+    const rec2 = Object.assign({}, rec);
+    if (state.escalate.includes(intervention) && rec.type === "fix-misconception") {
+      // Repair has failed repeatedly: change the intervention itself (the
+      // escalated candidate maps to "misconception-escalation", so the next
+      // session is measured as a different intervention).
+      rec2.escalated = true;
+      rec2.title = `Compare the confused rules: ${rec2.title}`;
+      rec2.why = [...rec2.why, "Repair work has not held on this rule, so this time the two rules are compared directly and a different question style is used."];
+      rec2.drillKind = "misconception-escalation";
+    } else if (state.cooldown.includes(intervention)) {
+      // Recently ineffective: deprioritise behind the rest, keep available.
+      rec2.rank = rec.rank + 25;
+      rec2.why = [...rec2.why, "Similar work recently has not moved this yet, so it is sequenced after fresher options."];
+    }
+    return rec2;
+  });
+
+  // A cooldown must never leave the plan empty of an actionable item.
+  if (!adjusted.some((r) => r.rank < 25) && adjusted.length) {
+    adjusted[0] = Object.assign({}, adjusted[0], { rank: adjusted[0].rank - 25 });
+  }
+  return adjusted.sort((a, b) => (a.rank - b.rank)
+    || (a.type < b.type ? -1 : a.type > b.type ? 1 : 0)
+    || ((a.conceptKeys[0] || "") < (b.conceptKeys[0] || "") ? -1 : 1));
 }
 
 /* ---------------- session-over-session delta ---------------- */
@@ -1139,7 +1229,7 @@ const RoadReadyCoach = {
   conceptLabel, daysUntil, testPhase,
   conceptDiagnosis, topicDiagnosis, issueKind,
   misconceptionStage, recordMisconception, noteConceptSuccess, activeMisconceptions, confusionLine,
-  candidates, recommend,
+  candidates, recommend, cooldownState, applyEvidenceRanking,
   buildSnapshot, sessionDelta, sessionSummary, repairReport,
   reviewGroups, drillIdsForConcept, weaknessCentre,
   mockDebrief, postMockDrill,

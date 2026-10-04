@@ -9,7 +9,9 @@
   },
   "scripts": {
     "serve": "node serve.js",
-    "test": "npm run test:unit && npm run validate && npm run hygiene",
+    "test": "npm run test:unit && npm run validate && npm run hygiene && npm run stats:check",
+    "stats:check": "node scripts/product-stats.mjs --check",
+    "stats:update": "node scripts/product-stats.mjs --write",
     "test:unit": "vitest run",
     "test:postgres": "node scripts/test-postgres.mjs",
     "test:watch": "vitest",

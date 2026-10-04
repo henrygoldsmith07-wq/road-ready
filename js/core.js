@@ -180,16 +180,38 @@ function sanitizeState(s, opts) {
     coach.lastPlanType = typeof coach.lastPlanType === "string" ? coach.lastPlanType.slice(0, 32) : "";
     s.coach = coach;
     s.coachEvents = Array.isArray(s.coachEvents)
-      ? s.coachEvents.filter((e) => e && typeof e === "object" && !Array.isArray(e)).slice(-200).map((e) => ({
-          at: num(e.at, 0, 0, 8.64e15) || undefined,
-          type: typeof e.type === "string" ? e.type.slice(0, 32) : "unknown",
-          followed: bool(e.followed),
-          kind: typeof e.kind === "string" ? e.kind.slice(0, 16) : "practice",
-          conceptKeys: Array.isArray(e.conceptKeys) ? e.conceptKeys.filter((k) => typeof k === "string").slice(0, 6) : [],
-          before: e.before && typeof e.before === "object" && !Array.isArray(e.before) ? e.before : null,
-          during: e.during && typeof e.during === "object" && !Array.isArray(e.during) ? e.during : null,
-          after: e.after && typeof e.after === "object" && !Array.isArray(e.after) ? e.after : null,
-        }))
+      ? s.coachEvents.filter((e) => e && typeof e === "object" && !Array.isArray(e)).slice(-200).map((e) => {
+          // The evidence metadata must survive save/load — dropping it here
+          // made every derived measure report "insufficient evidence" forever.
+          const block = (b) => (b && typeof b === "object" && !Array.isArray(b) ? {
+            accuracy: b.accuracy == null ? null : num(b.accuracy, 0, 0, 1),
+            conceptMastery: b.conceptMastery == null ? null : num(b.conceptMastery, 0, 0, 1),
+            misconceptions: b.misconceptions == null ? null : num(b.misconceptions, 0, 0, 1e6),
+            overdue: b.overdue == null ? null : num(b.overdue, 0, 0, 1e6),
+            coveragePct: b.coveragePct == null ? null : num(b.coveragePct, 0, 0, 100),
+          } : null);
+          return {
+            at: num(e.at, 0, 0, 8.64e15) || undefined,
+            sessionId: typeof e.sessionId === "string" ? e.sessionId.slice(0, 32) : "",
+            type: typeof e.type === "string" ? e.type.slice(0, 32) : "unknown",
+            followed: bool(e.followed),
+            kind: typeof e.kind === "string" ? e.kind.slice(0, 16) : "practice",
+            conceptKeys: Array.isArray(e.conceptKeys) ? e.conceptKeys.filter((k) => typeof k === "string").slice(0, 6) : [],
+            intervention: INTERVENTIONS.includes(e.intervention) ? e.intervention : undefined,
+            jurisdiction: typeof e.jurisdiction === "string" ? e.jurisdiction.slice(0, 8) : undefined,
+            questionForm: typeof e.questionForm === "string" ? e.questionForm.slice(0, 20) : undefined,
+            misconceptionType: typeof e.misconceptionType === "string" ? e.misconceptionType.slice(0, 24) : undefined,
+            priorMasteryState: typeof e.priorMasteryState === "string" ? e.priorMasteryState.slice(0, 16) : undefined,
+            priorLatency: e.priorLatency == null ? null : num(e.priorLatency, 0, 0, 360000),
+            subsequentAttempts: e.subsequentAttempts == null ? null : num(e.subsequentAttempts, 0, 0, 1e6),
+            subsequentLatency: e.subsequentLatency == null ? null : num(e.subsequentLatency, 0, 0, 360000),
+            retentionIntervalDays: e.retentionIntervalDays == null ? null : num(e.retentionIntervalDays, 0, 0, 3650),
+            misconceptionRecurred: e.misconceptionRecurred == null ? null : e.misconceptionRecurred === true,
+            before: block(e.before),
+            during: block(e.during),
+            after: block(e.after),
+          };
+        })
       : [];
     s.hazardLog = Array.isArray(s.hazardLog)
       ? s.hazardLog.filter((h) => h && typeof h === "object" && !Array.isArray(h)).slice(-120).map((h) => ({
@@ -1444,6 +1466,35 @@ function reviewSched(sched, right, nowMs, quality) {
   const SCORING_VERSION = "scoring-1";      // gradeExam + XP rules
   const MASTERY_VERSION = "mastery-v3-concepts"; // concept → topic → overall
 
+  /* ---------------- intervention vocabulary (learning evidence) ----------------
+   * ONE canonical list shared by the evidence producers (app.js session
+   * records), the evidence engine (js/evidence.js) and the coach ranking
+   * (js/coach.js). A vocabulary split here made cooldowns and escalation
+   * inert in production while tests stayed green — the list lives in core.js
+   * so every side imports the same names.
+   * Privacy: ids and enums only — never question text or account data. */
+  const INTERVENTIONS = [
+    "misconception-repair",      // wrong answer → structured repair on one concept
+    "misconception-escalation",  // repeated failure → comparison + escalation
+    "concept-drill",             // targeted drill on a weak concept/topic
+    "spaced-review",             // due/overdue retrieval practice
+    "sign-comparison",           // side-by-side sign confusion drill
+    "fluency-drill",             // slow-but-correct speed work
+    "post-mock-drill",           // targeted repair session after a mock
+    "today-plan",                // any other Today Plan recommendation
+  ];
+  /** Recommend an intervention for a coach recommendation type (pure). */
+  function interventionFor(recType, escalated) {
+    switch (recType) {
+      case "fix-misconception": return escalated ? "misconception-escalation" : "misconception-repair";
+      case "review-overdue": return "spaced-review";
+      case "improve-fluency": return "fluency-drill";
+      case "build-coverage":
+      case "strengthen-weak-topic": return "concept-drill";
+      default: return "today-plan";
+    }
+  }
+
   /** Cheap deterministic fingerprint of bank size + question ids. */
   function bankFingerprint(bank) {
     const ids = (bank || []).map((q) => q.id).sort().join(",");
@@ -2110,6 +2161,7 @@ function reviewSched(sched, right, nowMs, quality) {
     RETENTION_DELAY_DAYS, RETENTION_PROBE_SIZE, createEnrollment,
     retentionProbePool, studyMetrics, buildStudyExport,
     PROTOCOL_VERSION, SCORING_VERSION, MASTERY_VERSION, bankFingerprint,
+    INTERVENTIONS, interventionFor,
     readinessBand, strongAndRiskTopics, recommendedToday, dailyStudyRecommendation,
     signIdsInBank, SIGN_STAGES, SIGN_INTERVALS, signStage, reviewSign, signStudyOrder, signStageCounts,
     MIN_BUCKET_N, MAX_INTERVAL_WIDTH, CALIBRATION_BUCKETS, mockStability, bankCoverage,

@@ -24,6 +24,7 @@ const ResultsUI = window.RoadReadyResultsUI;
 const HomeUI = window.RoadReadyHomeUI;
 const QuizUI = window.RoadReadyQuizUI;
 const ConceptMapUI = window.RoadReadyConceptMapUI;
+const StatsUI = window.RoadReadyStatsUI;
 if (PracticalUI) {
   PracticalUI.init({
     Core,
@@ -81,8 +82,39 @@ function extractedDeps() {
 if (FlashcardsUI) FlashcardsUI.init(extractedDeps());
 if (ReviewUI) ReviewUI.init(Object.assign(extractedDeps(), { alert: (msg) => alert(msg) }));
 if (ResultsUI) ResultsUI.init(extractedDeps());
+if (StatsUI) {
+  StatsUI.init(Object.assign(extractedDeps(), {
+    // ACHIEVEMENTS is declared later in this file — a direct reference here
+    // would hit the temporal dead zone at load time and crash boot.
+    ACHIEVEMENTS: Core.ACHIEVEMENTS,
+    catQ: (id) => catQ(id),
+    catAccuracy: (id) => catAccuracy(id),
+    readiness: () => readiness(),
+    fmtTime,
+    levelFor,
+    hazardScenarioCount: () => HZ_SCENARIOS.length,
+    hazardCategories: (name) => {
+      const sc = (typeof HZ_SCENARIOS !== "undefined" ? HZ_SCENARIOS : []).find((s) => s.name === name);
+      return sc ? sc.category : null;
+    },
+    renderFluency: () => renderFluency(),
+    renderStudy: () => renderStudy(),
+    save: () => save(),
+    toast,
+    renderHome: () => renderHome(),
+    showView: (name) => showView(name),
+    openConceptMap: (id) => {
+      if (ConceptMapUI) { ConceptMapUI.render(id); showView("conceptmap"); }
+    },
+    appVersion: () => APP_VERSION,
+    PackIds: Packs.PACK_IDS,
+    todayStr: () => todayStr(),
+  }));
+}
+
 if (HomeUI) {
   HomeUI.init(Object.assign(extractedDeps(), {
+    Evidence,
     catQ: (id) => catQ(id),
     catAccuracy: (id) => catAccuracy(id),
     readiness: () => readiness(),
@@ -563,26 +595,36 @@ function startCoachSession() {
     qs = qs.concat(pad);
   }
   qs = qs.slice(0, Math.max(1, r.questionCount || 10));
-  // Learning evidence: the learner FOLLOWED this recommendation — record the
-  // signals that triggered it so the internal report can measure whether
-  // followed recommendations move them (js/evidence.js).
+  // Learning evidence — ONE event per session (start records the before
+  // signals; finishSession closes it with after signals under the same
+  // sessionId). The intervention key comes from the shared vocabulary in
+  // js/core.js so producers, the evidence engine and the coach ranking all
+  // speak the same language.
+  const evidenceSessionId = `ev-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e6).toString(36)}`;
   if (Evidence) {
+    const before = {
+      conceptMastery: r.evidence && r.evidence.length && r.evidence[0].mastery != null ? r.evidence[0].mastery : null,
+      accuracy: r.evidence && r.evidence.length && r.evidence[0].accuracy != null ? r.evidence[0].accuracy : null,
+      misconceptions: Coach.activeMisconceptions(state.misconceptions).length,
+      overdue: (r.evidence || []).reduce((t, e) => t + (e.overdue || 0), 0),
+    };
     state.coachEvents = Evidence.recordRecommendation(state.coachEvents, {
+      sessionId: evidenceSessionId,
       type: r.type,
-      followed: true,
+      intervention: Core.interventionFor(r.type, r.escalated === true),
+      followed: true, // the learner STARTED the recommended work (completion
+                      // is measured by the closing event's during/after block)
       kind: r.type === Coach.REC_TYPES.TAKE_MOCK ? "mock" : r.type === Coach.REC_TYPES.REVIEW_OVERDUE ? "review" : "practice",
       conceptKeys: r.conceptKeys,
-      before: {
-        conceptMastery: r.evidence && r.evidence.length && r.evidence[0].mastery != null ? r.evidence[0].mastery : null,
-        misconceptions: Coach.activeMisconceptions(state.misconceptions).length,
-      },
+      jurisdiction: state.settings.statePack,
+      before,
     }, Date.now());
     save();
   }
   session = {
     mode: "practice", label: r.title, questions: shuffle(qs), i: 0, correct: 0,
     answers: [], endTs: 0, timerId: null, marathon: false, requeued: {},
-    coachEventType: r.type, // lets finishSession close the evidence loop
+    evidenceSessionId, // lets finishSession close the evidence loop
   };
   quizBackTarget = "home";
   beginQuiz();
@@ -730,23 +772,30 @@ function finishSession(timedOut) {
   session.finished = true;
   clearInterval(session.timerId);
   clearTimeout(session.advanceId);
-  // Learning evidence: close the loop on a followed coach session — record how
-  // the session actually went against the signals that triggered it.
-  if (Evidence && session.coachEventType) {
+  // Learning evidence: close the loop on a followed coach session — UPDATE the
+  // session's single event (same sessionId) with the real outcome signals, so
+  // before→after pairs are genuine and one session is never double-counted.
+  if (Evidence && session.evidenceSessionId) {
     const answers = session.answers || [];
     const accuracy = answers.length ? answers.filter((a) => a.right).length / answers.length : null;
-    state.coachEvents = Evidence.recordRecommendation(state.coachEvents, {
-      type: session.coachEventType,
-      followed: true,
-      kind: "practice",
-      during: { accuracy },
-      after: {
-        conceptMastery: null,
+    const idx = state.coachEvents.findIndex((e) => e && e.sessionId === session.evidenceSessionId);
+    if (idx >= 0) {
+      const prev = state.coachEvents[idx];
+      const during = Object.assign({}, prev.during || {}, {
+        accuracy: accuracy == null ? (prev.during || {}).accuracy : accuracy,
+      });
+      const after = {
+        conceptMastery: null, // per-concept mastery is measured by the map at read time
+        accuracy: accuracy == null ? null : accuracy,
         misconceptions: Coach.activeMisconceptions(state.misconceptions).length,
-      },
-    }, Date.now());
-    save();
-    session.coachEventType = null;
+        overdue: Coach.conceptDiagnosis(bank, state.qstats, Date.now()).reduce((t, d) => t + d.overdue, 0),
+        coveragePct: Math.round(Core.bankCoverage(bank, state.qstats) * 100),
+      };
+      state.coachEvents = state.coachEvents.slice();
+      state.coachEvents[idx] = Object.assign({}, prev, { during, after });
+      save();
+    }
+    session.evidenceSessionId = null;
   }
   if (session.mode === "exam") {
     // unanswered questions count as wrong
@@ -808,342 +857,18 @@ function finishSession(timedOut) {
 }
 function toggleFlag() { if (QuizUI) QuizUI.toggleFlag(); }
 
-/* ---------------- STATS ---------------- */
-
-/**
- * Progress led by the six things that matter: syllabus coverage, mastery,
- * retention, mock performance, hazard skill, recurring misconceptions — as
- * plain statements. The headline study-progress score stays, clearly labelled
- * a heuristic, but no vanity percentage leads the screen.
- */
-function renderProgressSummary() {
-  const host = $("progressSummary");
-  if (!host) return;
-  const rows = Mastery ? Mastery.conceptMap(bank, state.qstats, state.misconceptions, Date.now()) : [];
-  const summary = Mastery ? Mastery.masterySummary(rows) : null;
-  const lines = [];
-  if (summary) {
-    const covered = Math.round(summary.covered * 100);
-    lines.push(covered >= 95 ? "Most concepts are covered." : `${summary.counts.unseen} concept${summary.counts.unseen === 1 ? " is" : "s are"} still untested.`);
-    const weak = summary.counts.learning + summary.counts.seen;
-    lines.push(weak ? `${weak} important concept${weak === 1 ? " is" : "s are"} still weak.` : "No weak concepts outstanding.");
-  }
-  const recentMocks = state.exams.slice(-3);
-  if (recentMocks.length) {
-    const avg = recentMocks.reduce((t, e) => t + e.correct, 0) / recentMocks.length;
-    const size = recentMocks[0].total;
-    lines.push(`Your last ${recentMocks.length} mock${recentMocks.length === 1 ? "" : "s"} averaged ${Math.round(avg)}/${size}.`);
-  }
-  const activeMis = Coach.activeMisconceptions(state.misconceptions).length;
-  lines.push(activeMis
-    ? `${activeMis} recurring misconception${activeMis === 1 ? "" : "s"} remain${activeMis === 1 ? "s" : ""}.`
-    : "No recurring misconceptions.");
-  const hazardRows = Core.hazardCategorySkill(
-    (state.hazardLog || []).map((h) => ({ scenario: h.scenario, pts: h.pts, outcome: h.band === "late" || h.band === "early" ? "late" : "window", anticipation: h.band === "instant" || h.band === "good" ? "anticipatory" : "reactive" })),
-    (name) => {
-      const sc = (typeof HZ_SCENARIOS !== "undefined" ? HZ_SCENARIOS : []).find((s) => s.name === name);
-      return sc ? sc.category : null;
-    },
-  );
-  if (hazardRows.length >= 2) {
-    const best = hazardRows[hazardRows.length - 1];
-    const worst = hazardRows[0];
-    lines.push(`Hazard detection is strongest for ${best.category.replace(/-/g, " ")} and weakest for ${worst.category.replace(/-/g, " ")}.`);
-  }
-  host.replaceChildren(...lines.map((line) => {
-    const p = document.createElement("p");
-    p.className = "progress-statement";
-    p.textContent = line;
-    return p;
-  }));
-  host.hidden = lines.length === 0;
-}
-
-function renderStats() {
-  renderProgressSummary();
-  const acc = state.answered ? Math.round(100 * state.correctCount / state.answered) : null;
-  $("ssAnswered").textContent = state.answered;
-  $("ssAccuracy").textContent = acc === null ? "–" : acc + "%";
-  $("ssStreak").textContent = state.streak.count;
-  $("ssExams").textContent = state.exams.length;
-  $("ssTime").textContent = fmtTime(state.timeStudied);
-  $("ssHazard").textContent = state.hazardBest ? state.hazardBest + "/" + (HZ_SCENARIOS.length * 5) : "–";
-
-  const lv = levelFor(state.xp);
-  $("xpLabel").textContent = "Level " + lv.lvl;
-  $("xpCount").textContent = `${lv.into}/${lv.need} XP`;
-  $("xpBar").style.setProperty("--w", Math.round(100 * lv.into / lv.need) + "%");
-
-  const ag = $("achGrid");
-  ag.innerHTML = "";
-  ACHIEVEMENTS.forEach(a => {
-    const has = !!state.achievements[a.id];
-    const d = document.createElement("div");
-    d.className = "ach" + (has ? " got" : "");
-    d.innerHTML = `${icon("award", 20)}<div><b>${a.name}</b><small>${a.desc}</small></div>`;
-    ag.appendChild(d);
-  });
-
-  renderFluency();
-
-  const ml = $("masteryList");
-  ml.innerHTML = "";
-  Object.entries(CATEGORIES).forEach(([id, c]) => {
-    const qs = catQ(id);
-    const m = Math.round(100 * Core.topicMastery(qs, state.qstats));
-    const accC = catAccuracy(id);
-    const bar = document.createElement("div");
-    bar.className = "bar";
-    const fill = document.createElement("div");
-    fill.className = "bar-fill";
-    fill.style.setProperty("--w", m + "%");
-    fill.setAttribute("role", "progressbar");
-    fill.setAttribute("aria-label", c.name + " mastery");
-    fill.setAttribute("aria-valuemin", "0");
-    fill.setAttribute("aria-valuemax", "100");
-    fill.setAttribute("aria-valuenow", String(m));
-    bar.appendChild(fill);
-    const row = document.createElement("div");
-    row.className = "mastery-row";
-    // The mastery row is the entry to the Concept Mastery Map: "which
-    // concepts in this topic do I actually know?" opens one tap away.
-    row.tabIndex = 0;
-    row.setAttribute("role", "button");
-    row.setAttribute("aria-label", `${c.name} concept map`);
-    const openMap = () => {
-      if (ConceptMapUI) { ConceptMapUI.render(id); showView("conceptmap"); }
-    };
-    on(row, "click", openMap);
-    on(row, "keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openMap(); }
-    });
-    const name = document.createElement("span");
-    name.className = "m-name";
-    name.innerHTML = icon(c.icon, 15); // trusted static SVG from js/icons.js
-    name.appendChild(document.createTextNode(" " + c.name));
-    const val = document.createElement("span");
-    val.className = "m-val";
-    val.textContent = m + "%";
-    if (accC !== null) {
-      const acc = document.createElement("small");
-      acc.textContent = " (" + Math.round(accC * 100) + "% acc)";
-      val.appendChild(acc);
-    }
-    row.appendChild(name);
-    row.appendChild(bar);
-    row.appendChild(val);
-    ml.appendChild(row);
-  });
-
-  const hl = $("historyList");
-  hl.innerHTML = state.exams.length
-    ? state.exams.slice().reverse().map(e => {
-        const d = new Date(e.date);
-        return `<li class="${e.pass ? "pass" : "fail"}">
-          <span>${icon(e.pass ? "check-circle" : "x-circle", 15)} ${escapeHTML(e.label || "Exam")}</span>
-          <span>${Math.round(e.pct * 100)}% (${e.correct}/${e.total})</span>
-          <small>${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small></li>`;
-      }).join("")
-    : `<li class="muted">No exams yet — take your first mock exam!</li>`;
-
-  $("selPassMark").value = String(state.settings.passMark);
-  $("selExamLen").value = String(state.settings.examLen);
-  $("chkFeedback").checked = !!state.settings.feedback;
-  if ($("selStatePack")) $("selStatePack").value = Packs.PACK_IDS.includes(state.settings.statePack) ? state.settings.statePack : "generic";
-  if ($("inpTestDate")) {
-    $("inpTestDate").value = state.settings.testDate || "";
-    $("inpTestDate").min = todayStr();
-  }
-  const calNarrative = $("calibrationNarrative");
-  if (calNarrative) {
-    const samples = predictionCalibrationSamples();
-    const narrative = Core.readinessNarrative(Object.assign({
-      readinessPct: Math.round(readiness() * 100),
-      curve: buildCalibrationCurve(samples),
-      riskTopics: [],
-      stabilitySpread: null,
-    }, CALIBRATION_CONTEXT()));
-    calNarrative.textContent = narrative.text;
-    $("calibrationDisclaimer").textContent = narrative.disclaimer;
-  }
-  renderCalibration();
-  renderEvidenceReport();
-  renderStudy();
-}
-
-/**
- * Internal learning-evidence report (advanced research section): whether
- * followed Coach recommendations move mastery, misconception resolution
- * rates, coach vs self-directed lift, and retention — each scoped to its
- * sample size, "insufficient evidence" where the data cannot carry a claim.
- */
-function renderEvidenceReport() {
-  const host = $("evidenceReport");
-  if (!host || !Evidence) return;
-  const events = state.coachEvents || [];
-  const rep = Evidence.evaluate(events, {
-    nowMs: Date.now(),
-    retentionLog: (state.study && state.study.retentionLog) || [],
-  });
-  host.replaceChildren(...rep.statements.map((line) => {
-    const p = document.createElement("p");
-    p.className = "state-note";
-    p.textContent = line;
-    return p;
-  }));
-}
-
-/* ---------------- official-test predictions (primary calibration) ---------------- */
-function predictionSnapshot() {
-  const theoryPct = Math.round(readiness() * 100);
-  const practicalLog = Core.practicalLog(state);
-  return {
-    readinessPct: theoryPct,
-    mockAvgPct: Math.round((Core.mockAverage(state.exams) ?? 0) * 100),
-    diagnosticPct: (() => {
-      const d = state.exams.slice().sort((a, b) => a.date - b.date).find((e) => e.tag === "diagnostic");
-      return d ? Math.round(d.pct * 100) : null;
-    })(),
-    coveragePct: Math.round(Core.bankCoverage(bank, state.qstats) * 100),
-    stabilitySpread: (() => {
-      const s = Core.mockStability(state.exams, 3);
-      return s == null ? null : Math.round(s * 100);
-    })(),
-    questionsSeen: state.answered,
-    studyMinutes: Math.round((state.timeStudied || 0) / 60),
-    skillsRated: Object.values(practicalLog.slice(-5).reduce((acc, s) => Object.assign(acc, s.skills || {}), {})),
-    bank,
-  };
-}
-function predictionCalibrationSamples() {
-  return (state.predictions || [])
-    .filter((p) => p.outcome && (p.outcome.result === "pass" || p.outcome.result === "fail"))
-    .map((p) => ({
-      readinessPct: p.readinessPct,
-      result: p.outcome.result,
-      jurisdiction: p.jurisdiction,
-      engineVersion: p.readinessEngineVersion,
-      date: p.predictionCreatedAt,
-    }));
-}
-function freezeOfficialPrediction() {
-  const snapshot = predictionSnapshot();
-  const prediction = Core.freezePrediction(state.predictions, state.study.participantId || "local-learner", state.settings.statePack, snapshot, {
-    intendedTestDate: state.settings.testDate || undefined,
-    nowMs: Date.now(),
-    appVersion: APP_VERSION,
-  });
-  state.predictions = [...(Array.isArray(state.predictions) ? state.predictions : []), prediction];
-  save();
-  return prediction;
-}
-/**
- * Calibration samples must never mix engines silently. The ACTIVE jurisdiction
- * and the CURRENT readiness/mastery engine version are always applied here, at
- * the single point where calibration data is consumed, so the curve cannot mix
- * samples from another jurisdiction or an older engine by accident.
- */
-const CALIBRATION_CONTEXT = () => ({
-  jurisdiction: state.settings.statePack,
-  engineVersion: Core.MASTERY_VERSION,
-});
-function buildCalibrationCurve(samples) {
-  return Core.calibrationCurve(samples, CALIBRATION_CONTEXT());
-}
-function pendingOutcomePrediction() {
-  // The pending row shown to the learner is the one the resolver will match an
-  // outcome against — attempt identity lives in Core.resolveAttemptPrediction.
-  return Core.resolveAttemptPrediction(state.predictions, { jurisdiction: state.settings.statePack });
-}
-function logOutcome(result) {
-  const jurisdiction = state.settings.statePack;
-  const snapshot = predictionSnapshot();
-  const recorded = Core.recordOfficialOutcome(state.predictions, state.outcomes, result, {
-    jurisdiction,
-    officialTestDate: Core.validIsoDate(state.settings.testDate) ? state.settings.testDate : null,
-    nowMs: Date.now(),
-    snapshot: {
-      progressPct: snapshot.readinessPct,
-      mockAvgPct: snapshot.mockAvgPct,
-      coveragePct: snapshot.coveragePct,
-      stabilitySpread: snapshot.stabilitySpread ?? 0,
-      diagnosticPct: snapshot.diagnosticPct ?? undefined,
-      jurisdiction,
-      questionsSeen: snapshot.questionsSeen,
-      studyMinutes: snapshot.studyMinutes,
-    },
-  });
-  if (recorded.duplicate) {
-    toast("Outcome already recorded", "This result was already saved against the frozen prediction.", "chart");
-    return;
-  }
-  state.predictions = recorded.predictions;
-  state.outcomes = recorded.outcomes;
-  save();
-  renderCalibration();
-  renderHome();
-  // Honest confirmation copy: say what actually happened to the frozen
-  // prediction. When nothing attached, this is a retrospective journal entry
-  // only — never imply a snapshot was preserved.
-  if (recorded.attached) {
-    toast("Outcome logged", "Recorded against your frozen prediction. Stored only on this device.", "chart");
-  } else {
-    toast("Outcome saved to journal", "No frozen prediction matched this attempt, so it was kept as a retrospective entry.", "chart");
-  }
-}
-function renderCalibration() {
-  const host = $("outcomeList");
-  if (!host) return;
-  const predictions = Array.isArray(state.predictions) ? state.predictions : [];
-  const retrospectives = Array.isArray(state.outcomes) ? state.outcomes : [];
-  const rows = [];
-  predictions.slice().reverse().forEach((p) => {
-    const d = new Date(p.predictionCreatedAt);
-    const res = p.outcome ? (p.outcome.result === "pass" ? "PASS" : p.outcome.result === "fail" ? "FAIL" : "?") : "PENDING";
-    const row = document.createElement("div");
-    row.className = "outcome-row";
-    const left = document.createElement("span");
-    left.textContent = `${d.toLocaleDateString()} · ${p.jurisdiction} · readiness ${p.readinessPct}% · mocks ${p.mockAvgPct}% · coverage ${p.coveragePct}% `;
-    const meta = document.createElement("span");
-    meta.className = "outcome-meta";
-    meta.textContent = `frozen prediction · attempt ${p.attemptNumber} · ${p.evidenceClass} evidence`;
-    left.appendChild(meta);
-    const right = document.createElement("b");
-    right.className = `res-${p.outcome ? p.outcome.result : "pending"}`;
-    right.textContent = res;
-    row.append(left, right);
-    rows.push(row);
-  });
-  retrospectives.slice().reverse().forEach((o) => {
-    const d = new Date(o.date);
-    const resLabel = o.result === "pass" ? "PASS" : o.result === "fail" ? "FAIL" : "?";
-    const row = document.createElement("div");
-    row.className = "outcome-row";
-    const left = document.createElement("span");
-    left.textContent = `${d.toLocaleDateString()} · ${o.progressPct}% progress · mock avg ${o.mockAvgPct}% · ${o.questionsSeen} questions `;
-    const meta = document.createElement("span");
-    meta.className = "outcome-meta";
-    meta.textContent = "retrospective journal";
-    left.appendChild(meta);
-    const right = document.createElement("b");
-    right.className = `res-${o.result}`;
-    right.textContent = resLabel;
-    row.append(left, right);
-    rows.push(row);
-  });
-  host.textContent = "";
-  if (!rows.length) {
-    const p = document.createElement("p");
-    p.className = "muted mx0";
-    p.textContent = "No outcomes logged yet.";
-    host.appendChild(p);
-    return;
-  }
-  const frag = document.createDocumentFragment();
-  rows.forEach((r) => frag.appendChild(r));
-  host.appendChild(frag);
-}
-
+/* ---------------- STATS & CALIBRATION ----------------
+ * Rendering and wiring live in js/stats-ui.js; the learning logic stays in
+ * core.js / coach.js / mastery.js / evidence.js. This file only orchestrates.
+ * (StatsUI itself is declared with the other UI bindings near the top.) */
+function renderStats() { if (StatsUI) StatsUI.render(); }
+function renderCalibration() { if (StatsUI) StatsUI.renderCalibration(); }
+function predictionCalibrationSamples() { return StatsUI ? StatsUI.predictionCalibrationSamples() : []; }
+function freezeOfficialPrediction() { return StatsUI ? StatsUI.freezeOfficialPrediction() : null; }
+function pendingOutcomePrediction() { return StatsUI ? StatsUI.pendingOutcomePrediction() : null; }
+function logOutcome(result) { if (StatsUI) StatsUI.logOutcome(result); }
+const CALIBRATION_CONTEXT = () => (StatsUI ? StatsUI.CALIBRATION_CONTEXT() : { jurisdiction: "generic", engineVersion: Core.MASTERY_VERSION });
+function buildCalibrationCurve(samples) { return StatsUI ? StatsUI.buildCalibrationCurve(samples) : null; }
 
 /* ---------------- learner study (research) ---------------- */
 

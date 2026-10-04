@@ -38,6 +38,21 @@ const MASTERY_DISPLAY = {
   misconception: "Recurring misconception",
 };
 
+/**
+ * Plain-learner sentences for each state. The chips above stay compact, but
+ * anything a learner READS uses these: technical terms are translated at the
+ * presentation layer, never removed from the engine.
+ */
+const MASTERY_PLAIN = {
+  unseen: "You have not met this one yet.",
+  seen: "You have met this once — one look is not knowing it yet.",
+  learning: "You are learning this one — it is coming, but it is not solid yet.",
+  secure: "You know this rule and have proved it in different situations.",
+  strong: "You know this rule well and can recall it quickly and reliably.",
+  "needs-review": "You learned this before — it is due a quick look so it does not fade.",
+  misconception: "You have made this same mistake more than once — worth sorting out properly.",
+};
+
 /** Minimum distinct questions of a concept answered right (wording transfer). */
 const MIN_VARIANTS_STRONG = 3;
 const MIN_VARIANTS_SECURE = 2;
@@ -238,7 +253,7 @@ function masteryStatements(counts, total) {
 }
 
 const RoadReadyMastery = {
-  MASTERY_ENGINE_VERSION, MASTERY_STATES, MASTERY_DISPLAY,
+  MASTERY_ENGINE_VERSION, MASTERY_STATES, MASTERY_DISPLAY, MASTERY_PLAIN,
   MIN_VARIANTS_STRONG, MIN_VARIANTS_SECURE, MIN_FORMS_SECURE,
   conceptEvidence, conceptState, conceptMap, stateRank, nextActionFor,
   masterySummary, masteryStatements,

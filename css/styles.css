@@ -7,6 +7,7 @@
   --card2: #17171d;
   --text: #f4f4f5;
   --muted: #9a9aa3;
+  --nav-label: #b6b6be;
   --line: #26262e;
   --line-strong: #3f3f49;
   --accent: #f4f4f5;
@@ -21,9 +22,11 @@ html[data-theme="light"] {
   --card: #ffffff;
   --card2: #f7f7f8;
   --text: #101012;
-  /* #6c6c74 clears 4.5:1 on the card surface, the page background AND the
-     translucent bottom-nav mix — the previous #71717a hit 4.35:1 on the nav. */
+  /* #6c6c74 clears 4.5:1 on the card surface and the page background. The
+     bottom-nav label colour is set separately (--nav-label) so nav contrast
+     never depends on the muted token used for body copy. */
   --muted: #6c6c74;
+  --nav-label: #5a5a62;
   --line: #e7e7ea;
   --line-strong: #c8c8cd;
   --accent: #101012;
@@ -623,22 +626,25 @@ kbd {
 .ob-foot .btn { min-width: 130px; }
 
 /* ---------- bottom nav ---------- */
+/* Opaque bar background: a translucent nav computes contrast against whatever
+   scrolls beneath it, which is engine-dependent — WebKit's axe flagged exactly
+   that. A fixed bar always sits over content, so translucency buys nothing. */
 .bottom-nav {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 30;
   display: flex; justify-content: space-around;
-  background: color-mix(in srgb, var(--bg) 92%, transparent);
-  backdrop-filter: blur(12px);
+  background: var(--bg);
   border-top: 1px solid var(--line);
   max-width: 720px; margin: 0 auto;
 }
 .bottom-nav button {
-  background: none; border: 0; color: var(--muted);
+  background: none; border: 0; color: var(--nav-label, var(--muted));
   display: flex; flex-direction: column; align-items: center; gap: 3px;
   font-size: 10px; font-weight: 600; padding: 9px 10px 10px;
   letter-spacing: 0.04em; flex: 1;
 }
-.bottom-nav button:hover { color: var(--text); }
+.bottom-nav button:hover, .bottom-nav button:focus-visible { color: var(--text); }
 .bottom-nav button.active { color: var(--text); box-shadow: inset 0 2px 0 0 var(--text); }
+.bottom-nav button:focus-visible { outline: 2px solid var(--text); outline-offset: -2px; }
 
 @media (min-width: 721px) {
   .bottom-nav { border-radius: 14px 14px 0 0; bottom: 8px; border: 1px solid var(--line); }

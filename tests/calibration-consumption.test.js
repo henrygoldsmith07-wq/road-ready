@@ -43,13 +43,15 @@ describe("calibration curve consumption is jurisdiction- and engine-safe", () =>
     expect(curve.buckets.find((b) => b.bucket === "70–79%").n).toBe(1);
   });
 
-  it("app.js never calls calibrationCurve without jurisdiction/engine options", () => {
-    const src = readFileSync(fileURLToPath(new URL("../js/app.js", import.meta.url)), "utf8");
+  it("the calibration module never calls calibrationCurve without jurisdiction/engine options", () => {
+    // The calibration code lives in js/stats-ui.js (extracted from app.js);
+    // the guard follows the code so the invariant stays enforced.
+    const src = readFileSync(fileURLToPath(new URL("../js/stats-ui.js", import.meta.url)), "utf8");
     for (const call of src.match(/Core\.calibrationCurve\([^)]*\)/g) || []) {
       expect(call, "unscoped calibration call: " + call).toMatch(/buildCalibrationCurve|CALIBRATION_CONTEXT|opts|\)/);
     }
     expect(src).toContain("engineVersion: Core.MASTERY_VERSION");
-    expect(src).toContain("jurisdiction: state.settings.statePack");
+    expect(src).toContain("jurisdiction: getState().settings.statePack");
   });
 
   it("readinessNarrative stays honest under the scoped call when evidence is thin", () => {
@@ -195,10 +197,13 @@ describe("predictions state sanitization", () => {
 
 describe("outcome rendering cannot execute imported markup", () => {
   it("renderCalibration builds rows with textContent, not innerHTML", () => {
-    const src = readFileSync(fileURLToPath(new URL("../js/app.js", import.meta.url)), "utf8");
+    // renderCalibration moved to js/stats-ui.js in the module extraction; the
+    // XSS guard follows the code and stays exactly as strict.
+    const src = readFileSync(fileURLToPath(new URL("../js/stats-ui.js", import.meta.url)), "utf8");
     const fnStart = src.indexOf("function renderCalibration");
-    const fnEnd = src.indexOf("/* ---------------- learner study");
+    const fnEnd = src.indexOf("window.RoadReadyStatsUI");
     const body = src.slice(fnStart, fnEnd);
+    expect(fnStart).toBeGreaterThan(-1);
     expect(body).not.toMatch(/\.innerHTML\s*=/);
     expect(body).toContain("textContent");
   });

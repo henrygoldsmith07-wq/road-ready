@@ -69,7 +69,7 @@
 
   /** The Today Plan card: the coach's single ranked recommendation. */
   function renderPlan() {
-    const { Core, Coach, getState, getBank, CATEGORIES, todayStr, validTestDate, hazardInfoForPack, hazardScenarioCount, checkProgressAchievements, levelFor } = ctx;
+    const { Core, Coach, Evidence, getState, getBank, CATEGORIES, todayStr, validTestDate, hazardInfoForPack, hazardScenarioCount, checkProgressAchievements, levelFor } = ctx;
     const state = getState();
     const bank = getBank();
 
@@ -105,6 +105,29 @@
       nowMs: Date.now(),
     });
     const rec = coachPlan.primary;
+    // Learning evidence: the plan was SHOWN. Recorded once per distinct
+    // recommendation shown (deduplicated by action key, not per render), so
+    // "recommendation completion" has a real shown-but-ignored denominator.
+    if (Evidence && rec) {
+      const displayKey = `plan-${rec.type}-${(rec.conceptKeys || []).join(",")}`;
+      const alreadyShown = (state.coachEvents || []).some((e) => e && e.kind === "plan-display" && e.sessionId === displayKey);
+      if (!alreadyShown) {
+        state.coachEvents = Evidence.recordRecommendation(state.coachEvents, {
+          sessionId: displayKey,
+          type: rec.type,
+          intervention: Core.interventionFor(rec.type),
+          followed: false, // shown, not yet started
+          kind: "plan-display",
+          conceptKeys: rec.conceptKeys,
+          jurisdiction: state.settings.statePack,
+          before: {
+            conceptMastery: rec.evidence && rec.evidence.length && rec.evidence[0].mastery != null ? rec.evidence[0].mastery : null,
+            misconceptions: Coach.activeMisconceptions(state.misconceptions).length,
+          },
+        }, Date.now());
+        ctx.save();
+      }
+    }
     const t = plan.todayCount;
     const target = Math.max(1, plan.dailyTarget);
     const goalEl = $("dailyGoal");

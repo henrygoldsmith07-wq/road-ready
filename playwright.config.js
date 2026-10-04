@@ -20,7 +20,10 @@ export default defineConfig({
   },
   projects: [
     { name: "desktop-chrome", use: { ...devices["Desktop Chrome"] } },
-    { name: "mobile-safari", use: { ...devices["iPhone 13"] } }, // mobile viewport/touch coverage
-    { name: "mobile-chrome", use: { ...devices["Pixel 7"] } },
+    // WebKit/mobile drivers on slower hardware resolve elements fine but have
+    // slow action round trips; the project-level timeout stops device overhead
+    // from masquerading as test failures (the desktop timeout stays tight).
+    { name: "mobile-safari", use: { ...devices["iPhone 13"] }, timeout: 120_000 }, // mobile viewport/touch coverage
+    { name: "mobile-chrome", use: { ...devices["Pixel 7"] }, timeout: 120_000 },
   ],
 });

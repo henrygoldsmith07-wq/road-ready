@@ -335,3 +335,83 @@ describe("hazard phases", () => {
     expect(rows[0].rate).toBeLessThan(rows[1].rate);
   });
 });
+
+describe("evidence-aware coach ranking (cooldowns and escalation)", () => {
+  const NOW = Date.parse("2026-10-02T09:00:00Z");
+
+  /** A followed intervention event with a measurable before/after pair. */
+  const ev = (intervention, moved, over) => ({
+    at: NOW,
+    type: "build-coverage",
+    followed: true,
+    intervention,
+    before: { conceptMastery: moved ? 0.4 : 0.5, accuracy: moved ? 0.5 : 0.7 },
+    after: { conceptMastery: moved ? 0.55 : 0.5, accuracy: moved ? 0.7 : 0.7 },
+    ...over,
+  });
+
+  it("an intervention that recently failed to help goes on cooldown", () => {
+    const events = [ev("concept-drill", false), ev("concept-drill", false)];
+    const state = Coach.cooldownState(events);
+    expect(state.cooldown).toContain("concept-drill");
+    expect(state.escalate).not.toContain("concept-drill");
+  });
+
+  it("a cooldown demotes the recommendation but never removes the plan", () => {
+    const events = [ev("concept-drill", false), ev("concept-drill", false)];
+    const plan = Coach.recommend({
+      bank: [q("c1", "cover", "recall"), q("c2", "cover", "scenario")],
+      qstats: {}, misconceptions: {}, exams: [], daily: {},
+      today: "2026-10-02", nowMs: NOW, coachEvents: events,
+    });
+    expect(plan.primary).not.toBeNull();
+    expect(plan.cooldowns.cooldown).toContain("concept-drill");
+    // the demoted candidate explains WHY it is sequenced later, in plain words
+    const cooled = plan.all.find((r) => r.why.some((w) => /not moved this yet/i.test(w)));
+    expect(cooled).toBeTruthy();
+  });
+
+  it("repeated repair failure escalates to a comparison intervention", () => {
+    const events = [
+      ev("misconception-repair", false, { misconceptionRecurred: true }),
+      ev("misconception-repair", false, { misconceptionRecurred: true }),
+      ev("misconception-repair", false, { misconceptionRecurred: true }),
+    ];
+    const state = Coach.cooldownState(events);
+    expect(state.escalate).toContain("misconception-repair");
+
+    const bank = [q("j1", "junction-priority", "recall"), q("j2", "junction-priority", "scenario")];
+    const plan = Coach.recommend({
+      bank,
+      qstats: {
+        j1: { seen: 4, correct: 1, wrong: 3 },
+        j2: { seen: 3, correct: 0, wrong: 3 },
+      },
+      misconceptions: {
+        "junction-priority": { errors: 3, stage: 3, questionIds: ["j1"], repairedAt: null },
+      },
+      exams: [], daily: {}, today: "2026-10-02", nowMs: NOW, coachEvents: events,
+    });
+    expect(plan.primary.type).toBe(Coach.REC_TYPES.FIX_MISCONCEPTION);
+    expect(plan.primary.escalated).toBe(true);
+    expect(plan.primary.title).toMatch(/Compare the confused rules/i);
+    expect(plan.primary.drillKind).toBe("misconception-escalation");
+  });
+
+  it("effective interventions are reported, not cooled down", () => {
+    const events = [ev("spaced-review", true), ev("spaced-review", true)];
+    const state = Coach.cooldownState(events);
+    expect(state.cooldown).toEqual([]);
+    expect(state.recent.find((r) => r.type === "spaced-review")).toBeTruthy();
+  });
+
+  it("ranking stays deterministic for identical event logs", () => {
+    const events = [ev("concept-drill", false), ev("concept-drill", false)];
+    const input = {
+      bank: [q("c1", "cover", "recall"), q("c2", "cover", "scenario")],
+      qstats: {}, misconceptions: {}, exams: [], daily: {},
+      today: "2026-10-02", nowMs: NOW, coachEvents: events,
+    };
+    expect(JSON.stringify(Coach.recommend(input))).toBe(JSON.stringify(Coach.recommend(input)));
+  });
+});

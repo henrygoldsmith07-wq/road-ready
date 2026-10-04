@@ -17,6 +17,8 @@ interface Window {
   RoadReadyEvidence: any;
   /** Present only when js/concept-map-ui.js has loaded before app.js. */
   RoadReadyConceptMapUI: any;
+  /** Present only when js/stats-ui.js has loaded before app.js. */
+  RoadReadyStatsUI: any;
   /** Present only when js/format.js has loaded before app.js. */
   RoadReadyFormat: any;
   RoadReadyPacks: any;

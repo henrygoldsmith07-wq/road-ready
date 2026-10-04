@@ -90,6 +90,18 @@
     timers = [];
   }
 
+  /**
+   * Observable lifecycle state. The view carries `data-phase` so the flow is
+   * deterministic and testable from outside: idle → intro → countdown →
+   * running → verdict → … → results. Tests await this instead of sleeping.
+   */
+  function setPhase(phase) {
+    if (!run) phase = "idle";
+    run && (run.phase = phase);
+    const view = $("view-hazard");
+    if (view) view.dataset.phase = phase;
+  }
+
   /* ---------------- overlay + announcements ---------------- */
   function showOverlay(html) {
     const ov = $("hzOverlay");
@@ -282,8 +294,9 @@
       session: pool.slice(0, Math.min(HZS.RUN_SIZE, pool.length)),
       i: 0, analyses: [], presses: [], timings: [], totalPts: 0,
       phase: "intro", running: false, timer: null, countdownTimer: null,
-      beginScene: null, lastPress: null,
+      sceneEndTimer: null, beginScene: null, lastPress: null,
     };
+    setPhase("intro");
 
     const sub = $("hazardSub");
     if (sub) {
@@ -323,7 +336,7 @@
     const sc = run.session[run.i];
     run.presses[run.i] = [];
     run.lastPress = null;
-    run.phase = "countdown";
+    setPhase("countdown");
     const slow = $("hzSlow");
     if (slow) slow.classList.remove("pressed");
     const flash = $("hzFlash");
@@ -343,15 +356,26 @@
       if (!run || run.phase !== "countdown") return;
       clearTimeout(run.countdownTimer);
       hideOverlay();
-      run.phase = "running";
+      setPhase("running");
       run.t0 = performance.now();
+      // SCENE COMPLETION is a wall-clock timeout, never tied to the paint
+      // loop: WebKit can starve a 60ms SVG-repaint interval, and if the end
+      // check lived inside that loop a slow tab would never reach the
+      // results. Painting is bounded separately below.
+      run.sceneEndTimer = setTimeout(() => endScenario(sc), Math.ceil(sc.max * 1000) + 60);
+      timers.push(run.sceneEndTimer);
+      const stepMs = reducedMotion() ? 500 : 90;
+      let lastPaint = -1;
       run.timer = setInterval(() => {
         const t = (performance.now() - run.t0) / 1000;
-        const q = reducedMotion() ? Math.floor(t * 2) / 2 : t;
+        // Skip repaints the browser could not keep up with — the scene clock
+        // stays real-time, the animation simply coarsens under load.
+        const q = reducedMotion() ? Math.floor(t * 2) / 2 : Math.round(t * (1000 / stepMs)) / (1000 / stepMs);
+        if (q === lastPaint) return;
+        lastPaint = q;
         const svgNow = $("hzSvg");
         if (svgNow) svgNow.innerHTML = HZS.buildScene(q, sc);
-        if (t >= sc.max) endScenario(sc);
-      }, 60);
+      }, stepMs);
       timers.push(run.timer);
     };
     const countdown = reducedMotion() ? 400 : 1400;
@@ -371,9 +395,9 @@
 
   function endScenario(sc) {
     if (!run || run.phase !== "running") return;
-    clearInterval(run.timer);
+    clearTimers();
     run.running = false;
-    run.phase = "verdict";
+    setPhase("verdict");
     const presses = run.presses[run.i].slice().sort((a, b) => a - b);
     const analysis = ctx.Core.hazardAnalysis(sc.name, presses, sc.win[0], sc.win[1]);
     // Phase-aware timing: first observation, early anticipation vs false
@@ -433,7 +457,7 @@
   function results() {
     if (!run) return;
     clearTimers();
-    run.phase = "results";
+    setPhase("results");
     const core = ctx.Core;
     const state = ctx.getState();
     const maxScore = run.session.length * 5;
@@ -492,6 +516,7 @@
   function stop() {
     clearTimers();
     run = null;
+    setPhase("idle");
     hideOverlay();
     const flash = $("hzFlash");
     if (flash) flash.hidden = true;

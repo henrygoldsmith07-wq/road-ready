@@ -72,10 +72,10 @@ test.describe("mock exam", () => {
 
     await expect(page.locator("#view-quiz")).toHaveClass(/active/);
     await expect(page.locator("#qTimer")).toBeVisible();
-    const timer = await page.locator("#qTimer").textContent();
-    // The timer starts immediately, so a busy CI worker can observe the first
-    // tick before this assertion runs.
-    expect(timer).toMatch(/10:00|9:59/); // 10 questions × 60 s
+    // The timer starts at the exam's 10-minute limit and counts down from the
+    // moment the session begins; a slow reader (busy CI, emulated device) can
+    // legitimately observe it a few seconds in. Assert the limit, not one tick.
+    await expect(page.locator("#qTimer")).toHaveText(/^\s*9:\d{2}\s*$/);
 
     // answer all 10 by mashing "1" — auto-advance in exam mode
     for (let i = 0; i < 12 && !(await page.locator("#view-results").evaluate((el) => el.classList.contains("active"))); i++) {
@@ -303,8 +303,9 @@ test.describe("official simulation", () => {
     await official.click();
     await expect(page.locator("#view-quiz")).toHaveClass(/active/);
     await expect(page.locator("#qTimer")).toBeVisible();
-    // Same tick-race as the GB test: the timer may have counted its first second.
-    await expect(page.locator("#qTimer")).toContainText(/46:00|45:59/);
+    // The 46-minute blueprint limit counts down from session start; a slow
+    // reader can legitimately observe it several seconds in. Assert the limit.
+    await expect(page.locator("#qTimer")).toHaveText(/^\s*45:\d{2}\s*$/);
 
     // submit immediately: unanswered questions count wrong → fails the official bar
     page.once("dialog", (d) => d.accept());
@@ -334,9 +335,9 @@ test.describe("official simulation", () => {
 
     await official.click();
     await expect(page.locator("#view-quiz")).toHaveClass(/active/);
-    // The DVSA timer starts immediately, so a busy worker can observe the first
-    // tick before this assertion runs — assert the boundary, not one instant.
-    await expect(page.locator("#qTimer")).toContainText(/57:00|56:59/);
+    // The 57-minute DVSA limit counts down from session start; a slow reader
+    // can legitimately observe it several seconds in. Assert the limit.
+    await expect(page.locator("#qTimer")).toHaveText(/^\s*56:\d{2}\s*$/);
     await expect(page.locator("#qCounter")).toContainText("/50");
   });
 });
