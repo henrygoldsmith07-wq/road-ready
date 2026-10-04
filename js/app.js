@@ -97,6 +97,8 @@ if (StatsUI) {
       const sc = (typeof HZ_SCENARIOS !== "undefined" ? HZ_SCENARIOS : []).find((s) => s.name === name);
       return sc ? sc.category : null;
     },
+    hazardCategoryLabel: (cat) => (HazardScenarios && HazardScenarios.categoryLabel
+      ? HazardScenarios.categoryLabel(cat) : String(cat || "").replace(/-/g, " ")),
     renderFluency: () => renderFluency(),
     renderStudy: () => renderStudy(),
     save: () => save(),
@@ -567,9 +569,18 @@ function startCoachSession() {
     testDate: validTestDate() ? state.settings.testDate : "",
     today: todayStr(),
     nowMs: Date.now(),
+    // Hazard perception is a scored section in some jurisdictions; the plan
+    // must be able to recommend it there and must ignore it elsewhere.
+    hazardPerception: hazardInfoForPack(),
+    hazardLog: state.hazardLog,
+    hazardCategoryOf: (name) => (HZ_SCENARIOS.find((s) => s.name === name) || {}).category || null,
+    hazardCategoryLabel: (cat) => (HazardScenarios && HazardScenarios.categoryLabel
+      ? HazardScenarios.categoryLabel(cat) : cat),
+    terminology: termsForPack(),
   });
   const r = plan.primary;
   if (!r) { startPractice(pickWeighted(adaptivePool(), 10), "Today's Plan", "home"); return; }
+  if (r.type === Coach.REC_TYPES.HAZARD_TRAINING) { showView("hazard"); return; }
   if (r.type === Coach.REC_TYPES.TAKE_MOCK) {
     const packId = Packs.PACK_IDS.includes(state.settings.statePack) ? state.settings.statePack : null;
     if (packId && BLUEPRINTS[packId]) { startOfficialExam(packId); return; }
@@ -736,6 +747,9 @@ function recordAnswer(q, right) {
   s.seen++; right ? s.correct++ : s.wrong++;
   s.lastSeen = now;
   if (!right) s.lastWrong = now;
+  // Spaced-retrieval evidence: the distinct days this question was answered
+  // correctly, so concept mastery can distinguish "once" from "across days".
+  Core.noteRetrieval(s, right, now);
   s.sched = Core.reviewSched(s.sched, right, now);   // weak-topic resurfacing
   // Misconception ledger: wrong answers open/escalate a concept case in every
   // mode (practice AND mock); correct answers are repair evidence — one lucky

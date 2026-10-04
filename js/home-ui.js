@@ -56,6 +56,22 @@
         ? narrative.text
         : `Uncalibrated estimate — ${narrative.text}`;
     }
+
+    // SCOPE, not calibration: where the exam scores a section this trainer
+    // cannot measure, say so on the progress card itself. A GB learner's 100%
+    // covers the 50-question section; the real test also scores 14 hazard clips.
+    // Without this line the number silently overstates what has been proved.
+    const scopeEl = $("rpScopeNote");
+    if (scopeEl) {
+      const hz = ctx.hazardInfoForPack ? ctx.hazardInfoForPack() : {};
+      if (hz.includedInExam && hz.unscoredSectionNote) {
+        scopeEl.hidden = false;
+        scopeEl.textContent = hz.unscoredSectionNote;
+      } else {
+        scopeEl.hidden = true;
+        scopeEl.textContent = "";
+      }
+    }
     const band = pct <= 0 && !topics.some((t) => t.seen) ? "Not Started" : Core.readinessBand(pct).label;
     const decidedPredictions = predictionSamples.filter((s) => s.result === "pass" || s.result === "fail");
     $("rpBand").textContent = decidedPredictions.length ? band : `${band} · uncalibrated`;
@@ -103,6 +119,11 @@
       testDate: validTestDate() ? state.settings.testDate : "",
       today: todayStr(),
       nowMs: Date.now(),
+      hazardPerception: HAZARD_INFO,
+      hazardLog: state.hazardLog,
+      hazardCategoryOf: ctx.hazardCategories,
+      hazardCategoryLabel: ctx.hazardCategoryLabel,
+      terminology: TERMS,
     });
     const rec = coachPlan.primary;
     // Learning evidence: the plan was SHOWN. Recorded once per distinct
@@ -226,6 +247,7 @@
       }
       planBtn.textContent = r.type === Coach.REC_TYPES.TAKE_MOCK ? "Take a mock"
         : r.type === Coach.REC_TYPES.LIGHT_REVIEW ? "Start light review"
+        : r.type === Coach.REC_TYPES.HAZARD_TRAINING ? "Practise hazards"
         : r.questionCount ? `Start ${r.questionCount}-question session`
         : "Start today's session";
       planBtn.dataset.action = "coach";
@@ -233,7 +255,9 @@
     if (!validTestDate()) {
       renderCoachPlan(rec);
       $("planMeta").textContent = "Set a test date for a dated plan — this adapts to your data either way.";
-      planBtn.textContent = rec.questionCount ? `Start ${rec.questionCount}-question session` : "Start today's session";
+      planBtn.textContent = rec.type === Coach.REC_TYPES.HAZARD_TRAINING
+        ? "Practise hazards"
+        : rec.questionCount ? `Start ${rec.questionCount}-question session` : "Start today's session";
       planBtn.dataset.action = "coach";
     } else if (plan.status === "past") {
       $("planTitle").textContent = "Update your test date";
@@ -257,10 +281,14 @@
       const planList = $("planRationale");
       const days = plan.daysLeft;
       const components = [];
-      if (days != null && days >= 0 && days <= 14) {
+      if (days >= 0 && days <= 14) {
         components.push(`${Math.max(5, Math.round(rec.questionCount * 0.6))} mixed questions`);
         if (plan.weak > 0) components.push("1 weak-concept drill");
-        if (days <= 7 && rec.type !== Coach.REC_TYPES.LIGHT_REVIEW) components.push("2 hazard scenarios");
+        // Hazard work is listed as a plan component only where the exam scores
+        // it — listing it for a bonus-training jurisdiction would imply the
+        // learner is neglecting a section their test does not contain.
+        if (days <= 7 && rec.type !== Coach.REC_TYPES.LIGHT_REVIEW
+            && HAZARD_INFO.includedInExam) components.push("2 hazard scenarios");
       }
       if (components.length) {
         planList.hidden = false;

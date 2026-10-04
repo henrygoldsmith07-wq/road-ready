@@ -70,6 +70,21 @@ const JURISDICTIONS = {
       trainingLabel: "Hazard identification training",
       officialLabel: "Official-test simulation unavailable",
       officialNote: "Road Ready uses original scenarios, not DVSA clips; this is training, not an official simulation.",
+      // How the REAL scored section treats a click. DVSA scores a clip 0 when
+      // the screen is clicked BEFORE the hazard develops, so telling a learner
+      // "earlier is better" trains the exact behaviour that scores zero.
+      // Declared per jurisdiction because the early-click penalty is a property
+      // of a SCORED section: where hazard perception is bonus training the app
+      // still rewards early spotting, and the copy must not import a rule the
+      // learner's own exam does not have.
+      scoring: {
+        earlyClick: "scores-zero",
+        lateClick: "scores-zero",
+        instruction: "Click the moment the hazard starts to develop — clicking too early and too late both score zero.",
+      },
+      // Sections the real test scores that this trainer cannot measure. Declared
+      // so no progress figure is ever read as covering more than it does.
+      unscoredSectionNote: "This covers the 50-question section only. The real test also scores 14 hazard-perception clips, which Road Ready trains but cannot score.",
     },
     guide: {
       scope: "gb",

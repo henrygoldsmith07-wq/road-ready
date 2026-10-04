@@ -20,5 +20,5 @@
 
   const RoadReadyFormat = { escapeHTML };
   if (typeof module !== "undefined" && module.exports) module.exports = RoadReadyFormat;
-  else root.RoadReadyFormat = RoadReadyFormat;
+  else /** @type {any} */ (root).RoadReadyFormat = RoadReadyFormat;
 })(typeof globalThis !== "undefined" ? globalThis : this);
