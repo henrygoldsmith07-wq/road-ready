@@ -116,6 +116,15 @@ describe("curated distractor traps drive misconception repair", () => {
     expect(trap.hint).toMatch(/United States|not apply here|does not apply/i);
   });
 
+  it("trap copy contains no known misspellings (regression: \"Good Britain\")", () => {
+    // A "Good Britain" typo shipped in the uk-vs-us-rule hint with full
+    // structural coverage green — nothing asserted on the words themselves.
+    const misspellings = /\bGood Britain\b|\bteh\b|\brecieve\b|\bseperate\b|\boccured\b|\bdefinately\b|\buntill\b|\btaht\b|\bthier\b/i;
+    for (const [tag, trap] of Object.entries(Explain.DISTRACTOR_TRAPS)) {
+      expect(`${trap.label} ${trap.hint}`, `misspelling in trap "${tag}"`).not.toMatch(misspellings);
+    }
+  });
+
   it("questions with no tag still fall back to the heuristic taxonomy", () => {
     const untagged = GB_QUESTIONS.find((x) => !x.distractors || !Object.keys(x.distractors).length);
     expect(untagged).toBeTruthy();

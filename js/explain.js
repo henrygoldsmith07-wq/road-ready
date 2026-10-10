@@ -162,7 +162,7 @@ const DISTRACTOR_TRAPS = {
   "uk-vs-us-rule": {
     kind: "confusion",
     label: "a rule that is not a Great Britain rule",
-    hint: "This choice is a common US rule that does not apply here. Good Britain learners meet right-of-way, signage and stopping rules that differ from those in the United States.",
+    hint: "This choice is a common US rule that does not apply here. Great Britain learners meet right-of-way, signage and stopping rules that differ from those in the United States.",
   },
 };
 
