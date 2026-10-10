@@ -304,7 +304,23 @@ function importProgress(file) {
   reader.readAsText(file);
 }
 
+/* Optional account + sync.
+ *
+ * Loaded LAZILY, on the first time the learner opens Settings, not at boot.
+ * Two reasons this matters beyond tidiness:
+ *
+ *   1. Privacy. Calling /api/auth/session on every page load tells the server
+ *      when each learner is active, before they have asked for anything
+ *      account-shaped. The panel this probes for lives only in Settings, and
+ *      is hidden entirely on deployments with no accounts configured.
+ *   2. Offline. An offline-first app should not need a round-trip to render
+ *      its home screen. Booting from cache is now zero-network by construction.
+ *
+ * The probe is idempotent: repeat navigations to Settings reuse the first
+ * result, so it still costs at most one request per session. */
+let accountReady = false;
 async function initAccount() {
+  if (accountReady) return;
   if (!AccountUI || !window.RoadReadyAccount) return;
   await AccountUI.init({
     account: window.RoadReadyAccount,
@@ -318,7 +334,10 @@ async function initAccount() {
       renderHome(); renderStats(); renderFlashcards();
     },
   });
+  accountReady = true;
 }
+
+const openSettings = () => { void initAccount(); showView("settings"); };
 
 /* ---------------- XP, levels & achievements ---------------- */
 const ACHIEVEMENTS = Core.ACHIEVEMENTS;
@@ -1117,12 +1136,14 @@ function init() {
     showView("review");
   });
   on($("btnPlanDate"), "click", () => {
+    void initAccount();
     showView("settings");
     setTimeout(() => { $("inpTestDate").scrollIntoView({ block: "center" }); $("inpTestDate").focus(); }, 0);
   });
   on($("btnPlanAction"), "click", e => {
     const action = e.currentTarget.dataset.action;
     if (action === "set-date") {
+      void initAccount();
       showView("settings");
       setTimeout(() => { $("inpTestDate").scrollIntoView({ block: "center" }); $("inpTestDate").focus(); }, 0);
       return;
@@ -1189,9 +1210,10 @@ function init() {
     toast("Pack: " + pack.name, scopeMsg, "car");
   });
   on($("btnExport"), "click", exportProgress);
-  on($("btnOpenSettings"), "click", () => showView("settings"));
+  /* The account probe is deferred to the first Settings visit rather than run at
+     boot, so rendering the home screen from cache needs no network at all. */
+  on($("btnOpenSettings"), "click", openSettings);
   on($("btnSettingsDone"), "click", () => { renderStats(); showView("stats"); });
-  void initAccount();
   on($("btnOutcomePass"), "click", () => {
     let pending = pendingOutcomePrediction();
     if (!pending) pending = freezeOfficialPrediction();
@@ -1223,13 +1245,61 @@ function init() {
     if (f) importProgress(f);
     e.target.value = "";
   });
-  on($("btnResetAll"), "click", () => {
-    if (!confirm("Erase ALL progress, stats, and history? This cannot be undone.")) return;
+  /* ---- local data deletion ----
+   *
+   * Local-only storage makes the learner the database, so "erase" has to be
+   * complete and explicit about its scope. Two behaviours matter:
+   *
+   *   1. The confirm enumerates what actually goes, not just "progress". A
+   *      learner who logged supervised Drive Log sessions is writing real
+   *      personal notes, and those must be named before they are destroyed.
+   *   2. There is an export-then-erase path, so the destructive action is
+   *      never the only way to make room.
+   *
+   * Sign-out is intentionally NOT a deletion: it ends the account session and
+   * leaves this device untouched, which is stated in the settings text so the
+   * common misconception is closed rather than merely avoided. */
+  function eraseLocalProgress() {
+    if (!confirm(
+      "Erase ALL of the following from this device? This cannot be undone.\n\n"
+      + "• question, mastery and review history\n"
+      + "• exam results, mock history and score snapshots\n"
+      + "• day streak, study time and XP\n"
+      + "• flagged questions and sign-flashcard tracking\n"
+      + "• hazard best score\n"
+      + "• outcome journal and pre-test predictions\n"
+      + "• Drive Log sessions and instructor notes\n"
+      + "• research study participation\n\n"
+      + "Export first if you want a copy.")) return;
     const theme = state.settings.theme;
-    state = Core.defaultState(); state.settings.theme = theme;
+    state = Core.defaultState();
+    // Preferences that must survive a wipe so the app still opens correctly;
+    // everything else in the previous state is deliberately dropped.
+    state.settings.theme = theme;
     bank = Packs.filterBankForPack(ALL_QUESTIONS, state.settings.statePack);
     save(); renderStateFacts(); renderStats(); renderHome(); renderFlashcards();
-    alert("Progress reset. Fresh start!");
+    alert("Erased. This device now has no study history.");
+  }
+
+  on($("btnResetAll"), "click", () => eraseLocalProgress());
+  // Export first, then confirm the erase separately. The bundle is serialised
+  // before anything is destroyed, so a build failure aborts the whole action
+  // rather than leaving someone with neither their data nor a backup.
+  on($("btnExportThenReset"), "click", () => {
+    let bundle;
+    try {
+      // Serialising is the part that can genuinely fail (a bad state field, a
+      // quota error on a huge history). The browser download afterwards is
+      // fire-and-forget, which is why the erase still asks for confirmation.
+      bundle = JSON.stringify(Core.exportBundle(state));
+      if (!bundle || bundle.length < 2) throw new Error("empty bundle");
+    } catch {
+      alert("Could not build the backup file, so nothing was erased.");
+      return;
+    }
+    exportProgress();
+    if (!confirm("Backup downloaded. Erase all progress on this device now?")) return;
+    eraseLocalProgress();
   });
 
   // keyboard

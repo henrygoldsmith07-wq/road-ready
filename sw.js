@@ -19,7 +19,7 @@
 "use strict";
 
 // scripts/update-sw.mjs rewrites the line below — do not edit by hand.
-const VERSION = "v.4f4b68696491";
+const VERSION = "v.717a4aad0e6e";
 const CACHE = `roadready-${VERSION}`;
 const SHELL = [
   "./",
@@ -42,6 +42,7 @@ const SHELL = [
   "js/exam-blueprints.js",
   "js/icons.js",
   "js/questions.js",
+  "js/concepts.js",
   "js/signs.js",
   "js/account.js",
   "js/account-ui.js",
