@@ -247,6 +247,41 @@ describe("weakness centre", () => {
     expect(mis.actions).toEqual(["repair", "drill", "rule", "later"]);
   });
 
+  it("flags snoozed problems without hiding them from the engine", () => {
+    const key = Coach.snoozeKey("misconception", "junction-priority");
+    expect(key).toBe("misconception:junction-priority");
+    const flagged = Coach.weaknessCentre({
+      bank,
+      qstats: { j1: { seen: 4, correct: 1, wrong: 3 }, j2: { seen: 3, correct: 1, wrong: 2 } },
+      misconceptions: { "junction-priority": { errors: 3, stage: 2, repairedAt: null } },
+      snoozed: { [key]: NOW },
+      nowMs: NOW,
+    });
+    expect(flagged.snoozedCount).toBe(1);
+    const mis = flagged.sections.find((s) => s.id === "misconception").problems[0];
+    expect(mis.snoozed).toBe(true);
+    // unknown snooze keys match nothing and change nothing
+    const unknown = Coach.weaknessCentre({
+      bank,
+      qstats: { j1: { seen: 4, correct: 1, wrong: 3 }, j2: { seen: 3, correct: 1, wrong: 2 } },
+      misconceptions: { "junction-priority": { errors: 3, stage: 2, repairedAt: null } },
+      snoozed: { "nope:missing": NOW },
+      nowMs: NOW,
+    });
+    expect(unknown.snoozedCount).toBe(0);
+  });
+
+  it("problems default to not-snoozed when no snooze map is passed", () => {
+    const wc = Coach.weaknessCentre({
+      bank,
+      qstats: { j1: { seen: 3, correct: 0, wrong: 3 } },
+      misconceptions: { "junction-priority": { errors: 3, repairedAt: null } },
+      nowMs: NOW,
+    });
+    expect(wc.snoozedCount).toBe(0);
+    expect(wc.sections.every((s) => s.problems.every((p) => p.snoozed === false))).toBe(true);
+  });
+
   it("tracks resolved vs recurring misconceptions", () => {
     const wc = Coach.weaknessCentre({
       bank, qstats: { j1: { seen: 3, correct: 0, wrong: 3 } },

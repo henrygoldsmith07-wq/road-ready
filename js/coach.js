@@ -1269,12 +1269,20 @@ function postMockDrill(input) {
  * Each problem carries a concrete action set: repair misconception, drill,
  * view rule, mark for later. Weaknesses must feel SOLVABLE, not an analytics dump.
  */
+/** Stable key for a snoozed Weakness-Centre problem (shared with review-ui). */
+function snoozeKey(category, key) {
+  return `${String(category || "")}:${String(key || "")}`.slice(0, 160);
+}
+
 function weaknessCentre(input) {
   const o = input || {};
   const bank = Array.isArray(o.bank) ? o.bank : [];
   const qstats = o.qstats || {};
   const misconceptions = o.misconceptions || {};
   const nowMs = o.nowMs == null ? Date.now() : o.nowMs;
+  // "Mark for later" snoozes, as sanitised state ("category:conceptKey" ->
+  // timestamp). Unknown keys match nothing, so stale entries are harmless.
+  const snoozed = (o.snoozed && typeof o.snoozed === "object" && !Array.isArray(o.snoozed)) ? o.snoozed : {};
   const diags = conceptDiagnosis(bank, qstats, nowMs);
   const groups = CoachCore.groupByConcept(bank);
   const missedIds = new Set(CoachCore.missedQuestions(bank, qstats).map((q) => q.id));
@@ -1286,6 +1294,7 @@ function weaknessCentre(input) {
     label: d.label,
     category,
     problem: problemLine,
+    snoozed: !!snoozed[snoozeKey(category, d.key)],
     attempts: d.encounters,
     mistakes: d.wrong,
     questionIds: (groups.get(d.key) || []).map((q) => q.id),
@@ -1339,9 +1348,11 @@ function weaknessCentre(input) {
     { id: "unseen-high-value", title: "Unseen high-value concepts", why: "Never tested yet — and worth marks on the real test.", problems: unseenProblems },
   ].filter((s) => s.problems.length);
 
+  const snoozedCount = sections.reduce((t, s) => t + s.problems.filter((p) => p.snoozed).length, 0);
   return {
     sections,
     totalProblems: sections.reduce((t, s) => t + s.problems.length, 0),
+    snoozedCount,
     resolvedCount: Object.values(misconceptions).filter((m) => m && m.repairedAt).length,
     recurringCount: misconceptionProblems.length,
   };
@@ -1355,7 +1366,7 @@ const RoadReadyCoach = {
   misconceptionStage, recordMisconception, noteConceptSuccess, activeMisconceptions, confusionLine,
   candidates, recommend, cooldownState, applyEvidenceRanking,
   buildSnapshot, sessionDelta, sessionSummary, repairReport,
-  reviewGroups, drillIdsForConcept, weaknessCentre,
+  reviewGroups, drillIdsForConcept, weaknessCentre, snoozeKey,
   mockDebrief, postMockDrill,
 };
 

@@ -71,7 +71,7 @@ function extractedDeps() {
     escapeHTML,
     sourceCitationHTML,
     signArt: (id, size) => signArt(id, size),
-    startPractice: (qs, label, backTo) => startPractice(qs, label, backTo),
+    startPractice: (qs, label, backTo, marathon) => startPractice(qs, label, backTo, marathon),
     shuffle: (arr) => shuffle(arr),
     showView: (name) => showView(name),
     unlock,
@@ -136,7 +136,7 @@ if (HomeUI) {
 
 if (ConceptMapUI) {
   ConceptMapUI.init(Object.assign(extractedDeps(), {
-    startPractice: (qs, label, backTo) => startPractice(qs, label, backTo),
+    startPractice: (qs, label, backTo, marathon) => startPractice(qs, label, backTo, marathon),
     showView: (name) => showView(name),
   }));
 }
@@ -499,6 +499,7 @@ function startSetup(mode, focusCat) {
       { id: "today", icon: "sparkles", name: "Today's Set", desc: `${todaySize} questions sized to your test date${daysLeftPractice ? ` — test in ${daysLeftPractice} day${daysLeftPractice === 1 ? "" : "s"}` : " — set a test date for a dated plan"} · weak spots first`, action: () => startPractice(pickWeighted(adaptivePool(), todaySize), "Today's Set", "home") },
       { id: "missed", icon: "target", name: "Missed Questions", desc: missedQuestions().length ? `Re-drill the ${Math.min(todaySize, missedQuestions().length)} you've gotten wrong` : "Nothing missed yet — nice!", action: () => { const m = missedQuestions(); if (m.length) startPractice(pickWeighted(m.map(q => ({ q, w: 1 })), Math.min(todaySize, m.length)), "Missed Questions", "home"); } },
       { id: "flagged", icon: "flag", name: "Flagged Questions", desc: Object.keys(state.flagged).length ? `${Object.keys(state.flagged).length} flagged for review` : "Flag questions during practice to build this set", action: () => { const f = Object.keys(state.flagged).map(id => byId[id]).filter(Boolean); if (f.length) startPractice(shuffle(f).slice(0, 15), "Flagged Questions", "home"); } },
+      { id: "marathon", icon: "infinity", name: "Marathon Mode", desc: `${bank.length} questions — the full bank in one run · anything you miss comes back until you've seen it through`, action: () => startMarathon() },
     ];
     const stateQuestions = bank.filter(q => Array.isArray(q.jurisdiction) && q.jurisdiction.includes(state.settings.statePack));
     if (stateQuestions.length) {
@@ -665,6 +666,13 @@ function startPractice(questions, label, backTo, marathon) {
   quizBackTarget = backTo || "home";
   session = { mode: "practice", label, questions, i: 0, correct: 0, answers: [], endTs: 0, timerId: null, marathon: !!marathon, requeued: {} };
   beginQuiz();
+}
+/* Marathon Mode: the full active-jurisdiction bank in one run. Missed
+   questions are requeued by the quiz UI until answered correctly, and the
+   "Marathoner" achievement fires at 100+ answers in the session. */
+function startMarathon() {
+  if (!bank.length) return;
+  startPractice(shuffle(bank.slice()), "Marathon — full bank", "setup", true);
 }
 function startExam(n, weakBias) {
   quizBackTarget = "home";

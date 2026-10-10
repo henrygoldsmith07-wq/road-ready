@@ -46,6 +46,28 @@ describe("state migration", () => {
     expect(m.state.qstats.a1.sched.ef).toBe(2.5); // sched normalized in
   });
 
+  it("weakness-centre snoozes default, survive and stay bounded", () => {
+    // legacy payloads gain an empty map
+    const legacy = Core.migrateState({ answered: 1 });
+    expect(legacy.state.reviewSnoozed).toEqual({});
+    // valid entries survive, junk is dropped
+    const m = Core.migrateState(Object.assign(Core.defaultState(), {
+      reviewSnoozed: {
+        "misconception:junction-priority": 1700000000000,
+        "overdue:sign-shape": "not-a-time",
+        x: -5,
+      },
+    }));
+    expect(m.state.reviewSnoozed).toEqual({ "misconception:junction-priority": 1700000000000 });
+    // the map cannot grow without bound — newest 200 win
+    const big = {};
+    for (let i = 1; i <= 205; i++) big[`overdue:c${i}`] = i;
+    const capped = Core.migrateState(Object.assign(Core.defaultState(), { reviewSnoozed: big }));
+    expect(Object.keys(capped.state.reviewSnoozed)).toHaveLength(200);
+    expect(capped.state.reviewSnoozed["overdue:c1"]).toBeUndefined();
+    expect(capped.state.reviewSnoozed["overdue:c205"]).toBe(205);
+  });
+
   it("future versions are flagged, not destroyed", () => {
     const future = Object.assign(Core.defaultState(), { v: 99, brandNewField: { a: 1 } });
     const m = Core.migrateState(future);

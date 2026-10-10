@@ -34,6 +34,7 @@
       v: SCHEMA_VERSION,
       qstats: {},        // qid -> {seen, correct, wrong, lastSeen, lastWrong, fastWrong, slowRight, sched:{due, ef, interval, reps}}
       flagged: {},       // qid -> true
+      reviewSnoozed: {},  // "category:conceptKey" -> snoozedAt ms (Weakness Centre "Mark for later")
       exams: [],         // {date, label, pct, correct, total, pass, durationSec}
       answered: 0,
       correctCount: 0,
@@ -123,6 +124,20 @@
       s.qstats[qid] = st;
     });
     s.flagged = plainObject(s.flagged);
+    // Weakness-Centre snoozes: bounded, timestamped, and keyed by a short
+    // "category:conceptKey" string so a corrupt or hostile payload cannot
+    // bloat the save file. Unknown keys simply match nothing at render time.
+    s.reviewSnoozed = plainObject(s.reviewSnoozed);
+    {
+      const clean = {};
+      for (const k of Object.keys(s.reviewSnoozed)) {
+        if (typeof k !== "string" || !k || k.length > 160) continue;
+        const ts = num(s.reviewSnoozed[k], 0, 0, 8.64e15);
+        if (ts) clean[k] = ts;
+      }
+      // keep the most recent 200 so the map cannot grow without bound
+      s.reviewSnoozed = Object.fromEntries(Object.entries(clean).sort((a, b) => a[1] - b[1]).slice(-200));
+    }
     s.exams = Array.isArray(s.exams)
       ? s.exams.filter((e) => e && typeof e === "object" && !Array.isArray(e)).slice(-MAX_EXAM_HISTORY).map((e) => ({
       date: num(e.date, Date.now(), 0, 8.64e15),
