@@ -1058,6 +1058,7 @@ function init() {
   applyTTS();
   initStatePackSelect();
   renderStateFacts();
+  initGuideFinder();
   renderHome();
   renderFlashcards();
   if (!state.onboarded) showOnboarding();
@@ -1375,6 +1376,100 @@ function initStatePackSelect() {
   sel.value = Packs.PACK_IDS.includes(state.settings.statePack) ? state.settings.statePack : "generic";
 }
 
+/* ---------------- RULE FINDER (study-guide search) ---------------- */
+// The query is session-local on purpose: searching never touches stored
+// state, so there is nothing to persist, export or erase.
+let guideQuery = "";
+let guideFinderBound = false;
+let guideFinderLast = { questions: [], signs: [] };
+function signCopyFor(id) {
+  const s = (typeof SIGNS !== "undefined" && SIGNS[id]) || null;
+  if (!s) return { name: "", meaning: "" };
+  const alt = s.alt && s.alt[state.settings.statePack];
+  return alt ? { name: alt.name || s.name, meaning: alt.meaning || s.meaning } : { name: s.name, meaning: s.meaning };
+}
+function renderGuideFinder() {
+  const input = $("ruleSearch"), meta = $("ruleSearchMeta"), host = $("ruleSearchResults");
+  if (!input || !meta || !host) return;
+  if (document.activeElement !== input && input.value !== guideQuery) input.value = guideQuery;
+  const q = guideQuery.trim();
+  if (q.length < 2) { meta.hidden = true; host.replaceChildren(); guideFinderLast = { questions: [], signs: [] }; return; }
+  const labelFor = (k) => (Coach && Coach.conceptLabel ? Coach.conceptLabel(k) : k);
+  const questions = Core.searchBank(bank, q, { labelFor });
+  const signs = Core.searchSigns(typeof SIGNS !== "undefined" ? SIGNS : {}, q);
+  guideFinderLast = { questions, signs };
+  meta.hidden = false;
+  if (!questions.length && !signs.length) {
+    meta.textContent = `No matches for “${q}” in this jurisdiction's bank — try a shorter word like “overtake”, “signal” or “limit”.`;
+    host.replaceChildren();
+    return;
+  }
+  const bits = [];
+  if (questions.length) bits.push(`${questions.length} question${questions.length === 1 ? "" : "s"}`);
+  if (signs.length) bits.push(`${signs.length} sign${signs.length === 1 ? "" : "s"}`);
+  meta.textContent = `${bits.join(" · ")} match “${q}”.`;
+  host.replaceChildren();
+  if (questions.length) {
+    const bar = document.createElement("div");
+    bar.className = "finder-bar";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn primary finder-practice";
+    btn.textContent = `Practice these ${Math.min(15, questions.length)}`;
+    on(btn, "click", () => {
+      const qs = guideFinderLast.questions.map(r => r.q);
+      if (qs.length) startPractice(shuffle(qs).slice(0, 15), "Rule search", "guide");
+    });
+    bar.appendChild(btn);
+    host.appendChild(bar);
+  }
+  signs.forEach(({ id }) => {
+    const copy = signCopyFor(id);
+    const card = document.createElement("div");
+    card.className = "card finder-sign";
+    const art = document.createElement("div");
+    art.className = "sign-frame small";
+    art.innerHTML = signArt(id, 64);
+    const body = document.createElement("div");
+    const name = document.createElement("div");
+    name.className = "ri-q";
+    name.textContent = copy.name;
+    const meaning = document.createElement("div");
+    meaning.className = "ri-why";
+    meaning.textContent = copy.meaning;
+    body.append(name, meaning);
+    card.append(art, body);
+    host.appendChild(card);
+  });
+  questions.forEach(({ q: item }) => {
+    const card = document.createElement("div");
+    card.className = "card finder-item";
+    const title = document.createElement("div");
+    title.className = "ri-q";
+    title.textContent = item.q;
+    card.appendChild(title);
+    const ans = document.createElement("div");
+    ans.className = "ri-a ok";
+    ans.textContent = item.choices[item.a];
+    card.appendChild(ans);
+    const why = document.createElement("div");
+    why.className = "ri-why";
+    why.textContent = item.why;
+    card.appendChild(why);
+    const cite = document.createElement("div");
+    cite.innerHTML = sourceCitationHTML(item);
+    card.appendChild(cite);
+    host.appendChild(card);
+  });
+}
+function initGuideFinder() {
+  if (guideFinderBound) return;
+  const input = $("ruleSearch");
+  if (!input) return;
+  guideFinderBound = true;
+  on(input, "input", () => { guideQuery = input.value; renderGuideFinder(); });
+}
+
 /* study-guide facts card for the selected jurisdiction */
 const FACT_LABELS = {
   bacAdult: "Adult BAC limit",
@@ -1399,6 +1494,7 @@ function renderStateFacts() {
     return `<div class="fact-row"><span>${label}</span><b>${v}</b></div>`;
   }).join("");
   host.hidden = false;
+  renderGuideFinder();
   const note = pack.note || (source ? `Rules and figures are mapped to the ${source.title}. Laws can change, so confirm before test day.` : "");
   host.innerHTML = `
     <h2 class="section-title">${pack.name}</h2>

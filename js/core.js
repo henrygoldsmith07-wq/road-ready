@@ -2203,6 +2203,91 @@ function reviewSched(sched, right, nowMs, quality) {
     return { ok: true, state: m.state, warnings: m.warnings.concat(bundle.schema > SCHEMA_VERSION ? ["future-export"] : []) };
   }
 
+  /* ---------------- rule finder (study-guide search, pure + offline) ---------------- */
+  // Small AND-token search over the question bank and the sign library. Every
+  // query token must appear in at least one field; fields are weighted so a
+  // concept or question-text hit outranks an explanation-only hit. Deterministic:
+  // ties break by question id, so results are stable across sessions.
+  const FINDER_STOPWORDS = new Set(("a,an,and,are,as,at,be,by,can,do,does,for,from,how," +
+    "if,in,is,it,its,must,of,on,or,should,than,then,the,to,what,when,where,which,with,you,your").split(","));
+  function finderTokens(text) {
+    return String(text == null ? "" : text).toLowerCase().split(/[^a-z0-9]+/)
+      .filter((t) => t && (t.length > 1 || /[0-9]/.test(t)) && !FINDER_STOPWORDS.has(t)).slice(0, 12);
+  }
+  function prettyConceptKey(key) {
+    return String(key == null ? "" : key).replace(/[_-]+/g, " ");
+  }
+  /**
+   * @returns {{q:object, score:number}[]} best matches first, capped at opts.limit (default 12).
+   * opts.labelFor maps a concept key to its display label (Coach.conceptLabel in the app).
+   */
+  function searchBank(questions, query, opts) {
+    const o = opts || {};
+    const bankArr = Array.isArray(questions) ? questions : [];
+    const tokens = finderTokens(query);
+    if (!tokens.length) return [];
+    const labelFor = typeof o.labelFor === "function" ? o.labelFor : prettyConceptKey;
+    const limit = Math.max(1, Math.min(50, Math.floor(o.limit) || 12));
+    const out = [];
+    for (const q of bankArr) {
+      if (!q || typeof q !== "object") continue;
+      const conceptText = `${q.concept || ""} ${labelFor(q.concept || "")}`.toLowerCase();
+      const qText = String(q.q || "").toLowerCase();
+      const choiceText = Array.isArray(q.choices) ? q.choices.join(" \n ").toLowerCase() : "";
+      const whyText = String(q.why || "").toLowerCase();
+      const srcText = `${q.sourceSection || ""} ${q.id || ""}`.toLowerCase();
+      let score = 0;
+      let ok = true;
+      for (const t of tokens) {
+        let best = 0;
+        if (conceptText.includes(t)) best = 5;
+        else if (qText.includes(t)) best = 4;
+        else if (choiceText.includes(t) || srcText.includes(t)) best = 3;
+        else if (whyText.includes(t)) best = 2;
+        if (!best) { ok = false; break; }
+        score += best;
+      }
+      if (ok) out.push({ q, score });
+    }
+    out.sort((a, b) => (b.score - a.score) || (String(a.q.id) < String(b.q.id) ? -1 : 1));
+    return out.slice(0, limit);
+  }
+  /**
+   * @returns {{id:string, sign:object, score:number}[]} matches in the sign library map.
+   * Matches name, family and meaning, including the jurisdiction alternates.
+   */
+  function searchSigns(signs, query, opts) {
+    const o = opts || {};
+    const lib = (signs && typeof signs === "object" && !Array.isArray(signs)) ? signs : {};
+    const tokens = finderTokens(query);
+    if (!tokens.length) return [];
+    const limit = Math.max(1, Math.min(50, Math.floor(o.limit) || 8));
+    const out = [];
+    for (const id of Object.keys(lib)) {
+      const s = lib[id];
+      if (!s || typeof s !== "object") continue;
+      const alts = s.alt && typeof s.alt === "object"
+        ? Object.values(s.alt).map((a) => `${(a && a.name) || ""} ${(a && a.meaning) || ""}`).join(" \n ")
+        : "";
+      const nameText = String(s.name || "").toLowerCase();
+      const famText = String(s.family || "").toLowerCase();
+      const meanText = `${s.meaning || ""} ${alts}`.toLowerCase();
+      let score = 0;
+      let ok = true;
+      for (const t of tokens) {
+        let best = 0;
+        if (nameText.includes(t)) best = 5;
+        else if (famText.includes(t)) best = 3;
+        else if (meanText.includes(t)) best = 2;
+        if (!best) { ok = false; break; }
+        score += best;
+      }
+      if (ok) out.push({ id, sign: s, score });
+    }
+    out.sort((a, b) => (b.score - a.score) || (a.id < b.id ? -1 : 1));
+    return out.slice(0, limit);
+  }
+
   /* ---------------- export surface ---------------- */
   const RoadReadyCore = {
     SCHEMA_VERSION, DAILY_GOAL, EXAM_SECONDS_PER_QUESTION, MAX_EXAM_HISTORY,
@@ -2235,6 +2320,7 @@ function reviewSched(sched, right, nowMs, quality) {
     normalizeRt, pushRtSample, rtPercentiles, classifyResponse, applyFluency, answerFluency,
     MAX_RETRIEVAL_DAYS, noteRetrieval,
     exportBundle, parseImport,
+    finderTokens, searchBank, searchSigns,
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = RoadReadyCore;
