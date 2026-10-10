@@ -601,11 +601,35 @@
             <span class="data-actions" id="accountActions"></span>
           </div>
           <p class="setting-note" id="accountNote"></p>
-          <p class="setting-note">Account sync is optional and manual. When you press Save, Road Ready uploads your backup bundle — including practice/exam history, outcomes and any practical-session notes — plus your Google account email/profile metadata. API responses are never stored in the offline cache. Delete account &amp; cloud data removes the server copy; local browser progress stays on this device.</p>
+          <p class="setting-note">Account sync is optional and manual. When you press Save, Road Ready uploads your backup bundle - including practice/exam history, outcomes and any practical-session notes - plus your Google account email/profile metadata. API responses are never stored in the offline cache. Delete account &amp; cloud data removes the server copy; local browser progress stays on this device.</p>
+<p class="setting-note">Signing out is not a delete. It ends the account session only - your progress, history and Drive Log stay on this device. To remove anything, use the data controls below.</p>
+<p class="setting-note"><a href="docs/PRIVACY.md" target="_blank" rel="noopener noreferrer">What Road Ready stores, and what leaves this device ↗</a></p>
         </div>
 
         <div class="danger-zone">
-          <button class="btn ghost" id="btnResetAll">Reset all progress</button>
+          <h3 class="dz-title">Delete your data on this device</h3>
+          <p class="state-note mb-10">
+            Road Ready stores everything in this browser under one key
+            (<code>roadready.v1</code> in <code>localStorage</code>). Nothing is
+            uploaded unless you have an account and press <b>Save</b>, and
+            <b>signing out does not delete local progress</b>.
+          </p>
+          <p class="state-note mb-10">
+            Erasing removes: question and mastery history, exam results, day streak
+            and study time, flagged questions, sign-flashcard tracking, hazard best
+            score, outcome journal entries and pre-test snapshots, Drive Log sessions
+            and instructor notes, and research-study participation. Your jurisdiction
+            and theme choices are kept so the app still opens correctly.
+          </p>
+          <p class="state-note mb-10">
+            To keep a copy first, press <b>Export</b> above — that writes a plain JSON
+            file you can re-import on any device. Erasing is permanent and cannot be
+            undone from this device.
+          </p>
+          <div class="data-actions wrap">
+            <button class="btn ghost" id="btnExportThenReset">Export, then erase</button>
+            <button class="btn danger" id="btnResetAll">Erase all progress on this device</button>
+          </div>
         </div>
       </div>
       <button class="btn ghost mt-12" id="btnSettingsDone">Back to progress</button>
@@ -689,6 +713,9 @@
 <script src="js/signs.js" defer></script>
 <script src="js/icons.js" defer></script>
 <script src="js/questions.js" defer></script>
+<!-- Concept registry: attaches a concept to each universal question that has
+     none, so mastery is measured per rule rather than per coarse topic. -->
+<script src="js/concepts.js" defer></script>
 <script src="js/core.js" defer></script>
 <script src="js/mastery.js" defer></script>
 <script src="js/explain.js" defer></script>

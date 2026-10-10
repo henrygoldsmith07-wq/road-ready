@@ -452,9 +452,18 @@ kbd {
 .setting-row input[type="date"] { color-scheme: dark; font-family: inherit; }
 [data-theme="light"] .setting-row input[type="date"] { color-scheme: light; }
 .setting-row input[type="checkbox"] { width: 19px; height: 19px; accent-color: var(--text); }
-.danger-zone { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 12px; display: flex; justify-content: center; }
-.danger-zone .btn { color: var(--muted); font-size: 13px; padding: 9px 14px; }
+/* ---------- danger zone (expanded) ---------- */
+/* A destructive area has to be readable, not a single threatening button. The
+   scope list is the point: a learner acting as their own database needs to know
+   exactly what leaves before it does. */
+.danger-zone { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 14px; display: block; }
+.danger-zone .dz-title { font-size: 14px; font-weight: 700; margin: 0 0 8px; }
+.danger-zone .state-note { line-height: 1.55; }
+.danger-zone .btn { color: var(--muted); font-size: 13px; padding: 10px 14px; min-height: 40px; }
 .danger-zone .btn:hover { color: var(--text); border-color: var(--line-strong); }
+.danger-zone .btn.danger { border-color: var(--line-strong); }
+.danger-zone .btn.danger:hover { border-color: #c1272d; color: #c1272d; }
+.danger-zone .data-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
 /* ---------- guide accordions ---------- */
 .acc {

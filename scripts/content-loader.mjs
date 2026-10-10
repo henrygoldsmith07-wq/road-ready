@@ -23,7 +23,12 @@ function loadClassicScriptGroup(root, relPaths, exportNames) {
 
 export function loadContent(rootDir) {
   const root = rootDir || ROOT;
-  const q = loadClassicScriptFrom(root, "js/questions.js", ["QUESTIONS", "CATEGORIES"]);
+  // concepts.js loads after the bank AND after the pack data, so its
+  // auto-apply block can attach a concept to each universal question that has
+  // none, and conceptMeta() can read the pack's own questions when resolving a
+  // pack-specific rule. That mirrors the browser, where every classic script
+  // shares one global scope.
+  const q = loadClassicScriptGroup(root, ["js/questions.js", "js/packs/uk.js", "js/state-packs.js", "js/concepts.js"], ["QUESTIONS", "CATEGORIES", "CONCEPTS", "QUESTION_CONCEPTS", "applyConcepts", "conceptName", "conceptMeta", "conceptsOf", "explanationFor", "STATE_PACKS"]);
   const s = loadClassicScriptFrom(root, "js/signs.js", ["SIGNS"]);
   let p = {};
   try { p = loadClassicScriptGroup(root, ["js/packs/uk.js", "js/state-packs.js"], ["STATE_PACKS", "SOURCE_REGISTRY", "UNIVERSAL_DEFAULTS", "CONCEPT_FACT_KEYS", "VERIFICATION_MAX_AGE_DAYS", "UK_PACK"]); } catch { /* packs optional */ }
@@ -42,6 +47,12 @@ export function loadContent(rootDir) {
     // the full bank the app assembles from: universal + every jurisdiction
     QUESTIONS: baseQuestions.concat(packQuestions),
     CATEGORIES: q.CATEGORIES,
+    CONCEPTS: q.CONCEPTS || {},
+    QUESTION_CONCEPTS: q.QUESTION_CONCEPTS || {},
+    conceptName: q.conceptName,
+    conceptMeta: q.conceptMeta,
+    conceptsOf: q.conceptsOf,
+    explanationFor: q.explanationFor,
     SIGNS: s.SIGNS,
     STATE_PACKS: packs,
     SOURCE_REGISTRY: sources,
