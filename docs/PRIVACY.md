@@ -99,7 +99,7 @@ Deliberately absent, and checkable in the source:
 
 ## Deleting
 
-**Settings ÔåÆ Delete your data on this device.** Two paths:
+**Settings Ôå Delete your data on this device.** Two paths:
 
 - **Export, then erase** — writes the JSON backup first and only proceeds if the
   file was built successfully, so a failed export can never leave you with

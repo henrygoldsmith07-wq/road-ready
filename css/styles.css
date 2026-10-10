@@ -190,6 +190,26 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
 
 /* ---------- topics ---------- */
 .topic-grid { display: grid; gap: 8px; }
+
+/* Collapsed topic browser. Topic grid duplicates the Practice screen and, fully
+   expanded, cost 44% of the home screen's height — for a brand-new learner
+   every card read "0% mastery". Progressive disclosure keeps the affordance
+   without letting it bury the primary action. */
+.topic-browser { margin-top: 14px; }
+.topic-browser[hidden] { display: none; }
+.topic-browser > summary {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px;
+  cursor: pointer; list-style: none; font-size: 13.5px; font-weight: 600;
+  transition: border-color 0.15s;
+}
+.topic-browser > summary::-webkit-details-marker { display: none; }
+.topic-browser > summary:hover { border-color: var(--line-strong); }
+.topic-browser > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.topic-browser .chev { transition: transform 0.18s ease; }
+.topic-browser[open] > summary .chev { transform: rotate(90deg); }
+.tb-note { font-size: 11.5px; font-weight: 500; color: var(--muted); }
+.topic-browser .topic-grid { margin-top: 8px; }
 .topic-card { width: 100%; text-align: left; transition: border-color 0.15s; padding: 14px 16px; }
 .topic-card:hover { border-color: var(--line-strong); }
 .topic-head { display: flex; align-items: center; gap: 12px; }

@@ -79,7 +79,11 @@
         <button class="qa" id="qaReview"><span class="qa-ico" data-icon="target" data-size="20"></span>Weaknesses</button>
         <button class="qa" id="qaPractical"><span class="qa-ico" data-icon="car" data-size="20"></span>Drive Log</button>
       </div>
-      <div class="stat-strip" id="statStrip">
+      <!-- Progress at a glance. Hidden until there is at least one answered
+           question: "0 answered / – accuracy / 0 streak / – best" is noise on
+           a fresh account, and the readiness panel below already says
+           "Not Started" honestly. -->
+      <div class="stat-strip" id="statStrip" hidden>
         <div class="stat"><span id="stAnswered">0</span><small>answered</small></div>
         <div class="stat"><span id="stAccuracy">–</span><small>accuracy</small></div>
         <div class="stat"><span id="stStreak">0</span><small>day streak</small></div>
@@ -110,8 +114,19 @@
         <div class="dg-bar"><div class="dg-bar-fill"></div></div>
       </div>
 
-      <h2 class="section-title">Topics</h2>
-      <div class="topic-grid" id="topicGrid"><!-- rendered by JS --></div>
+      <!-- Topic browsing is a secondary affordance that duplicates the Practice
+           screen. Left expanded it cost 1112px — 44% of the home screen — and
+           for a brand-new learner every one of those cards reads "0% mastery".
+           Collapsed by default, opened automatically once there is history to
+           browse, and reachable at any time from the summary. -->
+      <details class="topic-browser" id="topicBrowser" hidden>
+        <summary>
+          <span class="tb-label">Browse by topic</span>
+          <span class="tb-note" id="topicBrowserNote"></span>
+          <span class="chev" data-icon="chevron-right" data-size="16"></span>
+        </summary>
+        <div class="topic-grid" id="topicGrid"><!-- rendered by JS --></div>
+      </details>
 
       <h2 class="section-title">Weak spots <span class="badge warn" id="weakBadge">0</span></h2>
       <div class="card weak-card" id="weakCard">

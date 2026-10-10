@@ -352,6 +352,12 @@
         return { state: defaultState(), fromVersion: null, warnings: ["corrupt-json"] };
       }
     }
+    /* Nothing stored is a first run, not a broken payload. Reporting
+       "invalid-payload" there made every fresh install log a warning that
+       named a defect the learner had no reason to see. */
+    if (raw == null) {
+      return { state: defaultState(), fromVersion: null, warnings: [] };
+    }
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       return { state: defaultState(), fromVersion: null, warnings: ["invalid-payload"] };
     }

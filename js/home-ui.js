@@ -330,13 +330,21 @@
 
     renderPlan();
 
+    // The stat strip is noise until there is at least one answered question:
+    // "0 answered / – accuracy / 0 streak / – best" tells a new learner
+    // nothing, and the readiness panel already says "Not Started" honestly.
+    const strip = $("statStrip");
+    if (strip) strip.hidden = state.answered === 0;
+
     // topics
     const grid = $("topicGrid");
     grid.innerHTML = "";
+    let attemptedTopics = 0;
     Object.entries(CATEGORIES).forEach(([id, c]) => {
       const qs = catQ(id);
       const m = Math.round(100 * Core.topicMastery(qs, state.qstats));
       const seenCount = qs.filter((q) => state.qstats[q.id]).length;
+      if (seenCount > 0) attemptedTopics++;
       const b = document.createElement("button");
       b.className = "card topic-card";
       b.innerHTML = `<div class="topic-head"><span class="topic-ico">${icon(c.icon, 19)}</span>
@@ -354,6 +362,21 @@
       on(b, "click", () => startPractice(shuffle(catQ(id)).slice(0, 10), c.name, "home"));
       grid.appendChild(b);
     });
+
+    /* Topic browsing is secondary: it duplicates the Practice screen and, fully
+       expanded, it cost 44% of the home screen's height. It is collapsed until
+       there is a history worth browsing, then opens by default so returning
+       learners get the overview back without a click. */
+    const browser = $("topicBrowser");
+    if (browser) {
+      browser.hidden = false;
+      const worthBrowsing = state.answered > 0 && attemptedTopics >= 2;
+      browser.open = worthBrowsing;
+      const note = $("topicBrowserNote");
+      if (note) note.textContent = worthBrowsing
+        ? `${attemptedTopics} of ${Object.keys(CATEGORIES).length} attempted`
+        : `${Object.keys(CATEGORIES).length} topics`;
+    }
 
     // weak spots
     const weak = Object.entries(CATEGORIES)
