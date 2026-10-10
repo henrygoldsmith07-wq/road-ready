@@ -1059,6 +1059,7 @@ function init() {
   initStatePackSelect();
   renderStateFacts();
   initGuideFinder();
+  initInstallPrompt();
   renderHome();
   renderFlashcards();
   if (!state.onboarded) showOnboarding();
@@ -1468,6 +1469,69 @@ function initGuideFinder() {
   if (!input) return;
   guideFinderBound = true;
   on(input, "input", () => { guideQuery = input.value; renderGuideFinder(); });
+}
+
+/* ---------------- PWA install prompt ---------------- */
+// The browser owns the real install flow. Chromium fires beforeinstallprompt
+// (deferred here so Settings offers it on the learner's terms); iOS Safari
+// never fires it, so iOS gets manual Add-to-Home-Screen steps instead of a
+// dead button. Dismissal is session-local: never stored, exported or erased.
+/** @type {any} */
+let deferredInstallPrompt = null;
+let installDismissed = false;
+function installPlatform() {
+  const ua = (typeof navigator !== "undefined" && navigator.userAgent) || "";
+  return /iphone|ipad|ipod/i.test(ua) ? "ios" : "other";
+}
+function installStandalone() {
+  try {
+    if (typeof window !== "undefined" && window.matchMedia &&
+        window.matchMedia("(display-mode: standalone)").matches) return true;
+  } catch { /* matchMedia unavailable — fall through to navigator.standalone */ }
+  return typeof navigator !== "undefined" && /** @type {any} */ (navigator).standalone === true;
+}
+function renderInstallRow() {
+  const row = $("installRow"), note = $("installNote"), btn = $("btnInstall");
+  if (!row || !note || !btn) return;
+  const st = Core.installPromptState({
+    standalone: installStandalone(),
+    hasDeferredPrompt: !!deferredInstallPrompt,
+    dismissed: installDismissed,
+    platform: installPlatform(),
+  });
+  row.hidden = !st.visible;
+  note.hidden = !st.visible;
+  if (!st.visible) return;
+  if (st.variant === "ios") {
+    btn.hidden = true;
+    note.textContent = "On iPhone or iPad: open the Share menu in Safari, then Add to Home Screen. Road Ready then opens fullscreen and studies fully offline.";
+  } else {
+    btn.hidden = false;
+    note.textContent = "Adds Road Ready to your home screen for fullscreen, offline study. Nothing is uploaded — it stays the same on-device app.";
+  }
+}
+function initInstallPrompt() {
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    renderInstallRow();
+  });
+  window.addEventListener("appinstalled", () => {
+    deferredInstallPrompt = null;
+    renderInstallRow();
+  });
+  on($("btnInstall"), "click", async () => {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    try { await deferredInstallPrompt.userChoice; } catch { /* outcome unknown — hide either way */ }
+    deferredInstallPrompt = null;
+    renderInstallRow();
+  });
+  on($("btnInstallDismiss"), "click", () => {
+    installDismissed = true;
+    renderInstallRow();
+  });
+  renderInstallRow();
 }
 
 /* study-guide facts card for the selected jurisdiction */

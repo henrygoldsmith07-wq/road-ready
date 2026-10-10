@@ -2288,6 +2288,21 @@ function reviewSched(sched, right, nowMs, quality) {
     return out.slice(0, limit);
   }
 
+  /* ---------------- PWA install prompt (pure decision, DOM-free) ---------------- */
+  // Decides whether Settings should offer installation. The browser owns the
+  // real prompt: Chromium fires beforeinstallprompt (which the app defers),
+  // iOS Safari never fires it, so iOS gets honest Share-menu instructions
+  // instead of a button that cannot work. Installed (standalone) or
+  // session-dismissed states never show anything.
+  // @returns {{visible:boolean, variant:"install"|"ios"|null}}
+  function installPromptState(input) {
+    const o = input || {};
+    if (o.standalone || o.dismissed) return { visible: false, variant: null };
+    if (o.hasDeferredPrompt) return { visible: true, variant: "install" };
+    if (o.platform === "ios") return { visible: true, variant: "ios" };
+    return { visible: false, variant: null };
+  }
+
   /* ---------------- export surface ---------------- */
   const RoadReadyCore = {
     SCHEMA_VERSION, DAILY_GOAL, EXAM_SECONDS_PER_QUESTION, MAX_EXAM_HISTORY,
@@ -2321,6 +2336,7 @@ function reviewSched(sched, right, nowMs, quality) {
     MAX_RETRIEVAL_DAYS, noteRetrieval,
     exportBundle, parseImport,
     finderTokens, searchBank, searchSigns,
+    installPromptState,
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = RoadReadyCore;

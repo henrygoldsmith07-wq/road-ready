@@ -32,7 +32,7 @@ Two honest scoping calls that follow from this:
 | Question forms in use | 9 |
 | Active jurisdiction modules | 2 |
 | Region packs incl. Great Britain | 7 |
-| Unit test files | 57 |
+| Unit test files | 58 |
 
 <!-- product-stats:end -->
 
@@ -54,6 +54,7 @@ Two honest scoping calls that follow from this:
 | Hazard Perception | A first-class training mode: 35 original animated scenarios (children, doors, cyclists, motorcyclists, buses, delivery vehicles, country roads, rain, darkness, concealed hazards, and multi-hazard scenes where only one situation develops) with per-scenario click analytics — first useful click, early anticipation, developing-window hits, late recognition, excessive clicking, misses — and a visual timeline after each scenario showing when the hazard started developing and where you clicked, plus a full text alternative. Original training material, never DVSA clips or scoring. Labeled bonus training where exams don't include it (most U.S. states) and a core section where they do (GB DVSA test: 14 clips, 44/75); jurisdiction modules declare this via `hazardPerception.includedInExam`. **The instruction follows the jurisdiction's real scoring rule**: where the section is scored, the copy says a click too early and too late both score zero (DVSA scores an early click 0), so the trainer never teaches the instinct that loses the mark; where it is bonus training, early spotting is rewarded instead. **Measured hazard weakness enters the Today Plan** wherever the exam scores it — the plan names your weakest hazard category and the evidence behind it |
 | Sign Flashcards | 58 hand-drawn SVG road signs (jurisdiction-aware wording) with spaced review — new, learning, familiar, mastered and due-for-review states, not a bare known/not-known bit. Confused sign pairs are tracked and drive side-by-side comparison drills |
 | Study Guide | Jurisdiction-native guidance. U.S. packs show the U.S. cheat sheets/road-test material; Great Britain hides those sections and relies on its verified GB fact card and theory question bank instead |
+| Install prompt | Settings offers a home-screen install when the browser makes one available (Chromium's deferred prompt, or honest Share-menu steps on iOS) — never a dead button, never shown when already installed |
 | Rule Finder | Offline search across the active jurisdiction's questions, explanations and road signs from the top of the Study Guide — ranked matches with the correct answer, the rule behind it and its source, plus one tap to turn the matches into a practice set. The query never leaves the device and is never stored |
 | Read Aloud | Text-to-speech for questions, choices, and explanations — great for commutes and accessibility |
 | XP & Achievements | Earn XP for every answer, climb levels, and unlock 12 achievements from First Steps to Hawk Eye |

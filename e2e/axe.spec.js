@@ -57,6 +57,12 @@ test.describe("axe WCAG audits", () => {
       }
 
       test("quiz view stays clean mid-session", async ({ page }) => {
+        // The topic grid lives inside a collapsed <details> for fresh users
+        // (the plan stays primary) — expand it before choosing a topic.
+        await page.locator("#topicGrid").evaluate((grid) => {
+          const details = grid.closest("details");
+          if (details) details.open = true;
+        });
         await page.locator("#topicGrid .topic-card").first().click();
         await expect(page.locator(".choice")).toHaveCount(4);
         const violations = await scan(page);

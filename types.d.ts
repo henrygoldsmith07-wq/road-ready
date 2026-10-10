@@ -3,6 +3,13 @@
  *  under Node the require() fallback in state-packs.js resolves it instead. */
 declare const ROADREADY_UK_PACK: any;
 
+/** Classic-script globals from js/state-packs.js, which loads AFTER
+ *  js/concepts.js. Every use in concepts.js is guarded by
+ *  `typeof X !== "undefined"` and resolves at call time, so these
+ *  declarations are type-checker visibility only — no runtime change. */
+declare const STATE_PACKS: any;
+declare const SOURCE_REGISTRY: any;
+
 interface Window {
   /** Set by js/boot-error.js for the E2E console-error check. */
   __lastError?: string;

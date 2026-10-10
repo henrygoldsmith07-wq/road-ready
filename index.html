@@ -616,6 +616,17 @@
             <input type="file" id="fileImport" accept="application/json,.json" hidden aria-label="Import progress backup file">
           </span>
         </div>
+        <!-- Shown only when installation is actually available: a deferred
+             browser install prompt, or iOS Safari's manual Add-to-Home-Screen
+             path. Never shown when already installed. -->
+        <div class="setting-row data-row" id="installRow" hidden>
+          <span>Install Road Ready</span>
+          <span class="data-actions">
+            <button class="btn ghost" id="btnInstall">Install</button>
+            <button class="btn ghost" id="btnInstallDismiss">Not now</button>
+          </span>
+        </div>
+        <p class="setting-note" id="installNote" hidden></p>
         <!-- Hidden unless the deployment configures accounts; opening
              index.html from disk never reveals it. -->
         <div id="accountPanel" hidden>
