@@ -9,6 +9,13 @@ import { fileURLToPath } from "node:url";
 const ROOT = new URL("../", import.meta.url);
 const index = readFileSync(fileURLToPath(new URL("index.html", ROOT)), "utf8");
 const sw = readFileSync(fileURLToPath(new URL("sw.js", ROOT)), "utf8");
+/* Manifest-referenced assets (install icons) are needed by the app even
+ * though no <script>/<link> in index.html loads them — except the
+ * apple-touch-icon, which is a page asset like any other. */
+const manifestRefs = new Set(
+  JSON.parse(readFileSync(fileURLToPath(new URL("manifest.webmanifest", ROOT)), "utf8"))
+    .icons.map((i) => String(i.src || "").replace(/^\.\//, ""))
+);
 
 const shell = sw.match(/const SHELL = \[([\s\S]*?)\];/)[1]
   .split("\n")
@@ -34,9 +41,11 @@ describe("offline completeness (service-worker precache)", () => {
     const loaded = new Set(pageAssets.map((p) => p.replace(/^\.\//, "")));
     const stale = shell
       .filter((p) => p !== "./" && !loaded.has(p.replace(/^\.\//, "")))
-      // CSS and data files are loaded indirectly (link/href already matched);
+      // CSS and data files are loaded indirectly (link/href already matched),
+      // and manifest icons are loaded by the installer, not the page;
       // anything else is a stale SHELL entry.
-      .filter((p) => !/\.(css|html|webmanifest|svg)$/.test(p));
+      .filter((p) => !/\.(css|html|webmanifest|svg)$/.test(p))
+      .filter((p) => !manifestRefs.has(p.replace(/^\.\//, "")));
     expect(stale, `sw.js SHELL entries nothing loads: ${stale.join(", ")}`).toEqual([]);
   });
 

@@ -1,0 +1,3 @@
+# PNG app icons are binary: never apply line-ending conversion, otherwise a
+# Windows checkout would corrupt them (and the service-worker content hash).
+*.png binary

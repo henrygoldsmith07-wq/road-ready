@@ -6,7 +6,10 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const root = __dirname;
-const types = { ".html": "text/html", ".css": "text/css", ".js": "text/javascript", ".svg": "image/svg+xml" };
+/* Full MIME map matters here: with `X-Content-Type-Options: nosniff` a wrong
+ * type can break manifest/icon fetching, and this server exists so local runs
+ * exercise the real thing. Production (Vercel) already serves these types. */
+const types = { ".html": "text/html", ".css": "text/css", ".js": "text/javascript", ".svg": "image/svg+xml", ".png": "image/png", ".webmanifest": "application/manifest+json", ".json": "application/json" };
 const CSP =
   "default-src 'self'; script-src 'self'; style-src 'self'; " +
   "img-src 'self' data: blob: https://*.googleusercontent.com; connect-src 'self'; font-src 'self'; " +
