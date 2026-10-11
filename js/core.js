@@ -201,6 +201,18 @@
       official: bool(e.official),
       durationSec: e.durationSec == null ? undefined : num(e.durationSec, 0, 0, 86400),
       tag: typeof e.tag === "string" ? e.tag.slice(0, 16) : undefined,
+      // test-day sittings carry both sections; without these the history
+      // can only show the theory line after a reload.
+      theory: e.theory && typeof e.theory === "object" ? {
+        correct: num(e.theory.correct, 0, 0, 1e6),
+        total: num(e.theory.total, 0, 0, 1e6),
+        minCorrect: num(e.theory.minCorrect, 1, 1, 1e6),
+      } : undefined,
+      hazard: e.hazard && typeof e.hazard === "object" ? {
+        pts: num(e.hazard.pts, 0, 0, 1e6),
+        max: num(e.hazard.max, 0, 0, 1e6),
+        passPts: num(e.hazard.passPts, 1, 1, 1e6),
+      } : undefined,
     })) : [];
     s.answered = num(s.answered, 0, 0, 1e9);
     s.correctCount = num(s.correctCount, 0, 0, s.answered);
@@ -948,6 +960,61 @@ function reviewSched(sched, right, nowMs, quality) {
       theoryPass, hazardPass,
       theoryPct: num(t.total, 0, 0, 1e6) > 0 ? num(t.correct, 0, 0, 1e6) / t.total : 0,
       hazardPct: num(h.max, 0, 0, 1e6) > 0 ? num(h.pts, 0, 0, 1e6) / h.max : 0,
+    };
+  }
+
+  /* ---------------- test-day track record ----------------
+   * A simulation row stores BOTH sections (theory + hazard) but the generic
+   * exam history renders one "pct (correct/total)" line — theory only. A
+   * hazard-miss fail then reads as "88% (44/50) — failed", which looks
+   * broken. These helpers normalize sim rows into per-section records so
+   * history can show both bars, plus a trend line naming the repeat miss.
+   * Pure and unit-tested. */
+  /** Normalize one exam row into a per-section sim record, or null.
+   * Falls back to the top-level correct/total for rows written before the
+   * theory/hazard objects existed. */
+  function simRecord(e) {
+    if (!e || e.tag !== "test-day") return null;
+    const t = (e.theory && typeof e.theory === "object") ? e.theory : {};
+    const h = (e.hazard && typeof e.hazard === "object") ? e.hazard : {};
+    const correct = num(t.correct != null ? t.correct : e.correct, 0, 0, 1e6);
+    const total = num(t.total != null ? t.total : e.total, 0, 0, 1e6);
+    const minCorrect = num(t.minCorrect != null ? t.minCorrect : e.minCorrect, 1, 1, 1e6);
+    const pts = num(h.pts, 0, 0, 1e6);
+    const max = num(h.max, 0, 0, 1e6);
+    const passPts = num(h.passPts, 1, 1, 1e6);
+    const v = combinedVerdict({ correct, total, minCorrect }, { pts, max, passPts });
+    return {
+      date: e.date || 0,
+      label: e.label || "Test-Day Simulation",
+      theory: { correct, total, minCorrect, pass: v.theoryPass },
+      hazard: { pts, max, passPts, pass: v.hazardPass },
+      pass: v.pass,
+    };
+  }
+  /** Chronological per-section records for every completed sitting. */
+  function simHistory(exams) {
+    return (exams || []).map(simRecord).filter(Boolean)
+      .sort((a, b) => a.date - b.date);
+  }
+  /** One-line trend over completed sittings: pass count plus the repeat
+   * miss, so the next training choice is obvious. Null with no sittings. */
+  function simTrend(exams) {
+    const rows = simHistory(exams);
+    if (!rows.length) return null;
+    const passes = rows.filter((r) => r.pass).length;
+    const theoryMiss = rows.filter((r) => !r.theory.pass).length;
+    const hazardMiss = rows.filter((r) => !r.hazard.pass).length;
+    let repeatMiss = null;
+    if (theoryMiss > 0 && hazardMiss > 0) repeatMiss = theoryMiss >= hazardMiss ? "theory" : "hazard";
+    else if (theoryMiss > 0) repeatMiss = "theory";
+    else if (hazardMiss > 0) repeatMiss = "hazard";
+    return {
+      count: rows.length, passes, theoryMiss, hazardMiss, repeatMiss,
+      lastPass: rows[rows.length - 1].pass,
+      text: `${rows.length} sitting${rows.length === 1 ? "" : "s"} · ` +
+        `${passes} full pass${passes === 1 ? "" : "es"}` +
+        (repeatMiss ? ` · ${repeatMiss} is the repeat miss` : " · both sections clear"),
     };
   }
 
@@ -2404,7 +2471,7 @@ function reviewSched(sched, right, nowMs, quality) {
     adaptiveWeights, buildAdaptivePool, pickWeighted, missedQuestions,
     defaultSched, reviewSched, schedDue,
     shuffle, timeLimitSecs, gradeExam, examBlueprint, assembleExam, officialExamAvailability,
-    SIM_HAZARD_CLIPS, scaledHazardPass, combinedVerdict,
+    SIM_HAZARD_CLIPS, scaledHazardPass, combinedVerdict, simRecord, simHistory, simTrend,
     hazardScore, HAZARD_PRESS_CAP, hazardAnalysis, hazardFeedback, hazardSummary,
     HAZARD_PHASES, hazardPhaseAt, hazardTiming, hazardCategorySkill,
     recordSignConfusion, signConfusionPairs,

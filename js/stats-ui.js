@@ -150,13 +150,38 @@
     renderFluency();
     renderMasteryList();
 
+    // Test-day sittings show BOTH bars: the generic "pct (correct/total)"
+    // line is theory-only, so a hazard-miss fail reads as "88% — failed".
+    // A trend line above the list names the repeat miss across sittings.
     const hl = $("historyList");
+    let trendEl = $("simTrend");
+    const trend = Core.simTrend(state.exams);
+    if (trend) {
+      if (!trendEl) {
+        trendEl = document.createElement("p");
+        trendEl.id = "simTrend";
+        trendEl.className = "sim-trend";
+        hl.before(trendEl);
+      }
+      trendEl.hidden = false;
+      trendEl.textContent = `Test-day: ${trend.text}.`;
+    } else if (trendEl) trendEl.hidden = true;
+    const simLine = (rec) => {
+      const part = (name, got, need, ok) =>
+        `${name} ${got}/${need} ${ok ? "✓" : "✗"}`;
+      return `${part("Theory", rec.theory.correct, rec.theory.minCorrect, rec.theory.pass)} · ` +
+        `${part("Hazard", rec.hazard.pts, rec.hazard.passPts, rec.hazard.pass)}`;
+    };
     hl.innerHTML = state.exams.length
       ? state.exams.slice().reverse().map((e) => {
           const d = new Date(e.date);
-          return `<li class="${e.pass ? "pass" : "fail"}">
-            <span>${icon(e.pass ? "check-circle" : "x-circle", 15)} ${escapeHTML(e.label || "Exam")}</span>
-            <span>${Math.round(e.pct * 100)}% (${e.correct}/${e.total})</span>
+          const rec = Core.simRecord(e);
+          const cls = rec ? (rec.pass ? "pass" : "fail") : (e.pass ? "pass" : "fail");
+          const mark = rec ? rec.pass : e.pass;
+          const score = rec ? simLine(rec) : `${Math.round(e.pct * 100)}% (${e.correct}/${e.total})`;
+          return `<li class="${cls}">
+            <span>${icon(mark ? "check-circle" : "x-circle", 15)} ${escapeHTML(rec ? rec.label : (e.label || "Exam"))}</span>
+            <span>${escapeHTML(score)}</span>
             <small>${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small></li>`;
         }).join("")
       : `<li class="muted">No exams yet — take your first mock exam!</li>`;

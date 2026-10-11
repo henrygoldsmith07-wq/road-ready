@@ -479,6 +479,8 @@ kbd {
 .history-list li.fail span:first-child { color: var(--muted); }
 .history-list li span:nth-child(2) { font-weight: 700; font-variant-numeric: tabular-nums; }
 .history-list small { color: var(--muted); grid-column: 1 / -1; font-size: 11.5px; }
+.sim-trend { font-size: 13px; color: var(--muted); margin: 0 0 6px; }
+.sim-trend::before { content: "🏁 "; }
 .settings-card { display: grid; gap: 4px; }
 .setting-row {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
