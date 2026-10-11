@@ -187,6 +187,17 @@
     $("resultScore").textContent = Math.round(100 * r.correct / r.total) + "%";
     $("resultScore").className = "score-big " + (r.pass ? "pass" : "fail");
     $("resultSub").textContent = (r.timedOut ? "Time ran out — your unanswered questions were counted. " : "") + r.sub;
+    // Combined verdicts (test-day simulation) append a two-section score panel
+    // under the summary. Trusted markup built by the caller from measured
+    // scores — never from user input.
+    const oldExtra = $("resultExtra");
+    if (oldExtra) oldExtra.remove();
+    if (r.extraHTML) {
+      const extra = document.createElement("div");
+      extra.id = "resultExtra";
+      extra.innerHTML = r.extraHTML;
+      $("resultSub").insertAdjacentElement("afterend", extra);
+    }
 
     // Mock debrief: one diagnostic summary, not a chart farm.
     const debrief = Coach.mockDebrief({

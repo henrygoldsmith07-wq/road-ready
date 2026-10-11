@@ -402,6 +402,10 @@ kbd {
 .result-cat.good { color: var(--text); border-color: var(--line-strong); }
 .result-cat.bad { border-style: dashed; }
 .results-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+/* Test-day combined panel: the two section bars side by side, reusing the
+ * topic-breakdown card language so a combined verdict reads as one result. */
+.sim-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0 4px; }
+.sim-panel + .setting-note { margin-top: 4px; }
 
 /* ---------- flashcards ---------- */
 .fc-meta { display: flex; align-items: center; gap: 8px; margin: 10px 0 16px; flex-wrap: wrap; }

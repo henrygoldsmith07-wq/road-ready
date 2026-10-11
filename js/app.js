@@ -615,6 +615,16 @@ function startSetup(mode, focusCat) {
         });
       }
     }
+    // Test-day simulation: where hazard perception is a scored section, the
+    // real test is theory + hazard in one sitting — training them separately
+    // never rehearses the combined pressure. Gated on a full official bank.
+    if (bp && Core.officialExamAvailability(bank, bp).full && hazardInfoForPack(packId).includedInExam) {
+      items.push({
+        id: "test-day", icon: "flag", name: "Test-day simulation",
+        desc: `${bp.questionCount} theory + ${Core.SIM_HAZARD_CLIPS} hazard clips, one combined result · hazard bar scaled from the official 44/75 · original scenarios, not DVSA clips`,
+        action: () => startTestDaySim(),
+      });
+    }
     items.push(
       { id: "weak", icon: "target", name: "Weak Topics Exam", desc: "20 questions weighted toward your lowest categories (extra practice)", action: () => startExam(20, true) },
       { id: "quick", icon: "zap", name: "Quick Check — 10 questions", desc: `5-minute diagnostic across your selected ${termsForPack().examName} pool (extra practice)`, action: () => startExam(10) },
@@ -645,6 +655,11 @@ function setupRow(it) {
 
 /* ---------------- QUIZ ENGINE ---------------- */
 let session = null;
+/* Test-day simulation staging: the banked Part 1 (theory) result waits here
+ * while the hazard section runs. Nothing is logged, awarded or shown until
+ * both parts report back — a sitting only counts if you finish it. */
+let simTheory = null;
+let simStartedAt = 0;
 
 /**
  * Launch the drill the Adaptive Coach recommended. Each recommendation type
@@ -808,6 +823,93 @@ function startOfficialExam(packId) {
   };
   beginQuiz();
 }
+/* Test-day simulation: the real GB sitting is theory + hazard back to back
+ * under one verdict. Part 1 reuses the official theory exam verbatim; the
+ * finish hook detours into the hazard section instead of grading. Offered
+ * only where hazard perception is a scored exam section (see exam setup). */
+function startTestDaySim() {
+  const packId = Packs.PACK_IDS.includes(state.settings.statePack) ? state.settings.statePack : null;
+  const bp = packId && BLUEPRINTS[packId] ? BLUEPRINTS[packId] : null;
+  if (!bp || !Core.officialExamAvailability(bank, bp).full) {
+    toast("Full bank needed", "The simulation needs the complete official question pool first.", "flag");
+    return;
+  }
+  if (!hazardInfoForPack(packId).includedInExam) return;
+  quizBackTarget = "home";
+  simTheory = null;
+  simStartedAt = Date.now();
+  const qs = Core.assembleExam({
+    bank, n: bp.questionCount, samplingMode: "representative", weights: bp.topicWeights,
+    recentlySeen: state.qstats,
+  });
+  session = {
+    mode: "exam", official: true, blueprint: bp, sim: true,
+    label: "Test-Day Simulation · Part 1 of 2",
+    questions: qs, i: 0, correct: 0, answers: [],
+    timeLeft: bp.timeLimitMin ? bp.timeLimitMin * 60 : Core.timeLimitSecs(qs.length),
+    endTs: 0, timerId: null,
+  };
+  beginQuiz();
+  toast("Part 1 of 2 · Theory", `${bp.questionCount} questions, then hazard perception — one combined result at the end, scores sealed until then.`, "flag");
+}
+function startSimHazard() {
+  const clips = Core.SIM_HAZARD_CLIPS;
+  HazardUI.start({
+    clips,
+    sim: {
+      introTitle: "Part 2 of 2 · Hazard perception",
+      introBody: `Theory banked — scores stay sealed until the end, like the real test. ${clips} original scenarios, up to ${clips * 5} points; the bar is scaled from the official 44/75.`,
+      onComplete: onSimHazardComplete,
+      onAbandon: onSimAbandon,
+    },
+  });
+}
+function onSimAbandon() {
+  simTheory = null;
+  toast("Simulation abandoned", "No result recorded — a sitting only counts if you finish both parts.", "flag");
+}
+function simPanelHTML(t, h, passPts) {
+  const row = (name, got, need, ok) =>
+    `<div class="result-cat ${ok ? "good" : "bad"}"><span>${name}</span><b>${got}/${need}</b></div>`;
+  return `<div class="sim-panel">${row("Theory", t.correct, t.minCorrect, t.correct >= t.minCorrect)}${row("Hazard", h.pts, passPts, h.pts >= passPts)}</div>
+    <p class="setting-note">Original scenarios, not DVSA clips. Hazard bar ${passPts}/${h.max} is the official 44/75 scaled to ${Core.SIM_HAZARD_CLIPS} five-point scenarios.</p>`;
+}
+function onSimHazardComplete(h) {
+  const t = simTheory;
+  simTheory = null;
+  if (!t) { showView("home"); return; }
+  const passPts = Core.scaledHazardPass(Core.SIM_HAZARD_CLIPS);
+  const v = Core.combinedVerdict(
+    { correct: t.correct, total: t.total, minCorrect: t.minCorrect },
+    { pts: h.totalPts, max: h.maxScore, passPts });
+  const pass = v.pass && t.fullLength;
+  state.exams.push({
+    date: Date.now(), label: "Test-Day Simulation", pct: v.theoryPct,
+    correct: t.correct, total: t.total, pass,
+    durationSec: Math.max(0, Math.round((Date.now() - simStartedAt) / 1000)),
+    official: true, tag: "test-day",
+    theory: { correct: t.correct, total: t.total, minCorrect: t.minCorrect },
+    hazard: { pts: h.totalPts, max: h.maxScore, passPts },
+  });
+  if (state.exams.length > Core.MAX_EXAM_HISTORY) state.exams = state.exams.slice(-Core.MAX_EXAM_HISTORY);
+  save();
+  checkProgressAchievements();
+  addXP(Core.xpForExam(pass, t.correct === t.total));
+  addXP(h.totalPts * (Core.XP_PER_HAZARD_POINT || 2));
+  if (pass) unlock("pass");
+  if (h.totalPts >= Math.round(h.maxScore * 0.7)) unlock("hawk");
+  const theoryLine = `${t.correct}/${t.total} theory (need ${t.minCorrect})`;
+  const hazardLine = `${h.totalPts}/${h.maxScore} hazard (bar ${passPts})`;
+  showResults({
+    pass, correct: t.correct, total: t.total, timedOut: t.timedOut,
+    answers: t.answers,
+    title: pass ? "Test-Day PASS" : "Not yet — test day",
+    sub: pass
+      ? `${theoryLine} · ${hazardLine}. Both bars cleared in one sitting — that is the real test, rehearsed.`
+      : `${theoryLine} · ${hazardLine}. The miss is ${!v.theoryPass && !v.hazardPass ? "on both sections — train both, then sit the whole simulation again" : !v.theoryPass ? "theory — train it, then sit the whole simulation again" : "hazard perception — train it, then sit the whole simulation again"}.`,
+    extraHTML: simPanelHTML(t, { pts: h.totalPts, max: h.maxScore }, passPts),
+  });
+}
 function beginQuiz() {
   $("qTimer").hidden = session.mode !== "exam";
   $("btnFlag").hidden = false;
@@ -913,6 +1015,27 @@ function finishSession(timedOut) {
     session.evidenceSessionId = null;
   }
   if (session.mode === "exam") {
+    // Test-day Part 1: bank the theory result WITHOUT logging, XP, unlocks or
+    // a results screen — then hand the sitting to the hazard section. The
+    // per-question learning evidence above already recorded; everything
+    // verdict-shaped waits for Part 2.
+    if (session.sim) {
+      session.questions.forEach(q => {
+        if (!session.answers.some(a => a.qid === q.id)) session.answers.push({ qid: q.id, picked: -1, right: false });
+      });
+      const tTotal = session.questions.length;
+      const tCorrect = session.answers.filter(a => a.right).length;
+      const tBp = session.official ? session.blueprint : null;
+      simTheory = {
+        correct: tCorrect, total: tTotal,
+        minCorrect: tBp ? tBp.minCorrect : Math.ceil(state.settings.passMark * tTotal),
+        fullLength: !tBp || tTotal === tBp.questionCount,
+        answers: session.answers.map(a => ({ ...a })), timedOut: !!timedOut,
+      };
+      stopSpeaking();
+      startSimHazard();
+      return;
+    }
     // unanswered questions count as wrong
     session.questions.forEach(q => {
       if (!session.answers.some(a => a.qid === q.id)) session.answers.push({ qid: q.id, picked: -1, right: false });
@@ -1168,13 +1291,16 @@ function init() {
   on($("btnQuit"), "click", () => {
     if (!session) return showView("home");
     if (session.mode === "exam" &&
-        !confirm("Submit the exam and see your score now?")) return;
+        !confirm(session.sim
+          ? "Submit Part 1? Scores stay sealed until the hazard section is done."
+          : "Submit the exam and see your score now?")) return;
     finishSession();
   });
   on($("btnFlag"), "click", toggleFlag);
   on($("btnAgain"), "click", () => {
     // Post-mock: the primary action is the targeted drill built from the
     // concepts missed — not a blind replay of the same mock.
+    if (session && session.sim) { startTestDaySim(); return; }
     if (session && session.lastDrill && session.lastDrill.questions.length) {
       startPractice(shuffle(session.lastDrill.questions), session.lastDrill.label, "home");
       return;

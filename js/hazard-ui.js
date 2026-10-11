@@ -278,11 +278,17 @@
   }
 
   /* ---------------- session flow ---------------- */
-  function start() {
+  /* start(opts): standalone training by default; the test-day simulation
+   * passes { clips, sim: { introTitle, introBody, onComplete, onAbandon } } so
+   * the same scenes run as Part 2 with a completion callback instead of the
+   * training results overlay. `clips` is clamped to the bank; sim mode never
+   * changes scoring, only what happens around it. */
+  function start(opts) {
     HZS = ctx.Scenarios || (typeof globalThis !== "undefined" ? globalThis.RoadReadyHazardScenarios : null);
     if (!HZS) return;
     render();
     clearTimers();
+    const o = (opts && typeof opts === "object") ? opts : {};
     const pool = HZS.scenarios.slice();
     // Shuffled session of RUN_SIZE so a run's max stays under the 75-point
     // hazardBest clamp in core.js while the bank itself keeps 22+ scenes.
@@ -290,11 +296,13 @@
       const j = Math.floor(Math.random() * (i + 1));
       const tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
     }
+    const want = o.clips != null ? o.clips : HZS.RUN_SIZE;
     run = {
-      session: pool.slice(0, Math.min(HZS.RUN_SIZE, pool.length)),
+      session: pool.slice(0, Math.max(1, Math.min(want, pool.length))),
       i: 0, analyses: [], presses: [], timings: [], totalPts: 0,
       phase: "intro", running: false, timer: null, countdownTimer: null,
       sceneEndTimer: null, beginScene: null, lastPress: null,
+      sim: (o.sim && typeof o.sim === "object") ? o.sim : null,
     };
     setPhase("intro");
 
@@ -324,10 +332,13 @@
     const state = ctx.getState();
     const maxScore = run.session.length * 5;
     const best = state.hazardBest ? ` · best ${state.hazardBest}/${maxScore}` : "";
+    const simTitle = run.sim && run.sim.introTitle;
+    const simBody = run.sim && run.sim.introBody;
     showOverlay(`
       <div class="ov-inner">
         <span class="ov-ico">${ctx.icon("eye", 34)}</span>
-        <h2>Hazard identification training</h2>
+        <h2>${simTitle ? esc(simTitle) : "Hazard identification training"}</h2>
+        ${simBody ? `<p>${simBody}</p>` : ""}
         <p>${run.session.length} original scenarios. One developing hazard each.<br>Tap <b>SLOW</b> — or press <b>Space</b> — as soon as the hazard starts to develop.</p>
         <p class="ov-dim">5 points for instant recognition, down to 1. Too early or too late scores 0${best}.</p>
         <button class="btn primary" id="hzGo">Start</button>
@@ -475,6 +486,17 @@
     const isNew = total > state.hazardBest;
     state.hazardBest = Math.min(75, Math.max(state.hazardBest, total));
     state.hazardPct = maxScore ? total / maxScore : 0;
+    // Simulation Part 2: the run's evidence (per-scenario log above, best and
+    // pct here) is real training data and stays; the fanfare, XP and next
+    // steps belong to the combined verdict, so hand off instead of overlaying.
+    if (run.sim && typeof run.sim.onComplete === "function") {
+      const done = run.sim.onComplete;
+      const out = { totalPts: total, maxScore, analyses: run.analyses.slice() };
+      ctx.save();
+      if (ctx.renderHome) ctx.renderHome();
+      done(out);
+      return;
+    }
     ctx.addXP(total * (core.XP_PER_HAZARD_POINT || 2));
     if (total >= Math.round(maxScore * 0.7)) ctx.unlock("hawk");
     ctx.save();
@@ -561,7 +583,13 @@
       <p class="kbd-hint">Press <kbd>Space</kbd> to react · <kbd>Enter</kbd> to continue</p>
       <p class="hz-live" id="hzLive" aria-live="polite"></p>`;
     on($("hzSlow"), "click", press);
-    on($("hzQuit"), "click", () => { stop(); if (ctx.renderHome) ctx.renderHome(); ctx.showView("home"); });
+    on($("hzQuit"), "click", () => {
+      const abandon = run && run.sim && typeof run.sim.onAbandon === "function" ? run.sim.onAbandon : null;
+      stop();
+      if (ctx.renderHome) ctx.renderHome();
+      ctx.showView("home");
+      if (abandon) abandon();
+    });
   }
 
   /* ---------------- global key handling (module-owned) ----------------

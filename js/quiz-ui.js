@@ -37,7 +37,9 @@
     // evidence we have of whether it was recalled or worked out.
     s.shownAt = Date.now();
     $("qprogBar").style.setProperty("--w", (100 * s.i / total) + "%");
-    $("qCounter").textContent = `Q ${s.i + 1}/${total}`;
+    // Test-day Part 1: the counter says which section this is, so the 50
+    // questions feel like the first half of one sitting rather than a mock.
+    $("qCounter").textContent = `${s.sim ? "Part 1 · " : ""}Q ${s.i + 1}/${total}`;
     $("qCategory").textContent = (CATEGORIES[q.cat] || {}).name || q.cat;
     // question forms: single sign, sign combination, ASCII road-layout scene, and photo placeholder
     const signIds = Array.isArray(q.signIds) && q.signIds.length ? q.signIds : (q.signId ? [q.signId] : []);

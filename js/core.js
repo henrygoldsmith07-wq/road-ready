@@ -919,6 +919,38 @@ function reviewSched(sched, right, nowMs, quality) {
     return { pct, pass: pct >= passMark, needed: Math.ceil(passMark * total) };
   }
 
+  /* ---------------- test-day simulation (combined theory + hazard) ---------------- */
+  /* The real GB car theory test is one sitting: 50 questions AND 14 hazard
+   * clips, and you must clear both bars (43/50 theory, 44/75 hazard) to pass.
+   * Road Ready trains the sections separately, so the simulation exists to
+   * rehearse the combined pressure. Our scenarios are original (not DVSA
+   * clips) with one developing hazard each at 5 points, so the hazard bar is
+   * the official 44/75 scaled to our clip count — stated wherever it is
+   * shown, never presented as an official threshold. Pure and unit-tested. */
+  const SIM_HAZARD_CLIPS = 14;
+  const OFFICIAL_HAZARD_PASS = 44;
+  const OFFICIAL_HAZARD_MAX = 75;
+  /** Scaled hazard pass bar for `clips` original 5-point scenarios. */
+  function scaledHazardPass(clips) {
+    const n = Math.max(1, Math.floor(num(clips, SIM_HAZARD_CLIPS, 1, 60)));
+    return Math.max(1, Math.round(OFFICIAL_HAZARD_PASS / OFFICIAL_HAZARD_MAX * n * 5));
+  }
+  /** Combined verdict: BOTH bars must clear, like the real test.
+   * @param {{correct:number,total:number,minCorrect:number}} theory
+   * @param {{pts:number,max:number,passPts:number}} hazard */
+  function combinedVerdict(theory, hazard) {
+    const t = theory || { correct: 0, total: 0, minCorrect: 1 };
+    const h = hazard || { pts: 0, max: 0, passPts: 1 };
+    const theoryPass = num(t.correct, 0, 0, 1e6) >= num(t.minCorrect, 1, 1, 1e6) && num(t.total, 0, 0, 1e6) > 0;
+    const hazardPass = num(h.max, 0, 0, 1e6) > 0 && num(h.pts, 0, 0, 1e6) >= num(h.passPts, 1, 1, 1e6);
+    return {
+      pass: theoryPass && hazardPass,
+      theoryPass, hazardPass,
+      theoryPct: num(t.total, 0, 0, 1e6) > 0 ? num(t.correct, 0, 0, 1e6) / t.total : 0,
+      hazardPct: num(h.max, 0, 0, 1e6) > 0 ? num(h.pts, 0, 0, 1e6) / h.max : 0,
+    };
+  }
+
   /**
    * Blueprint: distribute n seats across topics proportionally to topic size,
    * optionally skewed by editorial `weights` ({cat: multiplier}) — e.g. an
@@ -2372,6 +2404,7 @@ function reviewSched(sched, right, nowMs, quality) {
     adaptiveWeights, buildAdaptivePool, pickWeighted, missedQuestions,
     defaultSched, reviewSched, schedDue,
     shuffle, timeLimitSecs, gradeExam, examBlueprint, assembleExam, officialExamAvailability,
+    SIM_HAZARD_CLIPS, scaledHazardPass, combinedVerdict,
     hazardScore, HAZARD_PRESS_CAP, hazardAnalysis, hazardFeedback, hazardSummary,
     HAZARD_PHASES, hazardPhaseAt, hazardTiming, hazardCategorySkill,
     recordSignConfusion, signConfusionPairs,
