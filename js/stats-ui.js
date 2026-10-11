@@ -164,6 +164,12 @@
     $("selPassMark").value = String(state.settings.passMark);
     $("selExamLen").value = String(state.settings.examLen);
     $("chkFeedback").checked = !!state.settings.feedback;
+    if ($("selDailyGoal")) $("selDailyGoal").value = String(Core.clampDailyGoal(state.settings.dailyGoal));
+    {
+      const rem = Core.sanitizeReminder(state.settings.reminder);
+      if ($("chkReminder")) $("chkReminder").checked = rem.enabled;
+      if ($("inpReminderTime")) $("inpReminderTime").value = rem.time;
+    }
     if ($("selStatePack")) $("selStatePack").value = PackIds.includes(state.settings.statePack) ? state.settings.statePack : "generic";
     if ($("inpTestDate")) {
       $("inpTestDate").value = state.settings.testDate || "";

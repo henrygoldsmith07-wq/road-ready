@@ -10,7 +10,7 @@ async function freshApp(page) {
 
 async function openGuide(page) {
   await freshApp(page);
-  if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+  if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
   await page.locator('#bottomNav button[data-nav="guide"]').click();
   await expect(page.locator("#view-guide")).toHaveClass(/active/);
 }

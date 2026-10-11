@@ -75,6 +75,7 @@ test.describe("wrong answer → explanation → concept repair", () => {
   test("a wrong answer shows the rule, a hedged distinction, and schedules a variant", async ({ page }) => {
     await freshApp(page);
     if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
+    await page.locator("#topicBrowser").evaluate((d) => { d.open = true; });
     await page.locator("#topicGrid .topic-card").first().click();
     await expect(page.locator("#view-quiz")).toHaveClass(/active/);
     // answer wrong on purpose: find the wrong choice index and click it

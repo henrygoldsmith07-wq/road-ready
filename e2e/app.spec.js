@@ -24,9 +24,10 @@ test.describe("onboarding", () => {
 test.describe("practice flow", () => {
   test("answer a question, see feedback, finish session", async ({ page }) => {
     await freshApp(page);
-    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
 
     // start a topic practice from the home topic grid (first card)
+    await page.locator("#topicBrowser").evaluate((d) => { d.open = true; });
     await page.locator("#topicGrid .topic-card").first().click();
     await expect(page.locator("#view-quiz")).toHaveClass(/active/);
     await expect(page.locator(".choice")).toHaveCount(4);
@@ -49,7 +50,8 @@ test.describe("practice flow", () => {
 
   test("XP accrues and persists across reloads", async ({ page }) => {
     await freshApp(page);
-    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
+    await page.locator("#topicBrowser").evaluate((d) => { d.open = true; });
     await page.locator("#topicGrid .topic-card").first().click();
     await expect(page.locator("#view-quiz")).toHaveClass(/active/);
     await expect(page.locator(".choice")).toHaveCount(4);
@@ -66,7 +68,7 @@ test.describe("practice flow", () => {
 test.describe("mock exam", () => {
   test("quick check runs timed, submits, shows results", async ({ page }) => {
     await freshApp(page);
-    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
     await page.locator('#bottomNav button[data-nav="exam"]').click();
     await page.locator('.setup-row:has-text("Quick Check")').click();
 
@@ -90,7 +92,7 @@ test.describe("mock exam", () => {
 test.describe("flashcards & settings", () => {
   test("flashcard flip + know-it tracking", async ({ page }) => {
     await freshApp(page);
-    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
     await page.locator('#bottomNav button[data-nav="flashcards"]').click();
     const counter = await page.locator("#fcCounter").textContent();
     expect(counter).toMatch(/1 \/ \d+/);
@@ -102,7 +104,7 @@ test.describe("flashcards & settings", () => {
 
   test("state pack exposes official sources in guide and dedicated practice", async ({ page }) => {
     await freshApp(page);
-    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
     await page.locator('#bottomNav button[data-nav="stats"]').click();
     await page.locator("#btnOpenSettings").click();
     await page.locator("#selStatePack").selectOption("CA");
@@ -128,7 +130,7 @@ test.describe("flashcards & settings", () => {
 
   test("GB pack uses native theory-test and Highway Code wording", async ({ page }) => {
     await freshApp(page);
-    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
 
     await page.locator('#bottomNav button[data-nav="stats"]').click();
     await page.locator("#btnOpenSettings").click();
@@ -149,7 +151,7 @@ test.describe("flashcards & settings", () => {
 
   test("test date builds a persistent daily plan", async ({ page }) => {
     await freshApp(page);
-    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
     await page.locator("#btnPlanDate").click();
     await expect(page.locator("#view-settings")).toHaveClass(/active/);
     const future = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
@@ -164,7 +166,7 @@ test.describe("flashcards & settings", () => {
 
   test("progress keeps research collapsed and settings on a separate screen", async ({ page }) => {
     await freshApp(page);
-    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
     await page.locator('#bottomNav button[data-nav="stats"]').click();
     await expect(page.locator("details.advanced-research")).not.toHaveAttribute("open", "");
     await expect(page.locator("#view-settings")).not.toHaveClass(/active/);
@@ -177,7 +179,7 @@ test.describe("flashcards & settings", () => {
 
   test("export produces a downloadable backup file", async ({ page }) => {
     await freshApp(page);
-    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
     await page.locator('#bottomNav button[data-nav="stats"]').click();
     await page.locator("#btnOpenSettings").click();
     const [download] = await Promise.all([
@@ -194,8 +196,9 @@ test.describe("flashcards & settings", () => {
 
   test("import restores a backup round-trip", async ({ page }) => {
     await freshApp(page);
-    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
     // seed progress
+    await page.locator("#topicBrowser").evaluate((d) => { d.open = true; });
     await page.locator("#topicGrid .topic-card").first().click();
     await page.keyboard.press("1");
     await page.waitForTimeout(150);
@@ -208,7 +211,7 @@ test.describe("flashcards & settings", () => {
     // wipe, then import the backup
     await page.evaluate(() => localStorage.clear());
     await page.reload();
-    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
     await page.locator('#bottomNav button[data-nav="stats"]').click();
     await page.locator("#btnOpenSettings").click();
     page.once("dialog", (d) => d.accept());
@@ -218,7 +221,7 @@ test.describe("flashcards & settings", () => {
 
   test("imported text cannot become persistent markup", async ({ page }, testInfo) => {
     await freshApp(page);
-    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
     await page.locator('#bottomNav button[data-nav="stats"]').click();
     await page.locator("#btnOpenSettings").click();
 
@@ -281,7 +284,7 @@ test.describe("PWA / offline", () => {
 test.describe("official simulation", () => {
   test("generic users see the unlock hint instead of an official row", async ({ page }) => {
     await freshApp(page);
-    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
     await page.locator('#bottomNav button[data-nav="exam"]').click();
     await expect(page.locator("#setupList .setup-row", { hasText: "Official Simulation" })).toHaveCount(0);
     await expect(page.locator("#setupList .setting-note")).toContainText("Pick your state");
@@ -289,7 +292,7 @@ test.describe("official simulation", () => {
 
   test("CA selection locks the sim to the real blueprint and grades at the end", async ({ page }) => {
     await freshApp(page);
-    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
     await page.locator('#bottomNav button[data-nav="stats"]').click();
     await page.locator("#btnOpenSettings").click();
     await page.locator("#selStatePack").selectOption("CA");
@@ -321,7 +324,7 @@ test.describe("official simulation", () => {
 
   test("GB selection unlocks a full 50-question DVSA-format simulation", async ({ page }) => {
     await freshApp(page);
-    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
     await page.locator('#bottomNav button[data-nav="stats"]').click();
     await page.locator("#btnOpenSettings").click();
     await page.locator("#selStatePack").selectOption("UK");
@@ -346,6 +349,7 @@ test.describe("prospective predictions", () => {
   test("freeze → reload → attach outcome keeps the snapshot immutable", async ({ page }) => {
     await freshApp(page);
     if (await page.locator("#onboarding").isVisible()) await page.locator("#obSkip").click();
+    await page.locator("#topicBrowser").evaluate((d) => { d.open = true; });
     await page.locator("#topicGrid .topic-card").first().click();
     await page.locator("#bottomNav button[data-nav='stats']").click();
     await page.locator("details.advanced-research").locator("summary").click(); // research tools live collapsed by design
@@ -374,7 +378,7 @@ test.describe("prospective predictions", () => {
 test.describe("practical drive log", () => {
   test("log a session → separate practical progress + one next skill → persist reload", async ({ page }) => {
     await freshApp(page);
-    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
     await page.locator("#qaPractical").click();
     await expect(page.locator("#view-practical")).toHaveClass(/active/);
     await expect(page.locator("#drPractical")).toHaveText("no sessions yet");
@@ -397,7 +401,7 @@ test.describe("practical drive log", () => {
     expect(log).toHaveLength(1);
     expect(log[0].skills.mirrors).toBe("good");
     await page.reload();
-    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
     await page.locator("#qaPractical").click();
     await expect(page.locator("#sessionList .pl-session")).toHaveCount(1);
 
@@ -411,8 +415,9 @@ test.describe("practical drive log", () => {
 test.describe("accessibility basics", () => {
   test("skip link exists and quiz feedback is announced", async ({ page }) => {
     await freshApp(page);
-    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
     await expect(page.locator(".skip-link")).toHaveCount(1);
+    await page.locator("#topicBrowser").evaluate((d) => { d.open = true; });
     await page.locator("#topicGrid .topic-card").first().click();
     const ariaLive = await page.locator("#feedback").getAttribute("aria-live");
     expect(ariaLive).toBe("assertive");
@@ -424,7 +429,7 @@ test.describe("accessibility basics", () => {
     const errors = [];
     page.on("pageerror", (e) => errors.push(String(e)));
     await freshApp(page);
-    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
     for (const nav of ["practice", "exam", "flashcards", "guide", "stats", "home"]) {
       await page.locator(`#bottomNav button[data-nav="${nav}"]`).click();
       await page.waitForTimeout(120);

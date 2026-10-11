@@ -10,7 +10,7 @@ const browserGlobals = {
   location: "readonly", fetch: "readonly", URL: "readonly",
   Blob: "readonly", FileReader: "readonly", confirm: "readonly", alert: "readonly",
   setTimeout: "readonly", clearTimeout: "readonly", setInterval: "readonly", clearInterval: "readonly",
-  speechSynthesis: "readonly", SpeechSynthesisUtterance: "readonly",
+  speechSynthesis: "readonly", SpeechSynthesisUtterance: "readonly", Notification: "readonly",
   performance: "readonly", console: "readonly",
 };
 

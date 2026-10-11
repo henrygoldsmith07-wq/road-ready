@@ -114,6 +114,7 @@
       <div class="card daily-goal" id="dailyGoal">
         <div class="dg-label">Today's goal: <b>0/10</b> questions answered</div>
         <div class="dg-bar"><div class="dg-bar-fill"></div></div>
+        <div class="dg-reminder" id="dgReminder" hidden></div>
       </div>
 
       <!-- Topic browsing is a secondary affordance that duplicates the Practice
@@ -610,6 +611,25 @@
           <input type="date" id="inpTestDate" aria-describedby="testDateNote">
         </label>
         <p class="setting-note" id="testDateNote">Used only on this device to build your daily study plan.</p>
+        <label class="setting-row">
+          <span>Daily goal</span>
+          <select id="selDailyGoal" aria-describedby="dailyGoalNote">
+            <option value="5">5 questions (light)</option>
+            <option value="10" selected>10 questions (standard)</option>
+            <option value="15">15 questions</option>
+            <option value="20">20 questions</option>
+            <option value="30">30 questions (intense)</option>
+          </select>
+        </label>
+        <p class="setting-note" id="dailyGoalNote">Sets the home-screen goal bar and sizes the dated study plan. A smaller goal you keep beats a bigger one you skip.</p>
+        <div class="setting-row data-row">
+          <span>Daily study reminder</span>
+          <span class="data-actions reminder-actions">
+            <input type="checkbox" id="chkReminder" aria-label="Enable daily study reminder">
+            <input type="time" id="inpReminderTime" value="19:00" aria-label="Reminder time">
+          </span>
+        </div>
+        <p class="setting-note" id="reminderNote">Off. Everything stays on this device: at your time Road Ready shows a system notification while it is open, and the home screen nudges you when you return. It cannot alert you while closed — there is no server to send one.</p>
         <div class="setting-row data-row">
           <span>Backup your progress</span>
           <span class="data-actions">

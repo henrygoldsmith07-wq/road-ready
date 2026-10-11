@@ -12,7 +12,7 @@ test.describe("install prompt", () => {
     await page.evaluate(() => localStorage.clear());
     await page.reload();
     await expect(page.locator("#app")).toBeVisible();
-    if (await page.locator("#onboarding").isVisible()) page.click("#obSkip");
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
     await page.locator('#bottomNav button[data-nav="stats"]').click();
     await page.locator("#btnOpenSettings").click();
     await expect(page.locator("#view-settings")).toHaveClass(/active/);

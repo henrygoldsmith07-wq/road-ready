@@ -32,7 +32,7 @@ Two honest scoping calls that follow from this:
 | Question forms in use | 9 |
 | Active jurisdiction modules | 2 |
 | Region packs incl. Great Britain | 7 |
-| Unit test files | 59 |
+| Unit test files | 60 |
 
 <!-- product-stats:end -->
 
@@ -60,6 +60,7 @@ Two honest scoping calls that follow from this:
 | XP & Achievements | Earn XP for every answer, climb levels, and unlock 12 achievements from First Steps to Hawk Eye |
 | Review Missed | A **Weakness Centre**: problems grouped by recurring mistakes, slow-but-correct, recent regressions, overdue review and unseen high-value concepts — each with Repair misconception / drill / View rule / Mark for later actions, a misconception-resolution count, and plain "why this matters" lines |
 | Concept Mastery Maps | Every topic opens a map of its underlying concepts with honest states (Unseen / Seen once / Learning / Secure / Strong, overlaid by Needs review or Recurring misconception), expandable detail (attempts, accuracy, fluency, question styles tried, misconception history) and one recommended next action. Mastery is robustness-based: accuracy, recency, repeated retrieval, wording and form transfer, fluency, and spaced retention — five near-identical correct answers never earn the credit of one correct answer across recall, scenario, visual and ordering forms. **Transfer is bounded by what the bank offers a concept**: a concept shipped as a single question cannot demonstrate wording/form transfer, so the gate falls back to stricter accuracy, multi-day spaced retrieval and fluency rather than pinning the concept at "Learning" forever. The Great Britain bank ships 348 of its 359 concepts as one question, so this bound is what makes the map truthful there |
+| Daily Goal & Reminders | Set your own daily question target (5–30); an optional on-device reminder nudges you at your chosen time plus a home-screen line and a streak-at-risk toast — no server, no account, nothing leaves the browser |
 | Progress | Study-progress score, per-topic mastery, accuracy, day streak, daily goal, study time, exam history. Where the exam scores a section Road Ready cannot measure (GB's 14 hazard clips), the card **states that the figure covers the 50-question section only**, so the number never silently overstates what has been proved |
 | Misconception Repair | A wrong answer becomes a learning sequence: a structured breakdown (why your answer was tempting, the key distinction, the rule to remember, the common trap) plus a hedged mistake classification — likely a memory slip, rule misunderstanding, similar-rule confusion, wording trap, sign confusion, rushed answer, overthinking, or weak underlying concept. Where the bank **names the trap behind a specific distractor** (GB questions tag each wrong choice, e.g. `min-vs-max-speed`, `uk-vs-us-rule`, `yellow-line-confusion`), that curated label is used directly instead of guessing from timing — it states which misunderstanding the choice was written to catch. Then a fresh concept variant later in the session, escalating intervention on repeats, and a tracked misconception card. Road Ready never claims to know your reasoning |
 | Session Summaries | Every practice session ends with what it actually changed — concepts strengthened, misconceptions resolved, what is still weak, coverage movement — and the best next action, not just a score |

@@ -94,6 +94,7 @@ test.describe("session summaries", () => {
   test("a practice session ends with what it changed", async ({ page }) => {
     await freshApp(page);
     if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
+    await page.locator("#topicBrowser").evaluate((d) => { d.open = true; });
     await page.locator("#topicGrid .topic-card").first().click();
     await expect(page.locator("#view-quiz")).toHaveClass(/active/);
     // answer a few and finish

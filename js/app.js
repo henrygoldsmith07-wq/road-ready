@@ -275,6 +275,80 @@ function touchStreak() {
   const t = todayStr();
   state.streak = Core.touchStreak(state.streak, t, yesterdayStr());
 }
+
+/* ---------------- study reminders (on-device only) ---------------- *
+ * No server, no push subscription, no account: the reminder fires while the
+ * app is open (system Notification when granted, toast otherwise) and the
+ * home screen carries a persistent nudge when the learner returns. The
+ * settings copy says exactly this, so nobody expects background alerts.
+ * All scheduling inputs are pure Core helpers — unit-tested in
+ * tests/reminders.test.js. */
+let reminderTimer = null;
+let riskToastShown = false;
+const localHM = (d) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+function msUntilTime(timeStr, now) {
+  const at = new Date(now.getTime());
+  const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(timeStr || "");
+  if (m) at.setHours(Number(m[1]), Number(m[2]), 0, 0);
+  if (at.getTime() <= now.getTime()) at.setDate(at.getDate() + 1);
+  return at.getTime() - now.getTime();
+}
+function reminderCopy() {
+  const goal = Core.clampDailyGoal(state.settings.dailyGoal);
+  const plan = Core.studyPlan(bank, state.qstats, state.exams, state.daily, state.settings.testDate, todayStr(), goal);
+  const streak = state.streak && state.streak.count > 0 ? ` \u00B7 ${state.streak.count}-day streak on the line` : "";
+  return plan.remainingToday > 0
+    ? `${plan.remainingToday} to hit your ${plan.dailyTarget} goal${streak}`
+    : "Goal already done \u2014 a quick review keeps the streak alive.";
+}
+function fireReminder() {
+  const now = new Date();
+  if (Core.reminderDue(state.settings, todayStr(), localHM(now))) {
+    state.settings.reminder.lastFired = todayStr();
+    save();
+    const title = "Time for today's questions";
+    const sub = reminderCopy();
+    if ("Notification" in window && Notification.permission === "granted") {
+      try { new Notification(title, { body: sub }); }
+      catch { toast(title, sub, "clock"); }
+    } else toast(title, sub, "clock");
+  }
+  scheduleReminder();
+}
+function scheduleReminder() {
+  if (reminderTimer) { clearTimeout(reminderTimer); reminderTimer = null; }
+  const r = Core.sanitizeReminder(state.settings.reminder);
+  if (!r.enabled) return;
+  reminderTimer = setTimeout(fireReminder, Math.min(msUntilTime(r.time, new Date()), 2147483647));
+}
+function updateReminderNote() {
+  const el = $("reminderNote");
+  if (!el) return;
+  const r = Core.sanitizeReminder(state.settings.reminder);
+  if (!r.enabled) {
+    el.textContent = "Off. Everything stays on this device: at your time Road Ready shows a system notification while it is open, and the home screen nudges you when you return. It cannot alert you while closed \u2014 there is no server to send one.";
+    return;
+  }
+  const when = r.time.split(":");
+  const h12 = Number(when[0]) % 12 || 12;
+  const label = `${h12}:${when[1]} ${Number(when[0]) >= 12 ? "PM" : "AM"}`;
+  const perm = ("Notification" in window) ? Notification.permission : "unsupported";
+  el.textContent = perm === "granted"
+    ? `On \u00B7 ${label}. Shows a system notification at your time while Road Ready is open, plus a home-screen nudge when you return. Nothing leaves this device.`
+    : perm === "denied"
+      ? `On \u00B7 ${label}, but this browser blocks notifications \u2014 allow them in site settings for the alert, or rely on the home-screen nudge at your time. Nothing leaves this device.`
+      : `On \u00B7 ${label}. This browser has no notification support, so the home-screen nudge carries the reminder. Nothing leaves this device.`;
+}
+function maybeStreakRiskToast() {
+  if (riskToastShown) return;
+  riskToastShown = true;
+  if (!Core.streakAtRisk(state.streak, state.daily, todayStr(), yesterdayStr())) return;
+  const goal = Core.clampDailyGoal(state.settings.dailyGoal);
+  const done = Core.dailyCount(state.daily, todayStr());
+  toast(`${state.streak.count}-day streak at risk`,
+    `Answer ${Math.max(0, goal - done)} question${goal - done === 1 ? "" : "s"} today to keep it alive.`,
+    "zap");
+}
 /* ---------------- import / export ---------------- */
 function exportProgress() {
   const blob = new Blob([Core.exportBundle(state)], { type: "application/json" });
@@ -492,7 +566,7 @@ function startSetup(mode, focusCat) {
       if (diffPractice != null && diffPractice > 0) daysLeftPractice = diffPractice;
     }
     const todaySize = Math.max(5, Math.min(
-      Core.recommendedToday({ unmasteredQuestions: Math.max(1, unmasteredCount), daysUntilTest: daysLeftPractice, dailyGoal: Core.DAILY_GOAL, riskCount: 0 }) || Core.DAILY_GOAL,
+      Core.recommendedToday({ unmasteredQuestions: Math.max(1, unmasteredCount), daysUntilTest: daysLeftPractice, dailyGoal: Core.clampDailyGoal(state.settings.dailyGoal), riskCount: 0 }) || Core.clampDailyGoal(state.settings.dailyGoal),
       bank.length
     ));
     const items = [
@@ -1064,6 +1138,9 @@ function init() {
   renderFlashcards();
   if (!state.onboarded) showOnboarding();
   registerServiceWorker();
+  scheduleReminder();
+  maybeStreakRiskToast();
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { scheduleReminder(); maybeStreakRiskToast(); } });
 
   // read-aloud toggle
   on($("btnTTS"), "click", () => {
@@ -1177,7 +1254,7 @@ function init() {
       if (packId && BLUEPRINTS[packId]) { startOfficialExam(packId); return; }
       startSetup("exam"); return;
     }
-    const plan = Core.studyPlan(bank, state.qstats, state.exams, state.daily, state.settings.testDate, todayStr());
+    const plan = Core.studyPlan(bank, state.qstats, state.exams, state.daily, state.settings.testDate, todayStr(), Core.clampDailyGoal(state.settings.dailyGoal));
     const size = Math.min(Math.max(plan.dailyTarget, 5), bank.length);
     startPractice(pickWeighted(adaptivePool(), size), "Today's Plan", "home");
     void plan;
@@ -1197,11 +1274,28 @@ function init() {
   on($("selPassMark"), "change", e => { state.settings.passMark = parseFloat(e.target.value); save(); });
   on($("selExamLen"), "change", e => { state.settings.examLen = parseInt(e.target.value, 10); save(); });
   on($("chkFeedback"), "change", e => { state.settings.feedback = e.target.checked; save(); });
+  on($("selDailyGoal"), "change", e => {
+    state.settings.dailyGoal = Core.clampDailyGoal(parseInt(e.target.value, 10));
+    save(); renderHome();
+    toast("Daily goal updated", `Your goal bar now aims for ${state.settings.dailyGoal} questions a day.`, "target");
+  });
+  on($("chkReminder"), "change", async e => {
+    state.settings.reminder.enabled = e.target.checked;
+    if (e.target.checked && ("Notification" in window) && Notification.permission === "default") {
+      try { await Notification.requestPermission(); }
+      catch { /* keep the in-app nudge; permission stays default */ }
+    }
+    save(); updateReminderNote(); scheduleReminder(); renderHome();
+  });
+  on($("inpReminderTime"), "change", e => {
+    if (Core.validReminderTime(e.target.value)) state.settings.reminder.time = e.target.value;
+    save(); updateReminderNote(); scheduleReminder(); renderHome();
+  });
   on($("inpTestDate"), "change", e => {
     state.settings.testDate = Core.validIsoDate(e.target.value) ? e.target.value : "";
     save(); renderHome();
     toast(state.settings.testDate ? "Test day plan ready" : "Test date cleared",
-      state.settings.testDate ? "Your daily target now adapts to the time remaining." : "Your daily goal is back to 10 questions.",
+      state.settings.testDate ? "Your daily target now adapts to the time remaining." : `Your daily goal is back to ${Core.clampDailyGoal(state.settings.dailyGoal)} questions.`,
       "clock");
   });
   on($("selStatePack"), "change", e => {

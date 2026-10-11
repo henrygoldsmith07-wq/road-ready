@@ -16,6 +16,14 @@
   function $(id) { return document.getElementById(id); }
   function on(el, ev, fn) { el.addEventListener(ev, fn); }
 
+  /** "19:00" → "7:00 PM". Display only; the stored value stays 24-hour. */
+  function formatReminderTime(hm) {
+    const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(hm || "");
+    if (!m) return hm || "";
+    const h12 = Number(m[1]) % 12 || 12;
+    return `${h12}:${m[2]} ${Number(m[1]) >= 12 ? "PM" : "AM"}`;
+  }
+
   /* Status only, by design. The single next action for today lives in the
    * Today Plan card, which states the question count, the reason behind it
    * and carries the one primary action. */
@@ -108,7 +116,7 @@
       : `Spot developing hazards early (${hazardTag})`;
     checkProgressAchievements();
 
-    const plan = Core.studyPlan(bank, state.qstats, state.exams, state.daily, state.settings.testDate, todayStr());
+    const plan = Core.studyPlan(bank, state.qstats, state.exams, state.daily, state.settings.testDate, todayStr(), Core.clampDailyGoal(state.settings.dailyGoal));
     const coachPlan = Coach.recommend({
       bank,
       qstats: state.qstats,
@@ -156,6 +164,29 @@
     goalEl.querySelector(".dg-label").innerHTML = t >= target
       ? `Daily goal complete — <b>${t}</b> answered today`
       : `Today's goal: <b>${t}/${target}</b> questions answered`;
+
+    // Reminder status: one honest line under the goal bar. Set → states the
+    // time. Unset but with history → offers the settings path, never a nag
+    // on a brand-new learner's first screen.
+    const dgRem = $("dgReminder");
+    if (dgRem) {
+      const rem = Core.sanitizeReminder(state.settings.reminder);
+      dgRem.textContent = "";
+      if (rem.enabled) {
+        dgRem.hidden = false;
+        dgRem.textContent = `Reminder on · ${formatReminderTime(rem.time)}`;
+      } else if (state.answered > 0) {
+        dgRem.hidden = false;
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "dg-reminder-link";
+        b.textContent = "Turn on a daily reminder";
+        on(b, "click", () => ctx.showView("settings"));
+        dgRem.appendChild(b);
+      } else {
+        dgRem.hidden = true;
+      }
+    }
 
     // What changed since the previous session — measured, never guessed.
     const changedEl = $("planChanged");

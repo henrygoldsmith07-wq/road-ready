@@ -13,10 +13,17 @@
   /* ---------------- constants ---------------- */
   const SCHEMA_VERSION = 2;
   const DAILY_GOAL = 10;
+  const DAILY_GOAL_MIN = 5;
+  const DAILY_GOAL_MAX = 30;
+  const REMINDER_TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
   const EXAM_SECONDS_PER_QUESTION = 60;
   const MAX_EXAM_HISTORY = 30;
 
   /* ---------------- state schema ---------------- */
+  function defaultReminder() {
+    return { enabled: false, time: "19:00", lastFired: "" };
+  }
+
   function defaultSettings() {
     return {
       passMark: 0.8,
@@ -26,7 +33,52 @@
       tts: false,
       statePack: "generic",
       testDate: "",
+      dailyGoal: DAILY_GOAL,
+      reminder: defaultReminder(),
     };
+  }
+
+  /** Learner-chosen daily question target, clamped to a sane habit range. */
+  function clampDailyGoal(v) {
+    const n = Math.round(num(v, DAILY_GOAL, DAILY_GOAL_MIN, DAILY_GOAL_MAX));
+    return Math.max(DAILY_GOAL_MIN, Math.min(DAILY_GOAL_MAX, n));
+  }
+
+  function validReminderTime(v) {
+    return typeof v === "string" && REMINDER_TIME_RE.test(v);
+  }
+
+  function sanitizeReminder(raw) {
+    const r = Object.assign(defaultReminder(), plainObject(raw));
+    return {
+      enabled: bool(r.enabled),
+      time: validReminderTime(r.time) ? r.time : "19:00",
+      lastFired: validIsoDate(r.lastFired) ? r.lastFired : "",
+    };
+  }
+
+  /**
+   * Pure reminder check: should the app nudge the learner right now?
+   * Fires at most once per day (lastFired), only when enabled with a valid
+   * time that has passed. DOM-free so the schedule is unit-testable.
+   */
+  function reminderDue(settings, todayIso, nowHM) {
+    const r = sanitizeReminder(settings && settings.reminder);
+    if (!r.enabled) return false;
+    if (!validIsoDate(todayIso) || typeof nowHM !== "string") return false;
+    if (r.lastFired === todayIso) return false;
+    return nowHM >= r.time;
+  }
+
+  /**
+   * Pure streak-risk check: a live streak whose day has not been fed yet.
+   * Powers the "streak at risk" nudge — measured history, never a guess.
+   */
+  function streakAtRisk(streak, daily, todayIso, yesterdayIso) {
+    if (!streak || typeof streak !== "object") return false;
+    if (!validIsoDate(todayIso) || !validIsoDate(yesterdayIso)) return false;
+    if (streak.last !== yesterdayIso || (streak.count || 0) <= 0) return false;
+    return dailyCount(daily, todayIso) <= 0;
   }
 
   function defaultState() {
@@ -349,6 +401,8 @@
     else if (typeof s.settings.statePack !== "string" || !s.settings.statePack.trim())
       s.settings.statePack = "generic";
     s.settings.testDate = validIsoDate(s.settings.testDate) ? s.settings.testDate : "";
+    s.settings.dailyGoal = clampDailyGoal(s.settings.dailyGoal);
+    s.settings.reminder = sanitizeReminder(s.settings.reminder);
     return s;
   }
 
@@ -438,11 +492,12 @@
   };
 
   /** Build a practical daily study plan around a learner's test date. */
-  function studyPlan(questions, qstats, exams, daily, testDateIso, todayIso) {
+  function studyPlan(questions, qstats, exams, daily, testDateIso, todayIso, dailyGoal) {
     const today = validIsoDate(todayIso) ? todayIso : localDay(Date.now());
     const todayCount = dailyCount(daily, today);
+    const goal = clampDailyGoal(dailyGoal);
     if (!validIsoDate(testDateIso)) {
-      return { status: "no-date", daysLeft: null, dailyTarget: DAILY_GOAL, todayCount, remainingToday: Math.max(0, DAILY_GOAL - todayCount) };
+      return { status: "no-date", daysLeft: null, dailyTarget: goal, todayCount, remainingToday: Math.max(0, goal - todayCount) };
     }
 
     const daysLeft = daysBetweenLocalDates(today, testDateIso) == null ? null : Math.max(-1, daysBetweenLocalDates(today, testDateIso));
@@ -456,8 +511,8 @@
     const passedExam = Array.isArray(exams) && exams.some((e) => e && e.pass);
     const workRemaining = unseen + weak * 2;
     const dailyTarget = daysLeft > 0
-      ? Math.min(50, Math.max(DAILY_GOAL, Math.ceil(workRemaining / daysLeft)))
-      : Math.max(20, DAILY_GOAL);
+      ? Math.min(50, Math.max(goal, Math.ceil(workRemaining / daysLeft)))
+      : Math.max(20, goal);
     const action = daysLeft <= 0 || (daysLeft <= 7 && !passedExam)
       ? "exam" : weak > 0 ? "review" : "practice";
 
@@ -1813,9 +1868,10 @@ function reviewSched(sched, right, nowMs, quality) {
       questions = Math.max(12, Math.min(35, reviewDue + unseenNeeded + Math.round(coverage * 8)));
       if (action === "exam") questions = Math.max(15, Math.min(40, questions + 10));
     } else {
-      const base = Math.max(DAILY_GOAL, reviewDue + unseenNeeded);
+      const goalBase = clampDailyGoal(o.dailyGoal);
+      const base = Math.max(goalBase, reviewDue + unseenNeeded);
       const coveragePressure = coverage < 0.7 ? 8 : coverage < 0.9 ? 4 : 0;
-      questions = Math.max(10, Math.min(40, base + coveragePressure));
+      questions = Math.max(Math.min(goalBase, 10), Math.min(40, base + coveragePressure));
     }
     questions = Math.max(0, Math.min(questions - todayCount, bank.length));
     if (!questions) action = "practice";
@@ -2305,9 +2361,10 @@ function reviewSched(sched, right, nowMs, quality) {
 
   /* ---------------- export surface ---------------- */
   const RoadReadyCore = {
-    SCHEMA_VERSION, DAILY_GOAL, EXAM_SECONDS_PER_QUESTION, MAX_EXAM_HISTORY,
+    SCHEMA_VERSION, DAILY_GOAL, DAILY_GOAL_MIN, DAILY_GOAL_MAX, EXAM_SECONDS_PER_QUESTION, MAX_EXAM_HISTORY,
     DAY_MS, isoDay, localDay, localDayBefore, daysBetweenLocalDates, validIsoDate, defaultState, defaultSettings, migrateState, sanitizeState,
     touchStreak, dailyCount, bumpDaily, studyPlan,
+    clampDailyGoal, validReminderTime, sanitizeReminder, reminderDue, streakAtRisk,
     ACHIEVEMENTS, levelFor, xpForAnswer, xpForExam, evaluateAchievements,
     XP_PER_CORRECT, XP_PER_WRONG, XP_EXAM_PASS, XP_EXAM_PERFECT, XP_PER_HAZARD_POINT,
     qMastery, qDifficulty, conceptKeyOf, conceptMastery, groupByConcept,
