@@ -619,10 +619,18 @@ function startSetup(mode, focusCat) {
     // real test is theory + hazard in one sitting — training them separately
     // never rehearses the combined pressure. Gated on a full official bank.
     if (bp && Core.officialExamAvailability(bank, bp).full && hazardInfoForPack(packId).includedInExam) {
+      // Pre-sim gate: advisory only — sittings are unlimited, so this never
+      // blocks, but tapping through with failing evidence wastes an hour and
+      // stings. The verdict shows inline; the confirm names the fix.
+      const gate = Core.simGate({ readinessPct: Math.round(readiness() * 100), exams: state.exams });
       items.push({
         id: "test-day", icon: "flag", name: "Test-day simulation",
-        desc: `${bp.questionCount} theory + ${Core.SIM_HAZARD_CLIPS} hazard clips, one combined result · hazard bar scaled from the official 44/75 · original scenarios, not DVSA clips`,
-        action: () => startTestDaySim(),
+        desc: `${bp.questionCount} theory + ${Core.SIM_HAZARD_CLIPS} hazard clips, one combined result · hazard bar scaled from the official 44/75 · original scenarios, not DVSA clips` +
+          (gate.warn ? ` · ⚠ ${gate.lines[0]}` : ""),
+        action: () => {
+          if (gate.warn && !confirm(`Not at your best for this yet:\n\u2022 ${gate.lines.join("\n\u2022 ")}\n\nSit the full simulation anyway? (Cancel stays here — the drills below train the miss faster.)`)) return;
+          startTestDaySim();
+        },
       });
     }
     items.push(

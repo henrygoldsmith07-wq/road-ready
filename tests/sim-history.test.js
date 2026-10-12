@@ -54,6 +54,31 @@ describe("test-day track record", () => {
     expect(t.text).toContain("3 sittings · 1 full pass · hazard is the repeat miss");
   });
 
+  describe("pre-sim readiness gate (advisory, never blocks)", () => {
+    it("stays silent for first-timers with no negative evidence", () => {
+      expect(Core.simGate({ readinessPct: 80, exams: [] })).toEqual({ warn: false, lines: [] });
+      expect(Core.simGate({ readinessPct: 60, exams: [] }).warn).toBe(false);
+    });
+    it("warns on early theory readiness", () => {
+      const g = Core.simGate({ readinessPct: 30, exams: [] });
+      expect(g.warn).toBe(true);
+      expect(g.lines[0]).toContain("theory readiness is 30%");
+    });
+    it("warns on a repeat miss across sittings", () => {
+      const g = Core.simGate({
+        readinessPct: 85,
+        exams: [sim({ date: 1 }), sim({ date: 2 })],
+      });
+      expect(g.warn).toBe(true);
+      expect(g.lines.join(" ")).toContain("hazard is the repeat miss");
+    });
+    it("combines both lines when both apply", () => {
+      const g = Core.simGate({ readinessPct: 20, exams: [sim({ date: 1 })] });
+      expect(g.warn).toBe(true);
+      expect(g.lines).toHaveLength(2);
+    });
+  });
+
   it("reports both-sections-clear when every sitting passed", () => {
     const t = Core.simTrend([
       sim({ date: 1, hazard: { pts: 60, max: 70, passPts: 41 }, pass: true }),

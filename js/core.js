@@ -1018,6 +1018,29 @@ function reviewSched(sched, right, nowMs, quality) {
     };
   }
 
+  /* ---------------- pre-sim readiness gate ----------------
+   * A sitting costs ~1 hour and a fail stings, but sittings are unlimited —
+   * so the gate is advisory, never a block. It fires only when there is
+   * real evidence a sitting will likely fail: early theory readiness, or a
+   * repeat miss across sittings. First-timers with no negative evidence pass
+   * through silently; the first sitting IS the baseline. Pure, unit-tested. */
+  const SIM_GATE_THEORY_FLOOR = 55; // below "Building" band: likely fail
+  /** @param {{readinessPct:number, exams:Array}} o */
+  function simGate(o) {
+    const pct = num(o && o.readinessPct, 0, 0, 100);
+    const trend = simTrend(o && o.exams);
+    const lines = [];
+    if (pct < SIM_GATE_THEORY_FLOOR) {
+      lines.push(`theory readiness is ${Math.round(pct)}% — a sitting now will likely fail; ` +
+        `a targeted drill usually moves this faster than an hour-long mock`);
+    }
+    if (trend && trend.repeatMiss) {
+      lines.push(`${trend.count} sitting${trend.count === 1 ? "" : "s"} so far, and ` +
+        `${trend.repeatMiss} is the repeat miss — train it, then sit the whole simulation again`);
+    }
+    return { warn: lines.length > 0, lines };
+  }
+
   /**
    * Blueprint: distribute n seats across topics proportionally to topic size,
    * optionally skewed by editorial `weights` ({cat: multiplier}) — e.g. an
@@ -2472,6 +2495,7 @@ function reviewSched(sched, right, nowMs, quality) {
     defaultSched, reviewSched, schedDue,
     shuffle, timeLimitSecs, gradeExam, examBlueprint, assembleExam, officialExamAvailability,
     SIM_HAZARD_CLIPS, scaledHazardPass, combinedVerdict, simRecord, simHistory, simTrend,
+    SIM_GATE_THEORY_FLOOR, simGate,
     hazardScore, HAZARD_PRESS_CAP, hazardAnalysis, hazardFeedback, hazardSummary,
     HAZARD_PHASES, hazardPhaseAt, hazardTiming, hazardCategorySkill,
     recordSignConfusion, signConfusionPairs,
