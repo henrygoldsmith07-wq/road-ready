@@ -42,6 +42,6 @@
     "vitest": "^5.0.2"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^1.1.0"
+    "@neondatabase/serverless": "^1.2.0"
   }
 }
