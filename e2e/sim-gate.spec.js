@@ -70,6 +70,18 @@ test("repeat miss raises an advisory confirm; dismissing stays put", async ({ pa
   expect(logged).toHaveLength(1);
   expect(logged[0].accepted).toBe(false);
   expect(logged[0].lines.join(" ")).toContain("repeat miss");
+  // The dismiss lands on the fix: a hazard tune-up row (repeat miss) plus
+  // the targeted drill (fresh profile, low theory readiness).
+  // NOTE: the test-day row itself quotes the gate line ("…a targeted drill
+  // usually moves this faster…"), so rows are matched on their accessible
+  // name prefix, not a bare text substring.
+  const tuneUp = page.getByRole("button", { name: /^Hazard tune-up / });
+  await expect(tuneUp).toBeVisible();
+  await expect(tuneUp).toContainText("repeat miss");
+  await expect(page.getByRole("button", { name: /^Targeted drill / })).toBeVisible();
+  await tuneUp.click();
+  await expect(page.locator("#view-hazard.active")).toBeVisible();
+  await expect(page.locator("#hzStage")).toBeVisible();
 
   expect(errors).toEqual([]);
 });
@@ -95,6 +107,50 @@ test("accepting the advisory starts Part 1", async ({ page }) => {
   const logged = await page.evaluate(() => JSON.parse(localStorage.getItem("roadready.v1")).simGateEvents);
   expect(logged).toHaveLength(1);
   expect(logged[0].accepted).toBe(true);
+
+  expect(errors).toEqual([]);
+});
+
+test("theory-only warning offers the targeted drill, not a hazard tune-up", async ({ page }) => {
+  const errors = await boot(page);
+  // Fresh profile, no sittings: only the low-readiness line fires.
+  await useGbPack(page);
+
+  const simRow = page.locator('.setup-row:has-text("Test-day simulation")');
+  await expect(simRow).toBeVisible();
+  await expect(simRow).toContainText("⚠");
+  const drill = page.getByRole("button", { name: /^Targeted drill / });
+  await expect(drill).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Hazard tune-up / })).toHaveCount(0);
+  await drill.click();
+  // Fresh GB profile: the coach's destination is the scored hazard section —
+  // a started run (intro + Start), never the empty section shell.
+  await expect(page.locator("#view-hazard.active")).toBeVisible();
+  await expect(page.locator("#hzStage")).toBeVisible();
+  await expect(page.locator("#hzGo")).toBeVisible();
+
+  expect(errors).toEqual([]);
+});
+
+test("stats shows the gate record once warnings have fired", async ({ page }) => {
+  const errors = await boot(page);
+  await page.evaluate(() => {
+    const key = "roadready.v1";
+    const s = JSON.parse(localStorage.getItem(key));
+    s.simGateEvents = [
+      { date: Date.now() - 2000, lines: ["theory readiness is 0%"], accepted: true },
+      { date: Date.now() - 1000, lines: ["hazard is the repeat miss"], accepted: false },
+    ];
+    localStorage.setItem(key, JSON.stringify(s));
+  });
+  await page.reload();
+  await expect(page.locator("#app")).toBeVisible();
+  if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
+
+  await page.locator('#bottomNav button[data-nav="stats"]').click();
+  const line = page.locator("#simGateLine");
+  await expect(line).toBeVisible();
+  await expect(line).toContainText("2 warnings · 1 tap-through · 1 stayed to drill");
 
   expect(errors).toEqual([]);
 });

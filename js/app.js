@@ -629,7 +629,7 @@ function startSetup(mode, focusCat) {
           (gate.warn ? ` · ⚠ ${gate.lines[0]}` : ""),
         action: () => {
           if (gate.warn) {
-            const accepted = confirm(`Not at your best for this yet:\n\u2022 ${gate.lines.join("\n\u2022 ")}\n\nSit the full simulation anyway? (Cancel stays here — the drills below train the miss faster.)`);
+            const accepted = confirm(`Not at your best for this yet:\n\u2022 ${gate.lines.join("\n\u2022 ")}\n\nSit the full simulation anyway? (Cancel stays here — the drill below trains the miss first.)`);
             // Gate analytics: warn/accept/dismiss, local only. Answers whether
             // the gate redirects preparation or just gets tapped through.
             state.simGateEvents = (Array.isArray(state.simGateEvents) ? state.simGateEvents : [])
@@ -640,6 +640,27 @@ function startSetup(mode, focusCat) {
           startTestDaySim();
         },
       });
+      // The dismiss lands on the FIX, not just the shelf: a repeat hazard
+      // miss gets a hazard tune-up row; low theory readiness or a repeat
+      // theory miss gets the coach's targeted drill. The dialog promises
+      // "the drill below" — it is here, above the generic extras.
+      if (gate.warn) {
+        const trend = Core.simTrend(state.exams);
+        if (trend && trend.repeatMiss === "hazard") {
+          items.push({
+            id: "hazard-tuneup", icon: "eye", name: "Hazard tune-up",
+            desc: "Hazard is the repeat miss across sittings — train it, then sit the whole simulation again",
+            action: () => hzStartGame(), // same entry as the home card, not a bare view switch
+          });
+        }
+        if (Math.round(readiness() * 100) < Core.SIM_GATE_THEORY_FLOOR || (trend && trend.repeatMiss === "theory")) {
+          items.push({
+            id: "gate-drill", icon: "target", name: "Targeted drill",
+            desc: "The coach's recommended session for your weakest evidence right now — faster than an hour-long mock",
+            action: () => startCoachSession(),
+          });
+        }
+      }
     }
     items.push(
       { id: "weak", icon: "target", name: "Weak Topics Exam", desc: "20 questions weighted toward your lowest categories (extra practice)", action: () => startExam(20, true) },
@@ -705,7 +726,11 @@ function startCoachSession() {
   });
   const r = plan.primary;
   if (!r) { startPractice(pickWeighted(adaptivePool(), 10), "Today's Plan", "home"); return; }
-  if (r.type === Coach.REC_TYPES.HAZARD_TRAINING) { showView("hazard"); return; }
+  // Hazard entry is the module start, not a bare view switch: showView alone
+  // renders the section shell with no run (no intro, no scenario, nothing to
+  // press). The home "Practise hazards" action lands here too, so a fresh
+  // GB profile used to open a dead screen from its own Today Plan.
+  if (r.type === Coach.REC_TYPES.HAZARD_TRAINING) { hzStartGame(); return; }
   if (r.type === Coach.REC_TYPES.TAKE_MOCK) {
     const packId = Packs.PACK_IDS.includes(state.settings.statePack) ? state.settings.statePack : null;
     if (packId && BLUEPRINTS[packId]) { startOfficialExam(packId); return; }

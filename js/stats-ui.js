@@ -166,6 +166,21 @@
       trendEl.hidden = false;
       trendEl.textContent = `Test-day: ${trend.text}.`;
     } else if (trendEl) trendEl.hidden = true;
+    // Gate record: how often the pre-sim warning fired and what happened.
+    // Hidden until a warning has actually fired — no data, no line.
+    let gateEl = $("simGateLine");
+    const gateStats = Core.simGateStats(state.simGateEvents);
+    if (gateStats.warns > 0) {
+      if (!gateEl) {
+        gateEl = document.createElement("p");
+        gateEl.id = "simGateLine";
+        gateEl.className = "sim-trend";
+        hl.before(gateEl);
+      }
+      gateEl.hidden = false;
+      gateEl.textContent = `Test-day gate: ${gateStats.warns} warning${gateStats.warns === 1 ? "" : "s"} · ` +
+        `${gateStats.accepts} tap-through${gateStats.accepts === 1 ? "" : "s"} · ${gateStats.dismisses} stayed to drill.`;
+    } else if (gateEl) gateEl.hidden = true;
     const simLine = (rec) => {
       const part = (name, got, need, ok) =>
         `${name} ${got}/${need} ${ok ? "✓" : "✗"}`;
