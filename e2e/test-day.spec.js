@@ -22,6 +22,10 @@ test("test-day simulation launches Part 1 and abandons cleanly", async ({ page }
   const simRow = page.locator('.setup-row:has-text("Test-day simulation")');
   await expect(simRow).toBeVisible();
   await expect(simRow).toContainText("one combined result");
+  // Fresh profile: theory readiness is 0%, so the pre-sim gate raises its
+  // advisory confirm first — accept it to reach Part 1 (the gate is advisory
+  // and never blocks; the dismiss path is covered in sim-gate.spec.js).
+  page.once("dialog", (d) => d.accept());
   await simRow.click();
 
   // Part 1 runs in the standard exam UI, labelled as the first half.

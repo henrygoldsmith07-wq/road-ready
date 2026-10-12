@@ -77,6 +77,8 @@ export default [
         console: "readonly", process: "readonly", URL: "readonly", Buffer: "readonly",
         localStorage: "readonly", navigator: "readonly", document: "readonly", window: "readonly",
         fetch: "readonly", QUESTIONS: "readonly", requestAnimationFrame: "readonly",
+        // app.js top-level session (the running quiz), read by journey specs
+        session: "readonly",
       },
     },
     rules: { "no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }] },

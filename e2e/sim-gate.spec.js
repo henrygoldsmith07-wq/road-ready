@@ -65,6 +65,11 @@ test("repeat miss raises an advisory confirm; dismissing stays put", async ({ pa
   // Dismissed: still on the setup screen, no quiz started.
   await expect(page.locator("#view-setup.active")).toBeVisible();
   await expect(page.locator("#view-quiz.active")).toHaveCount(0);
+  // The dismissal is logged locally for gate analytics.
+  const logged = await page.evaluate(() => JSON.parse(localStorage.getItem("roadready.v1")).simGateEvents);
+  expect(logged).toHaveLength(1);
+  expect(logged[0].accepted).toBe(false);
+  expect(logged[0].lines.join(" ")).toContain("repeat miss");
 
   expect(errors).toEqual([]);
 });
@@ -86,6 +91,10 @@ test("accepting the advisory starts Part 1", async ({ page }) => {
   await page.locator('.setup-row:has-text("Test-day simulation")').click();
   await expect(page.locator("#view-quiz.active")).toBeVisible();
   await expect(page.locator("#qCounter")).toContainText("Part 1");
+  // The tap-through is logged locally for gate analytics.
+  const logged = await page.evaluate(() => JSON.parse(localStorage.getItem("roadready.v1")).simGateEvents);
+  expect(logged).toHaveLength(1);
+  expect(logged[0].accepted).toBe(true);
 
   expect(errors).toEqual([]);
 });

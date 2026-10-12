@@ -154,6 +154,24 @@ describe("recommendations", () => {
     expect(plan.primary.questionCount).toBe(3);
   });
 
+  it("review-overdue names the due questions themselves, most-overdue first", () => {
+    // The session builder seeds these ids first: answering the plan must
+    // reschedule the exact questions the plan promised, not fresh variants.
+    const b = bank();
+    const overdue = (days) => ({ seen: 4, correct: 4, wrong: 0, sched: { due: NOW - days * DAY, ef: 2.5, interval: 6, reps: 2 } });
+    const plan = Coach.recommend({
+      bank: b,
+      qstats: {
+        j1: overdue(5), j2: overdue(3), s1: overdue(3),
+        s2: { seen: 4, correct: 4, wrong: 0, sched: { due: NOW + 9 * DAY, ef: 2.5, interval: 9, reps: 3 } },
+        v1: { seen: 4, correct: 4, wrong: 0 },
+      },
+      misconceptions: {}, exams: [], daily: {}, today: TODAY, nowMs: NOW,
+    });
+    expect(plan.primary.type).toBe(Coach.REC_TYPES.REVIEW_OVERDUE);
+    expect(plan.primary.drillIds).toEqual(["j1", "j2", "s1"]);
+  });
+
   it("slow-but-right concepts produce a fluency drill", () => {
     const b = bank();
     const mastered = { seen: 5, correct: 5, wrong: 0 };

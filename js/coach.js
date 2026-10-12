@@ -397,12 +397,24 @@ function candidates(input) {
   const overdueCount = dueDiags.reduce((t, d) => t + d.overdue, 0);
   if ((overdueCount >= 3) || (daysLeft != null && daysLeft >= 0 && daysLeft <= 3 && overdueCount >= 1)) {
     const questionCount = Math.min(12, Math.max(1, overdueCount));
+    // The session must contain the due questions THEMSELVES — not just fresh
+    // variants of their concepts — or following the plan never clears the
+    // overdue schedule it promises to fix. Most-overdue first, deterministic.
+    const dueIds = bank
+      .filter((q) => {
+        const st = qstats[q.id];
+        return st && st.seen > 0 && CoachCore.schedDue(st, nowMs) === "overdue";
+      })
+      .sort((a, b) => (((qstats[a.id] || {}).sched || {}).due || 0) - (((qstats[b.id] || {}).sched || {}).due || 0)
+        || (a.id < b.id ? -1 : 1))
+      .map((q) => q.id);
     out.push({
       type: REC_TYPES.REVIEW_OVERDUE,
       rank: 20,
       issueKind: "retention",
       drillKind: "due-review",
       conceptKeys: dueDiags.slice(0, 6).map((d) => d.key),
+      drillIds: dueIds.slice(0, 12),
       questionCount,
       minutes: Math.max(3, Math.round(questionCount * 0.7)),
       title: `Review ${overdueCount} question${overdueCount === 1 ? "" : "s"} that are due`,

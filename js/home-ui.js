@@ -161,9 +161,21 @@
     const target = Math.max(1, plan.dailyTarget);
     const goalEl = $("dailyGoal");
     goalEl.querySelector(".dg-bar-fill").style.width = Math.min(100, 100 * t / target) + "%";
+    // Retention is part of the goal, not a footnote: answering only new
+    // questions can complete the count while spaced reviews pile up. The
+    // line names due reviews, and a "complete" count with overdue reviews
+    // says so instead of declaring victory.
+    const reviewsDue = plan.reviewsDue || 0;
+    const overdueDue = plan.overdueToday || 0;
+    const dueSuffix = reviewsDue > 0
+      ? ` · <b>${reviewsDue}</b> review${reviewsDue === 1 ? "" : "s"} due${overdueDue > 0 ? ` (${overdueDue} overdue)` : ""}`
+      : "";
+    const stillDueSuffix = reviewsDue > 0
+      ? ` · <b>${reviewsDue}</b> review${reviewsDue === 1 ? "" : "s"} still due`
+      : "";
     goalEl.querySelector(".dg-label").innerHTML = t >= target
-      ? `Daily goal complete — <b>${t}</b> answered today`
-      : `Today's goal: <b>${t}/${target}</b> questions answered`;
+      ? `Daily goal complete — <b>${t}</b> answered today${stillDueSuffix}`
+      : `Today's goal: <b>${t}/${target}</b> questions answered${dueSuffix}`;
 
     // Reminder status: one honest line under the goal bar. Set → states the
     // time. Unset but with history → offers the settings path, never a nag

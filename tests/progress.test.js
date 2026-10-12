@@ -127,4 +127,19 @@ describe("test day study plan", () => {
     expect(plan.action).toBe("exam");
     expect(plan.remainingToday).toBe(0);
   });
+
+  it("exposes due and overdue review counts for the daily goal", () => {
+    const now = Date.now();
+    const stats = {
+      a1: { seen: 3, correct: 3, wrong: 0, sched: { due: now - 3 * Core.DAY_MS, ef: 2.5, interval: 6, reps: 2 } },
+      a2: { seen: 3, correct: 3, wrong: 0, sched: { due: now - 12 * 3600e3, ef: 2.5, interval: 1, reps: 1 } },
+      b1: { seen: 3, correct: 3, wrong: 0, sched: { due: now + 9 * Core.DAY_MS, ef: 2.5, interval: 9, reps: 3 } },
+    };
+    for (const testDate of ["", "2026-12-23"]) {
+      const plan = Core.studyPlan(bank, stats, [], {}, testDate, "2026-08-23");
+      expect(plan.overdueToday).toBe(1); // a1 only: a2 is due-today, b1 future
+      expect(plan.dueToday).toBe(1);
+      expect(plan.reviewsDue).toBe(2);
+    }
+  });
 });

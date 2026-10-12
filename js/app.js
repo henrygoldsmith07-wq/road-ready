@@ -628,7 +628,15 @@ function startSetup(mode, focusCat) {
         desc: `${bp.questionCount} theory + ${Core.SIM_HAZARD_CLIPS} hazard clips, one combined result · hazard bar scaled from the official 44/75 · original scenarios, not DVSA clips` +
           (gate.warn ? ` · ⚠ ${gate.lines[0]}` : ""),
         action: () => {
-          if (gate.warn && !confirm(`Not at your best for this yet:\n\u2022 ${gate.lines.join("\n\u2022 ")}\n\nSit the full simulation anyway? (Cancel stays here — the drills below train the miss faster.)`)) return;
+          if (gate.warn) {
+            const accepted = confirm(`Not at your best for this yet:\n\u2022 ${gate.lines.join("\n\u2022 ")}\n\nSit the full simulation anyway? (Cancel stays here — the drills below train the miss faster.)`);
+            // Gate analytics: warn/accept/dismiss, local only. Answers whether
+            // the gate redirects preparation or just gets tapped through.
+            state.simGateEvents = (Array.isArray(state.simGateEvents) ? state.simGateEvents : [])
+              .concat([{ date: Date.now(), lines: gate.lines.slice(0, 4), accepted }]).slice(-50);
+            save();
+            if (!accepted) return;
+          }
           startTestDaySim();
         },
       });
@@ -706,6 +714,17 @@ function startCoachSession() {
   }
   const missedIds = new Set(missedQuestions().map((q) => q.id));
   let qs = [];
+  if (r.drillKind === "due-review" && Array.isArray(r.drillIds) && r.drillIds.length) {
+    // Due-review sessions lead with the due questions THEMSELVES — the plan
+    // promised these exact questions, and answering one is what reschedules
+    // it. Concept variants follow; the final shuffle interleaves, so leading
+    // here guarantees inclusion, not position.
+    for (const id of r.drillIds) {
+      const q = byId[id];
+      if (q && !qs.includes(q)) qs.push(q);
+      if (qs.length >= r.questionCount) break;
+    }
+  }
   for (const key of r.conceptKeys) {
     for (const id of Coach.drillIdsForConcept(key, bank, state.qstats, missedIds)) {
       const q = byId[id];

@@ -19,7 +19,7 @@
 "use strict";
 
 // scripts/update-sw.mjs rewrites the line below — do not edit by hand.
-const VERSION = "v.e5633263a876";
+const VERSION = "v.847989215b79";
 const CACHE = `roadready-${VERSION}`;
 const SHELL = [
   "./",

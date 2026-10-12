@@ -97,6 +97,7 @@
       misconceptions: {},// conceptKey -> {errors, questionIds[], firstSeen, lastSeen, stage, solvedIds[], repairedAt}
       coach: { lastSnapshot: null, lastPlanType: "" }, // session-over-session delta for the Adaptive Coach
       coachEvents: [],  // learning-evidence log (js/evidence.js): recommendation outcomes, local only
+      simGateEvents: [], // pre-sim gate warn/accept/dismiss log, local only (capped, see sanitizeState)
       fcOrder: null,
       achievements: {},  // id -> unlock timestamp
       xp: 0,
@@ -310,6 +311,13 @@
           };
         })
       : [];
+    s.simGateEvents = Array.isArray(s.simGateEvents)
+      ? s.simGateEvents.filter((e) => e && typeof e === "object" && !Array.isArray(e)).slice(-50).map((e) => ({
+          date: num(e.date, 0, 0, 8.64e15) || undefined,
+          lines: Array.isArray(e.lines) ? e.lines.filter((l) => typeof l === "string").slice(0, 4).map((l) => l.slice(0, 200)) : [],
+          accepted: e.accepted === true,
+        }))
+      : [];
     s.hazardLog = Array.isArray(s.hazardLog)
       ? s.hazardLog.filter((h) => h && typeof h === "object" && !Array.isArray(h)).slice(-120).map((h) => ({
           scenario: typeof h.scenario === "string" ? h.scenario.slice(0, 80) : "",
@@ -508,13 +516,24 @@
     const today = validIsoDate(todayIso) ? todayIso : localDay(Date.now());
     const todayCount = dailyCount(daily, today);
     const goal = clampDailyGoal(dailyGoal);
+    const bank = Array.isArray(questions) ? questions : [];
+    const stats = plainObject(qstats);
+    // Retention pressure, visible to the daily goal: questions whose spaced
+    // review is due now or overdue. Counted against the live clock — the
+    // schedule itself is time-based, so the count is too.
+    const nowMs = Date.now();
+    let dueToday = 0, overdueToday = 0;
+    bank.forEach((q) => {
+      const d = schedDue(stats[q.id], nowMs);
+      if (d === "now") dueToday++;
+      else if (d === "overdue") overdueToday++;
+    });
+    const reviewsDue = dueToday + overdueToday;
     if (!validIsoDate(testDateIso)) {
-      return { status: "no-date", daysLeft: null, dailyTarget: goal, todayCount, remainingToday: Math.max(0, goal - todayCount) };
+      return { status: "no-date", daysLeft: null, dailyTarget: goal, todayCount, remainingToday: Math.max(0, goal - todayCount), dueToday, overdueToday, reviewsDue };
     }
 
     const daysLeft = daysBetweenLocalDates(today, testDateIso) == null ? null : Math.max(-1, daysBetweenLocalDates(today, testDateIso));
-    const bank = Array.isArray(questions) ? questions : [];
-    const stats = plainObject(qstats);
     const unseen = bank.filter((q) => !stats[q.id] || !stats[q.id].seen).length;
     const weak = bank.filter((q) => {
       const st = stats[q.id];
@@ -533,6 +552,7 @@
       daysLeft, dailyTarget, todayCount,
       remainingToday: Math.max(0, dailyTarget - todayCount),
       unseen, weak, workRemaining, passedExam, action,
+      dueToday, overdueToday, reviewsDue,
     };
   }
 
@@ -1039,6 +1059,17 @@ function reviewSched(sched, right, nowMs, quality) {
         `${trend.repeatMiss} is the repeat miss — train it, then sit the whole simulation again`);
     }
     return { warn: lines.length > 0, lines };
+  }
+
+  /**
+   * Gate analytics summary: how often the pre-sim warning fired, and whether
+   * learners sat anyway (accepted) or stayed to drill (dismissed). Pure.
+   * @param {Array} events simGateEvents log entries
+   */
+  function simGateStats(events) {
+    const rows = Array.isArray(events) ? events : [];
+    const accepts = rows.filter((e) => e && e.accepted === true).length;
+    return { warns: rows.length, accepts, dismisses: rows.length - accepts };
   }
 
   /**
@@ -2495,7 +2526,7 @@ function reviewSched(sched, right, nowMs, quality) {
     defaultSched, reviewSched, schedDue,
     shuffle, timeLimitSecs, gradeExam, examBlueprint, assembleExam, officialExamAvailability,
     SIM_HAZARD_CLIPS, scaledHazardPass, combinedVerdict, simRecord, simHistory, simTrend,
-    SIM_GATE_THEORY_FLOOR, simGate,
+    SIM_GATE_THEORY_FLOOR, simGate, simGateStats,
     hazardScore, HAZARD_PRESS_CAP, hazardAnalysis, hazardFeedback, hazardSummary,
     HAZARD_PHASES, hazardPhaseAt, hazardTiming, hazardCategorySkill,
     recordSignConfusion, signConfusionPairs,

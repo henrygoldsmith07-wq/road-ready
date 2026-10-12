@@ -79,6 +79,32 @@ describe("test-day track record", () => {
     });
   });
 
+  describe("gate analytics (warn/accept/dismiss, local only)", () => {
+    it("summarizes warns, accepts and dismisses", () => {
+      expect(Core.simGateStats([])).toEqual({ warns: 0, accepts: 0, dismisses: 0 });
+      expect(Core.simGateStats([
+        { date: 1, lines: ["a"], accepted: true },
+        { date: 2, lines: ["a"], accepted: false },
+        { date: 3, lines: ["a", "b"], accepted: false },
+      ])).toEqual({ warns: 3, accepts: 1, dismisses: 2 });
+    });
+    it("sanitizer keeps the log bounded and typed", () => {
+      const m = Core.migrateState({
+        simGateEvents: [
+          { date: 1, lines: ["theory readiness is 30% — x".repeat(50)], accepted: true },
+          { date: "junk", lines: "not-an-array", accepted: "yes" },
+          null,
+        ],
+      });
+      const rows = m.state.simGateEvents;
+      expect(rows).toHaveLength(2);
+      expect(rows[0].accepted).toBe(true);
+      expect(rows[0].lines[0].length).toBeLessThanOrEqual(200);
+      expect(rows[1].accepted).toBe(false); // "yes" is not true
+      expect(rows[1].lines).toEqual([]);
+    });
+  });
+
   it("reports both-sections-clear when every sitting passed", () => {
     const t = Core.simTrend([
       sim({ date: 1, hazard: { pts: 60, max: 70, passPts: 41 }, pass: true }),
