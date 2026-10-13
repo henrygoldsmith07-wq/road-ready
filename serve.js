@@ -4,6 +4,7 @@
  * with — a policy that only passes here is the policy that actually works. */
 const http = require("http");
 const fs = require("fs");
+const zlib = require("zlib");
 const path = require("path");
 const root = __dirname;
 /* Full MIME map matters here: with `X-Content-Type-Options: nosniff` a wrong
@@ -35,12 +36,23 @@ http.createServer((req, res) => {
     res.writeHead(404, { "Content-Type": "text/plain" });
     return res.end("not found");
   }
-  res.writeHead(200, {
+  /* Mirror production: Vercel compresses text responses, so the local harness
+     does too — otherwise Lighthouse measures a wire size no user ever sees. */
+  const compressible = /\.(html|css|js|svg|webmanifest|json)$/.test(file);
+  const accept = String(req.headers["accept-encoding"] || "");
+  const headers = {
     "Content-Type": types[path.extname(file)] || "application/octet-stream",
     "Content-Security-Policy": CSP,
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
-  });
+  };
+  if (compressible && /\bgzip\b/.test(accept)) {
+    headers["Content-Encoding"] = "gzip";
+    res.writeHead(200, headers);
+    fs.createReadStream(file).pipe(zlib.createGzip()).pipe(res);
+    return;
+  }
+  res.writeHead(200, headers);
   fs.createReadStream(file).pipe(res);
 }).listen(8321, () => console.log("serving on http://localhost:8321"));

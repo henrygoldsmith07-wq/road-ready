@@ -515,10 +515,58 @@ function fmtTime(s) {
 }
 
 /* ---------------- helpers ---------------- */
-const ALL_QUESTIONS = QUESTIONS.concat(Packs.allPackQuestions());
+/* The GB pack loads on demand (see Packs.ensureUkPack): ALL_QUESTIONS grows
+   when it arrives, via refreshBank(). Anything that switches the active pack
+   to UK awaits the load first; US/generic sessions never parse the 1.6MB. */
+let ALL_QUESTIONS = QUESTIONS.concat(Packs.allPackQuestions());
 let bank = Packs.filterBankForPack(ALL_QUESTIONS, state.settings.statePack);
 const byId = {};
-ALL_QUESTIONS.forEach(q => byId[q.id] = q);
+function indexQuestions(list) { list.forEach(q => { byId[q.id] = q; }); }
+indexQuestions(ALL_QUESTIONS);
+function refreshBank() {
+  ALL_QUESTIONS = QUESTIONS.concat(Packs.allPackQuestions());
+  indexQuestions(ALL_QUESTIONS);
+  bank = Packs.filterBankForPack(ALL_QUESTIONS, state.settings.statePack);
+}
+/* Switch to the given pack, loading the GB bank first when needed. Returns
+   false (leaving the previous pack active) when the load fails offline. */
+async function switchPack(packId) {
+  if (packId === "UK") {
+    // The refresh is unconditional: the bank builders snapshot packs at parse
+    // time, so even an already-loaded pack may postdate ALL_QUESTIONS (the
+    // idle preload usually wins the race against the user's first tap).
+    if (!Packs.ukLoaded()) {
+      try {
+        await Packs.ensureUkPack();
+      } catch {
+        toast("Great Britain pack unavailable", "That bank downloads once, on your first online visit — reconnect and try again. Keeping your current pack.", "warn");
+        return false;
+      }
+    }
+    refreshBank();
+  }
+  state.settings.statePack = packId;
+  save();
+  bank = Packs.filterBankForPack(ALL_QUESTIONS, state.settings.statePack);
+  return true;
+}
+/* Late-arriving GB bank (idle preload or a load that resolved after the user
+   moved on): fold it into the banks and repaint whatever is showing counts
+   from them. Without this, a setup view rendered mid-load keeps showing an
+   empty bank even though the questions are now on the device. */
+function onUkReady() {
+  refreshBank();
+  if (state.settings.statePack !== "UK") return;
+  renderStateFacts();
+  renderHome();
+  renderFlashcards();
+  if ($("view-setup") && $("view-setup").classList.contains("active") && _setupMode) {
+    startSetup(_setupMode, _setupFocus || undefined);
+  }
+}
+if (typeof window !== "undefined") {
+  window.addEventListener("roadready:uk-ready", onUkReady);
+}
 const catQ = (cat) => bank.filter(q => q.cat === cat);
 const shuffle = (arr) => Core.shuffle(arr);
 
@@ -550,7 +598,11 @@ function showView(name) {
 
 
 /* ---------------- SETUP ---------------- */
+let _setupMode = null;
+let _setupFocus = null;
 function startSetup(mode, focusCat) {
+  _setupMode = mode;
+  _setupFocus = focusCat || null;
   quizBackTarget = "home";
   $("setupTitle").textContent = mode === "practice" ? "Practice" : "Mock Exam";
   const _setupTerms = termsForPack();
@@ -841,6 +893,7 @@ function startOfficialPreview(packId) {
     n: availability.available,
     samplingMode: "representative",
     weights: bp.topicWeights,
+    caseStudySeats: bp.caseStudySeats || 0,
   });
   toast(
     "Practice preview",
@@ -864,7 +917,7 @@ function startOfficialExam(packId) {
   quizBackTarget = "home";
   const qs = Core.assembleExam({
     bank, n: bp.questionCount, samplingMode: "representative", weights: bp.topicWeights,
-    recentlySeen: state.qstats,
+    recentlySeen: state.qstats, caseStudySeats: bp.caseStudySeats || 0,
   });
   session = {
     mode: "exam", official: true, blueprint: bp,
@@ -892,7 +945,7 @@ function startTestDaySim() {
   simStartedAt = Date.now();
   const qs = Core.assembleExam({
     bank, n: bp.questionCount, samplingMode: "representative", weights: bp.topicWeights,
-    recentlySeen: state.qstats,
+    recentlySeen: state.qstats, caseStudySeats: bp.caseStudySeats || 0,
   });
   session = {
     mode: "exam", official: true, blueprint: bp, sim: true,
@@ -1228,14 +1281,17 @@ function initObStatePack() {
     });
   }
   sel.value = Packs.PACK_IDS.includes(state.settings.statePack) ? state.settings.statePack : "generic";
-  on(sel, "change", (e) => {
-    state.settings.statePack = e.target.value;
-    save();
-    bank = Packs.filterBankForPack(ALL_QUESTIONS, state.settings.statePack);
+  on(sel, "change", async (e) => {
+    const prev = state.settings.statePack;
+    if (!(await switchPack(e.target.value))) { e.target.value = prev; return; }
     const main = $("selStatePack");
     if (main) main.value = state.settings.statePack;
     renderStateFacts();
     renderHome();
+    // The hazard row on this same onboarding step derives from the pack —
+    // repaint it now so a GB learner sees the scored-section wording before
+    // tapping Next, not one step later.
+    obRender();
   });
 }
 function showOnboarding() {
@@ -1270,6 +1326,16 @@ function showOnboarding() {
 }
 function obRender() {
   const steps = document.querySelectorAll(".ob-step");
+  // First-run honesty is jurisdiction-aware: a GB learner's hazard section
+  // is scored, not "bonus training" — derive the row from the module, the
+  // same source the home card uses, so the two can never disagree.
+  const obHz = $("obHazardDesc");
+  if (obHz) {
+    const hz = hazardInfoForPack(state.settings.statePack);
+    obHz.textContent = hz.includedInExam
+      ? `A scored section of your theory test${hz.officialFormat ? ` (${hz.officialFormat})` : ""} — train it like the real thing`
+      : "Bonus training beyond the written exam — early spotting saves lives";
+  }
   /** @type {NodeListOf<HTMLElement>} */(steps).forEach(s => s.classList.toggle("on", +s.dataset.step === obStep));
   document.querySelectorAll("#obDots span").forEach((d, i) => d.classList.toggle("on", i === obStep));
   $("obNext").textContent = obStep >= 3 ? "Start studying" : obStep === 2 ? "Almost done" : "Next";
@@ -1278,7 +1344,16 @@ function obRender() {
   document.querySelectorAll("#obTtsOn, #obTtsOff").forEach(b =>
     b.classList.toggle("sel", (b.id === "obTtsOn") === !!state.settings.tts));
 }
-function finishOnboarding() {
+async function finishOnboarding() {
+  if (state.settings.statePack === "UK" && !Packs.ukLoaded()) {
+    try {
+      await Packs.ensureUkPack();
+      refreshBank();
+    } catch {
+      toast("Great Britain pack unavailable", "That bank downloads once, on your first online visit — reconnect and pick it again from Settings. Starting with general U.S. rules.", "warn");
+      state.settings.statePack = "generic";
+    }
+  }
   state.onboarded = true;
   const obDate = $("obTestDate");
   if (obDate && Core.validIsoDate(obDate.value)) {
@@ -1305,6 +1380,49 @@ function init() {
   applyTheme();
   hydrateIcons(document);
   applyTTS();
+  // Returning GB learners need the on-demand bank before anything renders
+  // counts from it; everyone else boots straight into the cached shell.
+  if (state.settings.statePack === "UK" && !Packs.ukLoaded()) {
+    showPackLoading();
+    Packs.ensureUkPack().then(() => { refreshBank(); hidePackLoading(); initRest(); })
+      .catch(() => { hidePackLoading(); showPackLoadError(); initRest(); });
+    return;
+  }
+  initRest();
+}
+/* Honest loading/error states for the deferred GB bank: the home view names
+   what is happening instead of rendering empty counts or hanging. The banner
+   is additive — replacing #view-home's innerHTML here would destroy the node
+   ids renderHome() writes to on the very next line (a null-textContent
+   pageerror), so it only prepends and initRest removes it. */
+function showPackLoading() {
+  const host = $("view-home");
+  if (!host || $("ukLoadingBanner")) return;
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+  host.classList.add("active");
+  const banner = document.createElement("div");
+  banner.id = "ukLoadingBanner";
+  banner.className = "card";
+  const title = document.createElement("h1");
+  title.className = "view-title";
+  title.textContent = "Loading Great Britain bank…";
+  const sub = document.createElement("p");
+  sub.className = "view-sub";
+  sub.textContent = "Downloading the Highway Code questions for offline study — once, then they stay on your device.";
+  banner.append(title, sub);
+  host.prepend(banner);
+}
+function hidePackLoading() {
+  const banner = $("ukLoadingBanner");
+  if (banner) banner.remove();
+}
+function showPackLoadError() {
+  state.settings.statePack = "generic";
+  save();
+  bank = Packs.filterBankForPack(ALL_QUESTIONS, state.settings.statePack);
+  toast("Great Britain pack unavailable", "That bank downloads once, on your first online visit — reconnect and pick it again from Settings. Showing general U.S. rules for now.", "warn");
+}
+function initRest() {
   initStatePackSelect();
   renderStateFacts();
   initGuideFinder();
@@ -1321,7 +1439,10 @@ function init() {
   on($("btnTTS"), "click", () => {
     state.settings.tts = !state.settings.tts;
     save(); applyTTS();
-    if (state.settings.tts && session) speak($("qText").textContent);
+    if (state.settings.tts && session) {
+      const stem = !$("qCase").hidden ? $("qCase").textContent + " " : "";
+      speak(stem + $("qText").textContent);
+    }
     else stopSpeaking();
   });
 
@@ -1476,10 +1597,9 @@ function init() {
       state.settings.testDate ? "Your daily target now adapts to the time remaining." : `Your daily goal is back to ${Core.clampDailyGoal(state.settings.dailyGoal)} questions.`,
       "clock");
   });
-  on($("selStatePack"), "change", e => {
-    state.settings.statePack = e.target.value;
-    save();
-    bank = Packs.filterBankForPack(ALL_QUESTIONS, state.settings.statePack);
+  on($("selStatePack"), "change", async e => {
+    const prev = state.settings.statePack;
+    if (!(await switchPack(e.target.value))) { e.target.value = prev; return; }
     renderStateFacts();
     renderHome();
     const pack = Packs.STATE_PACKS[e.target.value] || Packs.STATE_PACKS.generic;

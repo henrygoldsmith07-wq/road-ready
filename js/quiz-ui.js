@@ -60,6 +60,18 @@
       sceneHost.hidden = true;
       sceneHost.innerHTML = "";
     }
+    // Case-study scenario: the shared stem stays on screen for every member of
+    // the cluster, so the story never scrolls away mid-question.
+    const caseHost = $("qCase");
+    if (caseHost) {
+      if (q.caseStem) {
+        caseHost.hidden = false;
+        caseHost.innerHTML = `<span class="case-label">Case study — shared scenario</span><span>${escapeHTML(q.caseStem)}</span>`;
+      } else {
+        caseHost.hidden = true;
+        caseHost.innerHTML = "";
+      }
+    }
     $("qText").textContent = q.q;
 
     const box = $("choices");
@@ -85,7 +97,7 @@
       ? `Tip: press <kbd>1</kbd>–<kbd>4</kbd> to answer — it advances automatically`
       : `Tip: press <kbd>1</kbd>–<kbd>4</kbd> to answer, <kbd>Enter</kbd> for next`;
     updateFlagBtn();
-    speak(q.q + ". " + q.choices.map((c, i) => (i + 1) + ". " + c).join(" "));
+    speak((q.caseStem ? "Case study scenario. " + q.caseStem + " " : "") + q.q + ". " + q.choices.map((c, i) => (i + 1) + ". " + c).join(" "));
   }
 
   function answer(origIdx, btnEl) {

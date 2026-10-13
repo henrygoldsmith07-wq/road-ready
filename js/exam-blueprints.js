@@ -79,7 +79,11 @@ const EXAM_BLUEPRINTS = {
     minCorrect: 43,
     timeLimitMin: 57,
     topicWeights: null,
-    notes: "DVSA car-theory format: 43 of 50 (86%) in 57 minutes. Road Ready is not endorsed by DVSA. Hazard perception (14 clips, 44/75) is trained separately as hazard-identification training.",
+    // DVSA format fidelity: the real test draws one case study — three linked
+    // questions on a shared scenario — inside the 50. The assembler samples a
+    // whole authored cluster and keeps its questions adjacent.
+    caseStudySeats: 3,
+    notes: "DVSA car-theory format: 43 of 50 (86%) in 57 minutes, including one case study (3 linked questions on a shared scenario). Road Ready is not endorsed by DVSA. Hazard perception (14 clips, 44/75) is trained separately as hazard-identification training.",
   },
 };
 

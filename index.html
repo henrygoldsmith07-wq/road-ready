@@ -165,6 +165,7 @@
       <div class="card question-card" id="questionCard">
         <div class="sign-frame" id="signFrame" hidden></div>
         <div id="qScene" hidden></div>
+        <div id="qCase" class="case-card" hidden></div>
         <h2 class="question-text" id="qText"></h2>
         <div class="choices" id="choices" role="group" aria-label="Answer choices"></div>
         <div class="feedback" id="feedback" hidden aria-live="assertive">
@@ -723,8 +724,8 @@
         <h1>How you'll study</h1>
         <div class="ob-row"><span class="ob-row-ico" data-icon="book" data-size="20"></span><div><b>Daily set</b><small>Sized to your test date — what to study each day, not the whole bank at once</small></div></div>
         <div class="ob-row"><span class="ob-row-ico" data-icon="clipboard" data-size="20"></span><div><b>Official mock exam</b><small>Matches the published question count, time limit and pass mark for your selected test</small></div></div>
-        <div class="ob-row"><span class="ob-row-ico" data-icon="layers" data-size="20"></span><div><b>Flashcards &amp; study guide</b><small>Sign cards for the signs your test actually uses, plus cheat sheets and a road-test walkthrough</small></div></div>
-        <div class="ob-row"><span class="ob-row-ico" data-icon="eye" data-size="20"></span><div><b>Hazard perception</b><small>Bonus training beyond the written exam — early spotting saves lives</small></div></div>
+        <div class="ob-row"><span class="ob-row-ico" data-icon="layers" data-size="20"></span><div><b>Flashcards &amp; study guide</b><small>Sign cards for the signs your test actually uses, plus the study guide for your test's rules</small></div></div>
+        <div class="ob-row"><span class="ob-row-ico" data-icon="eye" data-size="20"></span><div><b>Hazard perception</b><small id="obHazardDesc">Bonus training beyond the written exam — early spotting saves lives</small></div></div>
       </div>
       <div class="ob-step" data-step="2">
         <h1>Make it yours</h1>
@@ -793,7 +794,7 @@
 <script src="js/hazard-ui.js" defer></script>
 <script src="js/guide.js" defer></script>
 <script src="js/jurisdictions.js" defer></script>
-<script src="js/packs/uk.js" defer></script>
+<!-- js/packs/uk.js loads on demand via Packs.ensureUkPack (js/state-packs.js): parsing 1.6MB of GB questions on every boot taxed first paint for sessions that never select Great Britain. -->
 <script src="js/state-packs.js" defer></script>
 <script src="js/exam-blueprints.js" defer></script>
 <script src="js/app.js" defer></script>

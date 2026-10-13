@@ -19,6 +19,25 @@ test.describe("onboarding", () => {
     await page.reload();
     await expect(page.locator("#onboarding")).toBeHidden();
   });
+
+  test("hazard row follows the chosen jurisdiction", async ({ page }) => {
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(String(e.message)));
+    // Great Britain: hazard perception is a scored section, never "bonus".
+    await freshApp(page);
+    await expect(page.locator("#onboarding")).toBeVisible();
+    await page.locator("#obStatePack").selectOption("UK");
+    await page.locator("#obNext").click();
+    await expect(page.locator('.ob-step[data-step="1"]')).toHaveClass(/on/);
+    await expect(page.locator("#obHazardDesc")).toContainText(/scored section.*14 clips.*44\/75/);
+    // Default U.S. pack: honestly bonus training.
+    await freshApp(page);
+    await expect(page.locator("#onboarding")).toBeVisible();
+    await page.locator("#obNext").click();
+    await expect(page.locator('.ob-step[data-step="1"]')).toHaveClass(/on/);
+    await expect(page.locator("#obHazardDesc")).toContainText(/Bonus training beyond the written exam/);
+    expect(errors).toEqual([]);
+  });
 });
 
 test.describe("practice flow", () => {
@@ -342,6 +361,46 @@ test.describe("official simulation", () => {
     // can legitimately observe it several seconds in. Assert the limit.
     await expect(page.locator("#qTimer")).toHaveText(/^\s*56:\d{2}\s*$/);
     await expect(page.locator("#qCounter")).toContainText("/50");
+  });
+
+  test("GB simulation embeds one adjacent DVSA case-study triple", async ({ page }) => {
+    await freshApp(page);
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
+    await page.locator('#bottomNav button[data-nav="stats"]').click();
+    await page.locator("#btnOpenSettings").click();
+    await page.locator("#selStatePack").selectOption("UK");
+    await page.locator('#bottomNav button[data-nav="exam"]').click();
+    await page.locator("#setupList .setup-row", { hasText: "DVSA-format simulation" }).click();
+    await expect(page.locator("#view-quiz")).toHaveClass(/active/);
+
+    // Walk the whole 50-question form (exam mode advances on answer), noting
+    // which questions carry the shared case-study scenario card.
+    const stems = [];
+    for (let i = 0; i < 50; i++) {
+      const visible = await page.locator("#qCase").isVisible();
+      stems.push(visible ? (await page.locator("#qCase").innerText()).trim() : null);
+      if (visible) {
+        await expect(page.locator("#qCase")).toContainText(/case study/i);
+      }
+      const before = await page.locator("#qCounter").innerText();
+      await page.locator("#choices .choice").first().click();
+      if (i === 49) break;
+      await expect.poll(async () => page.locator("#qCounter").innerText(), { timeout: 5000 }).not.toBe(before);
+    }
+    // Exactly one run of three consecutive questions shares one scenario;
+    // every other question shows no scenario card.
+    const runs = [];
+    let run = 0;
+    for (const s of stems) {
+      if (s) run++;
+      else { if (run) runs.push(run); run = 0; }
+    }
+    if (run) runs.push(run);
+    expect(runs).toEqual([3]);
+    const first = stems.findIndex((s) => s);
+    expect(stems[first]).toBe(stems[first + 1]);
+    expect(stems[first]).toBe(stems[first + 2]);
+    expect(stems[first].length).toBeGreaterThan(40);
   });
 });
 

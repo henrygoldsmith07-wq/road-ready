@@ -3,6 +3,12 @@
  *  under Node the require() fallback in state-packs.js resolves it instead. */
 declare const ROADREADY_UK_PACK: any;
 
+/** CommonJS require, used ONLY by the guarded Node fallback in
+ *  js/state-packs.js (`typeof require === "function"`). Never available in
+ *  the browser; the guard keeps that path dead there. Declared for the type
+ *  checker without pulling in @types/node. */
+declare function require(id: string): any;
+
 /** Classic-script globals from js/state-packs.js, which loads AFTER
  *  js/concepts.js. Every use in concepts.js is guarded by
  *  `typeof X !== "undefined"` and resolves at call time, so these

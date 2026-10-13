@@ -252,6 +252,7 @@
           return `<div class="review-item card">
             ${q.signId ? `<div class="sign-frame small">${signArt(q.signId, 70)}</div>` : ""}
             <div>
+              ${q.caseStem ? `<div class="case-card"><span class="case-label">Case study — shared scenario</span><span>${escapeHTML(q.caseStem)}</span></div>` : ""}
               <div class="ri-q">${escapeHTML(q.q)}</div>
                <div class="ri-a ok">${icon("check", 14)} ${escapeHTML(q.choices[q.a])}</div>
                <div class="ri-why">${escapeHTML(q.why)}</div>

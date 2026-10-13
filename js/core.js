@@ -1137,10 +1137,11 @@ function reviewSched(sched, right, nowMs, quality) {
    * @param {{bank: Array, n: number, qstats?: object, weakBias?: boolean, rand?: Function,
    *     nowMs?: number, flags?: object, weights?: object|null,
    *     samplingMode?: "adaptive"|"representative"|"fixed", seed?: number,
-   *     recentlySeen?: object, recentWindowMs?: number}} opts
+   *     recentlySeen?: object, recentWindowMs?: number, caseStudySeats?: number}} opts
    */
   function assembleExam(opts) {
-    const bank = opts.bank, n = Math.min(opts.n, bank.length), qstats = opts.qstats || {};
+    const qstats = opts.qstats || {};
+    let bank = opts.bank, n = Math.min(opts.n, bank.length);
     // Sampling modes:
     //   adaptive       — practice/weak-topic exams; weights lean toward the
     //                    learner's misses, unseen and due items (uses qstats/flags)
@@ -1155,6 +1156,39 @@ function reviewSched(sched, right, nowMs, quality) {
     if (mode === "fixed" && !opts.rand) rand = mulberry32(opts.seed == null ? 0x5EED : opts.seed);
     const nowMs = opts.nowMs == null ? Date.now() : opts.nowMs;
     const flags = mode === "adaptive" ? (opts.flags || {}) : {};
+    // Case-study clusters (DVSA format): whole fixed-size clusters are sampled
+    // as one block and re-inserted adjacently AFTER the final shuffle, so the
+    // shared scenario reads as a single story. Representative (official) and
+    // fixed (study) forms may reserve seats via opts.caseStudySeats; adaptive
+    // practice lets members flow as individual questions (each carries its own
+    // stem). Cluster choice uses only `rand` — never history — so official
+    // forms stay equally hard for every learner.
+    const CASE_CLUSTER_N = 3; // mirrors CASE_CLUSTER_SIZE in scripts/content-checks.mjs
+    let clusterBlocks = [];
+    const clusterSeats = mode === "adaptive" ? 0 : Math.max(0, opts.caseStudySeats || 0);
+    if (clusterSeats >= CASE_CLUSTER_N && bank.length > clusterSeats) {
+      const groups = new Map();
+      for (const q of bank) {
+        if (q && typeof q.caseId === "string" && q.caseId) {
+          const list = groups.get(q.caseId);
+          if (list) list.push(q); else groups.set(q.caseId, [q]);
+        }
+      }
+      // Only whole clusters keep the story intact: a cluster split by a
+      // filtered bank is skipped, never examined in part.
+      const complete = shuffle(
+        [...groups.values()].filter((g) => g.length === CASE_CLUSTER_N), rand);
+      clusterBlocks = complete.slice(0, Math.floor(clusterSeats / CASE_CLUSTER_N));
+      if (clusterBlocks.length) {
+        // Every cased question leaves the strata pools: official forms tell
+        // whole stories or none — a lone member of an unpicked cluster would
+        // be answerable (each carries its own stem) but is never in the spec.
+        const cased = new Set();
+        for (const g of groups.values()) for (const m of g) cased.add(m.id);
+        bank = bank.filter((q) => !cased.has(q.id));
+        n -= clusterBlocks.flat().length;
+      }
+    }
     const cats = Array.from(new Set(bank.map((q) => q.cat)));
     const byCat = {};
     cats.forEach((c) => { byCat[c] = bank.filter((q) => q.cat === c); });
@@ -1221,7 +1255,16 @@ function reviewSched(sched, right, nowMs, quality) {
       const leftovers = shuffle(bank.filter((q) => !taken.has(q.id)), rand);
       chosen.push(...leftovers.slice(0, n - chosen.length));
     }
-    return shuffle(chosen.slice(0, n), rand);
+    const rest = shuffle(chosen.slice(0, n), rand);
+    if (!clusterBlocks.length) return rest;
+    // Keep each case-study story together: splice every cluster block into the
+    // finished form at its own random position.
+    const out = rest.slice();
+    for (const block of clusterBlocks) {
+      let at = Math.floor(rand() * (out.length + 1));
+      for (const q of block) out.splice(at++, 0, q);
+    }
+    return out;
   }
 
   /* ---------------- hazard perception scoring ---------------- */

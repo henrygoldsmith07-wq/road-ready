@@ -9,16 +9,16 @@
 > Regenerate with `node scripts/content-coverage.mjs --write`.
 > Every count in `README.md` should trace back to this file.
 
-**Generated:** 2026-10-12
+**Generated:** 2026-10-13
 
 ## Headline numbers
 
 | Measure | Value |
 |---|---|
-| Questions in the full bank | 1849 |
+| Questions in the full bank | 1858 |
 | Universal (US, no state pack) bank | 267 |
-| Jurisdiction-pack questions | 1582 |
-| Great Britain pack questions | 1544 |
+| Jurisdiction-pack questions | 1591 |
+| Great Britain pack questions | 1553 |
 | U.S. state-pack questions (six states) | 38 |
 | Distinct concepts | 615 |
 | Concepts with 3+ questions | 431 |
@@ -41,7 +41,7 @@ The table below is the honest version of the product's coverage claim.
 | Florida (FLHSMV) | 267 | 6 | 273 | yes - 273 available, 50 needed | **6 own questions - 12% of a full exam's worth (50 needed)** |
 | Washington (DOL) | 267 | 6 | 273 | yes - 273 available, 40 needed | **6 own questions - 15% of a full exam's worth (40 needed)** |
 | Pennsylvania (PennDOT) | 267 | 7 | 274 | yes - 274 available, 18 needed | **7 own questions - 39% of a full exam's worth (18 needed)** |
-| Great Britain (DVSA car) | 0 | 1544 | 1544 | yes - 1544 available, 50 needed | 1544 own questions (3088% of a full exam's worth) |
+| Great Britain (DVSA car) | 0 | 1553 | 1553 | yes - 1553 available, 50 needed | 1553 own questions (3106% of a full exam's worth) |
 
 Read the last two columns together, because they answer different questions.
 
@@ -62,14 +62,14 @@ topic mix: the blueprint's `topicWeights` are editorial approximations
 
 | Topic | Questions | Concepts | Concepts with 2+ questions | Question forms |
 |---|---|---|---|---|
-| Safety & Emergencies | 253 | 86 | 63 | 9 |
-| Signs & Signals | 251 | 92 | 55 | 9 |
+| Safety & Emergencies | 256 | 86 | 63 | 9 |
+| Signs & Signals | 253 | 92 | 55 | 9 |
 | People & Riders | 205 | 60 | 47 | 9 |
 | Markings & Lanes | 193 | 56 | 44 | 8 |
-| Right of Way | 186 | 61 | 39 | 9 |
-| Rules & Penalties | 169 | 60 | 43 | 9 |
+| Right of Way | 187 | 61 | 39 | 9 |
+| Rules & Penalties | 170 | 60 | 43 | 9 |
+| Speed & Distance | 163 | 55 | 40 | 8 |
 | Alcohol & Drugs | 162 | 57 | 46 | 6 |
-| Speed & Distance | 161 | 55 | 40 | 8 |
 | Parking & Stopping | 145 | 44 | 37 | 7 |
 | Vehicle Basics | 124 | 49 | 35 | 6 |
 
@@ -81,11 +81,11 @@ answer is evidence about one question, not about the rule.
 
 | Form | Questions | Share |
 |---|---|---|
-| recall | 438 | 23.7% |
-| scenario | 434 | 23.5% |
-| what-next | 392 | 21.2% |
-| multi-step | 217 | 11.7% |
-| sign-combo | 203 | 11.0% |
+| recall | 440 | 23.7% |
+| scenario | 439 | 23.6% |
+| what-next | 392 | 21.1% |
+| multi-step | 218 | 11.7% |
+| sign-combo | 204 | 11.0% |
 | diagram | 67 | 3.6% |
 | photo | 56 | 3.0% |
 | lane-choice | 28 | 1.5% |
@@ -242,8 +242,8 @@ document.
 | fl-flhsmv-handbook | FLHSMV | FL | 2026-08-23 | 6 | 0 |
 | wa-dol-driver-guide | Washington DOL | WA | 2026-08-23 | 6 | 0 |
 | pa-penndot-driver-manual | PennDOT | PA | 2026-08-23 | 7 | 0 |
-| uk-highway-code | Department for Transport | UK | 2026-09-22 | 1331 | 0 |
-| uk-know-your-traffic-signs | Department for Transport | UK | 2026-09-22 | 213 | 0 |
+| uk-highway-code | Department for Transport | UK | 2026-09-22 | 1338 | 0 |
+| uk-know-your-traffic-signs | Department for Transport | UK | 2026-09-22 | 215 | 0 |
 | uk-theory-test-format | DVSA | UK | 2026-09-22 | 0 | 0 |
 | us-dmv-handbooks-composite | Multiple state DMVs (composite) | * | 2026-08-23 | 267 | 0 |
 

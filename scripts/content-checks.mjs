@@ -24,6 +24,8 @@ export function jaccard(aSet, bSet) {
 /**
  * @param {{QUESTIONS:object[], CATEGORIES:object, SIGNS:object, STATE_PACKS?:object}} data
  */
+export const CASE_CLUSTER_SIZE = 3; // DVSA theory test: three questions per case study
+
 export function runChecks(data, opts = {}) {
   const { QUESTIONS, CATEGORIES, SIGNS } = data;
   const STATE_PACKS = data.STATE_PACKS || {};
@@ -77,6 +79,7 @@ export function runChecks(data, opts = {}) {
   }
 
   /* ---------- 1. question-bank schema validation ---------- */
+  const clusterMembers = [];
   for (const q of QUESTIONS) {
     if (!q || typeof q !== "object") { err("schema", `entry is not an object`); continue; }
     const id = q.id ?? "(no id)";
@@ -109,6 +112,22 @@ export function runChecks(data, opts = {}) {
       if (typeof q.scene !== "string" || q.scene.trim().length < 8) err("schema", `[${id}] scene must be a non-trivial string`);
       else if (q.scene.length > 900) err("schema", `[${id}] scene too long for the question card (${q.scene.length} chars, max 900)`);
       else if (/\\n\\\\|undefined|\$\{/.test(q.scene)) err("schema", `[${id}] scene contains template leakage`);
+    }
+
+    /* ---------- case-study clusters (DVSA format fidelity) ---------- */
+    // A case study is a short shared scenario (caseStem) with a fixed group of
+    // questions (same caseId) that must always be examined together, in one
+    // block. Members may otherwise use any form, topic or concept.
+    if (q.caseId != null || q.caseStem != null) {
+      if (typeof q.caseId !== "string" || !/^[a-z0-9]+-case-[a-z0-9-]+$/.test(q.caseId || ""))
+        err("schema", `[${id}] caseId must be kebab-case starting with "<pack>-case-" (e.g. "uk-case-motorway-breakdown")`);
+      if (typeof q.caseStem !== "string" || q.caseStem.trim().length < 40)
+        err("schema", `[${id}] case-study member needs a non-trivial caseStem (shared scenario, min 40 chars)`);
+      else if (q.caseStem.length > 600)
+        err("schema", `[${id}] caseStem too long for the question card (${q.caseStem.length} chars, max 600)`);
+      else if (/\\n\\\\|undefined|\$\{/.test(q.caseStem))
+        err("schema", `[${id}] caseStem contains template leakage`);
+      clusterMembers.push({ id, caseId: q.caseId, caseStem: typeof q.caseStem === "string" ? q.caseStem.trim() : "", jurisdiction: Array.isArray(q.jurisdiction) ? [...q.jurisdiction].sort().join(",") : "" });
     }
 
     /* ---------- jurisdiction / provenance schema ---------- */
@@ -165,6 +184,30 @@ export function runChecks(data, opts = {}) {
     for (const q of QUESTIONS) {
       if (seenIds.has(q.id)) err("schema", `duplicate question id "${q.id}"`);
       seenIds.add(q.id);
+    }
+  }
+
+  /* ---------- 1b. case-study cluster consistency ---------- */
+  // Every cluster must tell one story (identical stems), stay inside one
+  // jurisdiction (a case study is always examined whole), and hold exactly
+  // CASE_CLUSTER_SIZE questions — the DVSA theory test asks three questions
+  // per case study, and the assembler samples whole clusters.
+  {
+    const byCase = new Map();
+    for (const m of clusterMembers) {
+      const list = byCase.get(m.caseId) || [];
+      list.push(m);
+      byCase.set(m.caseId, list);
+    }
+    for (const [caseId, members] of byCase.entries()) {
+      const stems = new Set(members.map((m) => m.caseStem));
+      if (stems.size > 1)
+        err("case-study", `case "${caseId}" has ${stems.size} different stems — members ${members.map((m) => m.id).join(", ")} must share one scenario`);
+      const jurTags = new Set(members.map((m) => m.jurisdiction));
+      if (jurTags.size > 1)
+        err("case-study", `case "${caseId}" spans jurisdictions (${[...jurTags].join(" / ")}) — a case study is examined whole in one pack`);
+      if (members.length !== CASE_CLUSTER_SIZE)
+        err("case-study", `case "${caseId}" holds ${members.length} questions, expected ${CASE_CLUSTER_SIZE} (the DVSA case-study format)`);
     }
   }
 

@@ -13,13 +13,102 @@
 "use strict";
 
 /* The Great Britain pack ships as its own data module (js/packs/uk.js) so a
-   ~300-question bank does not bury this file. In the browser js/packs/uk.js is
-   loaded first, leaving a global lexical binding we can read directly. Under
-   Node — where tooling and tests import THIS file on its own — fall back to
-   require. Both branches are resolved before STATE_PACKS is declared below. */
-const UK_PACK = typeof ROADREADY_UK_PACK !== "undefined"
-  ? ROADREADY_UK_PACK
-  : require("./packs/uk.js");
+   ~1500-question bank does not bury this file. Under Node — where tooling
+   and tests import THIS file on its own — require it synchronously. In the
+   browser the pack loads on demand (see ensureUkPack): parsing 1.6MB of
+   questions on every boot would tax exactly the low-end mobile devices many
+   learners study on, and most sessions never select Great Britain. Until the
+   pack arrives, STATE_PACKS.UK is a correctly-shaped placeholder (name and
+   static metadata resolve; the question list is empty), so pack listings and
+   the jurisdiction tree render without special cases. Any flow that switches
+   the active pack to UK must await ensureUkPack() first. */
+const UK_PLACEHOLDER = {
+  name: "Great Britain (DVSA)",
+  questions: [],
+  facts: {},
+  includeUniversal: false,
+};
+let ukPack = null;
+if (typeof ROADREADY_UK_PACK !== "undefined") {
+  ukPack = ROADREADY_UK_PACK;
+} else if (typeof module !== "undefined" && module.exports && typeof require === "function") {
+  // Node test/CLI context (CJS): the pack module is required directly. In the
+  // browser `require` is undefined, so this branch never runs there — and the
+  // lint model for classic scripts deliberately has no `process` global.
+  ukPack = require("./packs/uk.js");
+}
+/* In-flight load promise (browser only): exactly one fetch per session. */
+let ukLoadPromise = null;
+/** True once the GB question bank is available to the bank builders. */
+function ukLoaded() { return !!(ukPack && Array.isArray(ukPack.questions) && ukPack.questions.length); }
+/** Load the GB pack on demand. Resolves to the pack; rejects while offline
+    with the pack still unloaded, so callers can keep the previous pack and
+    say so honestly. Works from http(s) via dynamic import and from file://
+    via a classic script tag (module import is CORS-blocked on file://). */
+function notifyUkReady() {
+  // The bank builders (ALL_QUESTIONS in app.js) snapshot this module's packs
+  // at parse time, so a pack that arrives later must announce itself —
+  // otherwise the idle preload below would load 1.6MB to no effect and any
+  // setup view rendered mid-load would keep showing an empty bank.
+  try {
+    if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+      window.dispatchEvent(new Event("roadready:uk-ready"));
+    }
+  } catch { /* event is best-effort; explicit callers refresh directly */ }
+}
+function ensureUkPack() {
+  if (ukLoaded()) return Promise.resolve(ukPack);
+  if (ukLoadPromise) return ukLoadPromise;
+  // Dynamic import() in a classic script resolves against the document base
+  // URL (not this file), so build the URL from baseURI explicitly — a bare
+  // "./packs/uk.js" would request /packs/uk.js and 404 off every page.
+  const ukUrl = (typeof document !== "undefined" && document.baseURI)
+    ? new URL("js/packs/uk.js", document.baseURI).href
+    : "./packs/uk.js";
+  ukLoadPromise = (typeof document !== "undefined" && document.baseURI && document.baseURI.startsWith("file:")
+    ? loadUkViaScriptTag()
+    : import(ukUrl).catch(loadUkViaScriptTag)
+  ).then(() => {
+    const pack = typeof ROADREADY_UK_PACK !== "undefined"
+      ? ROADREADY_UK_PACK
+      : (typeof globalThis !== "undefined" ? /** @type {any} */ (globalThis).ROADREADY_UK_PACK || null : null);
+    if (!pack || !Array.isArray(pack.questions) || !pack.questions.length) {
+      ukLoadPromise = null;
+      throw new Error("GB pack failed to load");
+    }
+    ukPack = pack;
+    notifyUkReady();
+    return ukPack;
+  }, (err) => {
+    ukLoadPromise = null;
+    throw err;
+  });
+  return ukLoadPromise;
+}
+function loadUkViaScriptTag() {
+  return new Promise((resolve, reject) => {
+    try {
+      const s = document.createElement("script");
+      s.src = "js/packs/uk.js";
+      s.onload = () => resolve(undefined);
+      s.onerror = () => reject(new Error("GB pack failed to load"));
+      document.head.appendChild(s);
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+/* Warm the cache for the likely-GB session: fire the load in the background
+   at parse time so selecting Great Britain usually finds it already here.
+   Failures are silent — the explicit ensureUkPack() at selection time is the
+   path that reports them. */
+if (typeof window !== "undefined" && typeof document !== "undefined" &&
+    !(document.baseURI && document.baseURI.startsWith("file:"))) {
+  const idle = typeof window.requestIdleCallback === "function"
+    ? (fn) => window.requestIdleCallback(fn)
+    : (fn) => setTimeout(fn, 1500);
+  idle(() => { ensureUkPack().catch(() => { /* reported at selection time */ }); });
+}
 
 /* Primary-source registry. Every jurisdictional question must resolve to one
    of these issuing-agency resources; content QA enforces the relationship. */
@@ -442,11 +531,17 @@ const STATE_PACKS = {
           sourceId: "pa-penndot-driver-manual", sourceSection: "Sharing the Road" },
     ],
   },
-  // The Great Britain pack lives in js/packs/uk.js. A ~300-question bank in
+  // The Great Britain pack lives in js/packs/uk.js. A ~1500-question bank in
   // its own module keeps state-packs.js readable, and lets any future
-  // jurisdiction ship its pack the same way. Loaded before this file.
-  UK: UK_PACK,
+  // jurisdiction ship its pack the same way. Loaded on demand (ensureUkPack)
+  // so boot never parses it for sessions that never select it.
+  UK: null, // replaced by the getter below — placeholder until loaded
 };
+Object.defineProperty(STATE_PACKS, "UK", {
+  configurable: true,
+  enumerable: true,
+  get() { return ukPack || UK_PLACEHOLDER; },
+});
 
 const PACK_IDS = Object.keys(STATE_PACKS);
 
@@ -486,6 +581,7 @@ const RoadReadyPacks = {
   SOURCE_REGISTRY, UNIVERSAL_DEFAULTS, CONCEPT_FACT_KEYS, VERIFICATION_MAX_AGE_DAYS,
   STATE_PACKS, PACK_IDS, filterBankForPack, packFacts,
   allPackQuestions, sourceForQuestion, packSource,
+  ensureUkPack, ukLoaded,
 };
 if (typeof module !== "undefined" && module.exports) module.exports = RoadReadyPacks;
 else if (typeof globalThis !== "undefined") globalThis.RoadReadyPacks = RoadReadyPacks;

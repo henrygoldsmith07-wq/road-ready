@@ -4,7 +4,7 @@ A self-contained driving-theory study app with no client build step and no inter
 
 ## What Road Ready is (product decision)
 
-**Jurisdiction-pluggable driving-theory trainer. Shipped with two jurisdiction modules: the United States** (universal bank + CA, TX, NY, FL, WA, PA region packs with official exam simulations) **and Great Britain** (England, Scotland and Wales; Highway Code car-theory pack with a 1544-question verified bank feeding the DVSA 50/43-in-57-minutes official simulation; hazard perception is a core section there).
+**Jurisdiction-pluggable driving-theory trainer. Shipped with two jurisdiction modules: the United States** (universal bank + CA, TX, NY, FL, WA, PA region packs with official exam simulations) **and Great Britain** (England, Scotland and Wales; Highway Code car-theory pack with a 1553-question verified bank feeding the DVSA 50/43-in-57-minutes official simulation; hazard perception is a core section there).
 
 The architecture grows by adding jurisdiction modules, not by
 special-casing content: concepts, terminology, signs, scoring and test formats are jurisdiction modules (`js/jurisdictions.js` defines the contract; `js/state-packs.js`, `js/exam-blueprints.js` and the source registry are each module's data). The content QA system enforces the contract — packs and blueprints must be registered regions or CI fails. Country packs are strictly scoped: the Great Britain bank contains only GB-scoped Highway Code questions, so U.S. rules (right-on-red, U.S. BAC limits) never leak into GB study.
@@ -23,16 +23,16 @@ Two honest scoping calls that follow from this:
 | Figure | Count |
 |---|---|
 | Universal U.S. theory questions | 267 |
-| Great Britain (DVSA car) questions | 1544 |
+| Great Britain (DVSA car) questions | 1553 |
 | Great Britain concepts | 420 |
-| Verified questions, all packs | 1849 |
+| Verified questions, all packs | 1858 |
 | Road signs (jurisdiction-aware artwork) | 58 |
 | Hazard-perception scenarios (original) | 35 |
 | — of which multi-hazard scenes | 8 |
 | Question forms in use | 9 |
 | Active jurisdiction modules | 2 |
 | Region packs incl. Great Britain | 7 |
-| Unit test files | 62 |
+| Unit test files | 63 |
 
 <!-- product-stats:end -->
 
@@ -47,10 +47,10 @@ Two honest scoping calls that follow from this:
 |---|---|
 | Onboarding | A 4-step first-run intro: what's inside, theme + read-aloud setup, and how the daily habit works — skippable, shown once |
 | Adaptive Coach | The Today Plan card answers "what should I study now" with one ranked, deterministic recommendation (fix-misconception, review-overdue, build-coverage, improve-fluency, strengthen-weak-topic, take-mock, maintain-strong, light-review): what to practise, why (measured evidence), how much, which misconception or weak concept is behind it — knowledge, retention, fluency or coverage — and what changed since your previous session — due-review sessions contain the overdue questions themselves, so following the plan reschedules exactly what it promised |
-| Adaptive Practice | 267 universal U.S. questions plus jurisdiction packs (1849 verified questions total) across 10 topics — the Great Britain pack alone is 1544 questions across 420 concepts, spanning 9 **question forms** — junction-priority road-layout diagrams, lane-selection scenarios, sign combinations, what-happens-next chains, prioritisation drills, multi-step ordering, photo-described scenes, deliberately similar alternatives, same-concept rewording variants, and classic recall; mastery aggregates per concept (coverage × depth), then topic, then overall score |
+| Adaptive Practice | 267 universal U.S. questions plus jurisdiction packs (1858 verified questions total) across 10 topics — the Great Britain pack alone is 1553 questions across 420 concepts, spanning 9 **question forms** — junction-priority road-layout diagrams, lane-selection scenarios, sign combinations, what-happens-next chains, prioritisation drills, multi-step ordering, photo-described scenes, deliberately similar alternatives, same-concept rewording variants, and classic recall; mastery aggregates per concept (coverage × depth), then topic, then overall score |
 | Marathon Mode | The full active-jurisdiction bank in one run — anything you miss comes back until you've seen it through |
 | Mock Exams | An **Official Simulation** locked to the selected jurisdiction's real published count, time limit and pass bar (e.g. DVSA car: 50 questions, 43 to pass, 57 minutes), plus two clearly-labelled extras: **Quick Check** (10 questions) and **Weak Topics Exam** (20 questions weighted toward your lowest categories) — timed, with no feedback until you submit. Afterwards, a concise debrief (concept-level weaknesses, repeated misconceptions, slow answers, right→wrong regressions) and one primary action: **turn the mock into a targeted drill** built from the concepts missed — different questions, same rules |
-| Official Simulations | Pick a jurisdiction and the exam locks to its real published count, time and pass bar **only when the bank has enough unique questions**. Full pools run as locked official-format simulations; incomplete pools are explicitly labelled practice previews and cannot award an official-standard pass. Specs include CA 46/38, TX 30/21, NY 20/14, FL 50/40 in 60 min, WA 40/32, PA 18/15, GB 50/43 in 57 min (`js/exam-blueprints.js`, source-cited) |
+| Official Simulations | Pick a jurisdiction and the exam locks to its real published count, time and pass bar **only when the bank has enough unique questions**. Full pools run as locked official-format simulations; incomplete pools are explicitly labelled practice previews and cannot award an official-standard pass. Specs include CA 46/38, TX 30/21, NY 20/14, FL 50/40 in 60 min, WA 40/32, PA 18/15, GB 50/43 in 57 min (`js/exam-blueprints.js`, source-cited). The GB simulation embeds one DVSA case study: three linked questions on a shared scenario, sampled whole and shown adjacently with the scenario pinned on screen (`caseId`/`caseStem` in `js/packs/uk.js`, enforced by `npm run validate`) |
 | Hazard Perception | A first-class training mode: 35 original animated scenarios (children, doors, cyclists, motorcyclists, buses, delivery vehicles, country roads, rain, darkness, concealed hazards, and multi-hazard scenes where only one situation develops) with per-scenario click analytics — first useful click, early anticipation, developing-window hits, late recognition, excessive clicking, misses — and a visual timeline after each scenario showing when the hazard started developing and where you clicked, plus a full text alternative. Original training material, never DVSA clips or scoring. Labeled bonus training where exams don't include it (most U.S. states) and a core section where they do (GB DVSA test: 14 clips, 44/75); jurisdiction modules declare this via `hazardPerception.includedInExam`. **The instruction follows the jurisdiction's real scoring rule**: where the section is scored, the copy says a click too early and too late both score zero (DVSA scores an early click 0), so the trainer never teaches the instinct that loses the mark; where it is bonus training, early spotting is rewarded instead. **Measured hazard weakness enters the Today Plan** wherever the exam scores it — the plan names your weakest hazard category and the evidence behind it |
 | Sign Flashcards | 58 hand-drawn SVG road signs (jurisdiction-aware wording) with spaced review — new, learning, familiar, mastered and due-for-review states, not a bare known/not-known bit. Confused sign pairs are tracked and drive side-by-side comparison drills |
 | Study Guide | Jurisdiction-native guidance. U.S. packs show the U.S. cheat sheets/road-test material; Great Britain hides those sections and relies on its verified GB fact card and theory question bank instead |

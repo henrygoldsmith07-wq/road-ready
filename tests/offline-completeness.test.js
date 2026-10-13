@@ -28,6 +28,37 @@ const shellSet = new Set(shell);
 const pageAssets = [...index.matchAll(/<(?:script|link)[^>]+(?:src|href)="([^"]+)"/g)]
   .map((m) => m[1])
   .filter((p) => !/^(https?:|#|data:)/.test(p));
+/* Modules fetched on demand through dynamic import() (e.g. the GB pack via
+ * Packs.ensureUkPack) are loaded by the app exactly like a script tag for
+ * offline purposes — the service worker caches them on first fetch. Resolve
+ * each specifier against the importing file's directory. */
+import { readdirSync } from "node:fs";
+import { dirname, join, normalize } from "node:path";
+function jsFiles(dir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const p = join(dir, e.name);
+    if (e.isDirectory()) return jsFiles(p);
+    return e.name.endsWith(".js") ? [p] : [];
+  });
+}
+const dynamicImports = jsFiles(fileURLToPath(new URL("js", ROOT))).flatMap((file) => {
+  const src = readFileSync(file, "utf8");
+  // Static import("./x") specifiers resolve against the importing file.
+  const fileRelative = [...src.matchAll(/import\(\s*["']([^"']+)["']\s*\)/g)].map((m) =>
+    normalize(join(dirname(file), m[1]))
+      .replace(/\\/g, "/")
+      .replace(fileURLToPath(ROOT).replace(/\\/g, "/"), "")
+      .replace(/^\//, "")
+  );
+  /* Classic scripts resolve dynamic import() against the document base URL,
+   * not the importing file — so ensureUkPack builds its URL with new
+   * URL("<document-relative>", document.baseURI). Those specifiers resolve
+   * against the project root instead. */
+  const docRelative = [...src.matchAll(/new URL\(\s*["']([^"']+)["']\s*,\s*document\.baseURI\s*\)/g)].map((m) =>
+    normalize(m[1]).replace(/\\/g, "/").replace(/^\.\//, "")
+  );
+  return [...fileRelative, ...docRelative];
+});
 
 describe("offline completeness (service-worker precache)", () => {
   it("every page asset is precached so the app works offline", () => {
@@ -38,7 +69,10 @@ describe("offline completeness (service-worker precache)", () => {
   it("the precache list contains no dead entries", () => {
     // Every SHELL entry (except the navigable root) must be a real file that
     // index.html loads or the app itself needs; a stale entry wastes cache.
-    const loaded = new Set(pageAssets.map((p) => p.replace(/^\.\//, "")));
+    const loaded = new Set([
+      ...pageAssets.map((p) => p.replace(/^\.\//, "")),
+      ...dynamicImports,
+    ]);
     const stale = shell
       .filter((p) => p !== "./" && !loaded.has(p.replace(/^\.\//, "")))
       // CSS and data files are loaded indirectly (link/href already matched),
