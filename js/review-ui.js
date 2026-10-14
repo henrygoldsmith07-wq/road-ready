@@ -151,10 +151,12 @@
         const drill = document.createElement("button");
         drill.type = "button";
         drill.className = "btn ghost rg-drill";
-        drill.innerHTML = `${icon("target", 13)} ${it.actions.includes("repair") ? "Repair misconception" : "5-question drill"}`;
+        drill.innerHTML = `${icon("target", 13)} ${it.category === "case-story" ? "Replay the story" : it.actions.includes("repair") ? "Repair misconception" : "5-question drill"}`;
         on(drill, "click", () => {
           const qs = it.drillIds.map((id) => getQuestion(id)).filter(Boolean);
-          if (qs.length) startPractice(shuffle(qs).slice(0, 5), it.label, "review");
+          // A case-study story replays whole, in authored order — shuffling
+          // would scatter the shared scenario the repair depends on.
+          if (qs.length) startPractice(it.category === "case-story" ? qs : shuffle(qs).slice(0, 5), it.label, "review");
         });
         actions.appendChild(drill);
         const rule = document.createElement("button");

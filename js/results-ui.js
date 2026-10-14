@@ -78,6 +78,13 @@
     }
     add("What limited your score", limiters);
 
+    // Case-study stories: name a missed story so the repair drill makes sense.
+    const caseLines = (d.caseStudy || [])
+      .filter((g) => g.missed > 0)
+      .slice(0, 2)
+      .map((g) => `Case-study story: ${g.missed} of ${g.total} missed — the study session repairs the whole story, not just the question.`);
+    add("Case-study stories", caseLines);
+
     // Biggest opportunity / strongest area in one line each.
     const opp = d.conceptWeaknesses[0];
     const strong = d.topicBreakdown[d.topicBreakdown.length - 1];

@@ -1182,6 +1182,19 @@ function mockDebrief(input) {
     label: conceptLabel(CoachCore.conceptKeyOf(byId.get(a.qid) || {})),
   }));
 
+  // Case-study stories in this mock: how much of each story was missed, so
+  // the debrief can name the story instead of burying it in concept tallies.
+  const caseGroups = new Map();
+  for (const a of answers) {
+    const q = byId.get(a.qid);
+    if (!q || typeof q.caseId !== "string" || !q.caseId) continue;
+    const g = caseGroups.get(q.caseId) || { caseId: q.caseId, stem: q.caseStem || null, missed: 0, total: 0 };
+    g.total++; if (!a.right) g.missed++;
+    if (!g.stem && q.caseStem) g.stem = q.caseStem;
+    caseGroups.set(q.caseId, g);
+  }
+  const caseStudy = [...caseGroups.values()].sort((a, b) => (b.missed - a.missed) || (a.caseId < b.caseId ? -1 : 1));
+
   return {
     correct, total: answers.length,
     scorePct: answers.length ? correct / answers.length : 0,
@@ -1191,6 +1204,7 @@ function mockDebrief(input) {
     slowAnswers,
     regressions,
     recentlyLearned,
+    caseStudy,
   };
 }
 
@@ -1215,6 +1229,28 @@ function postMockDrill(input) {
     if (!q) continue;
     const key = CoachCore.conceptKeyOf(q);
     missedConcepts.set(key, (missedConcepts.get(key) || 0) + 1);
+  }
+  // Cluster-aware repair: missing one member of a case-study story pulls the
+  // sibling concepts into the drill, so the repair covers the whole story —
+  // the shared scenario is what makes the memory stick. Siblings join with
+  // count 0 so direct misses still rank first; determinism is unchanged.
+  const caseRepairs = [];
+  const seenCases = new Set();
+  for (const a of answers) {
+    if (a.right) continue;
+    const q = byId.get(a.qid);
+    if (!q || typeof q.caseId !== "string" || !q.caseId || seenCases.has(q.caseId)) continue;
+    seenCases.add(q.caseId);
+    const siblings = bank.filter((x) => x && x.caseId === q.caseId);
+    if (siblings.length <= 1) continue;
+    const siblingConcepts = [];
+    for (const s of siblings) {
+      const key = CoachCore.conceptKeyOf(s);
+      if (!missedConcepts.has(key)) { missedConcepts.set(key, 0); siblingConcepts.push(key); }
+    }
+    if (siblingConcepts.length) {
+      caseRepairs.push({ caseId: q.caseId, stem: typeof q.caseStem === "string" ? q.caseStem : null, missedQid: a.qid, siblingConcepts });
+    }
   }
   const conceptOrder = [...missedConcepts.entries()]
     .sort((a, b) => (b[1] - a[1]) || (a[0] < b[0] ? -1 : 1))
@@ -1258,11 +1294,13 @@ function postMockDrill(input) {
   return {
     questions: picked,
     conceptKeys: conceptOrder,
+    caseRepairs,
     label: conceptOrder.length
       ? `Targeted drill — ${conceptOrder.length} concept${conceptOrder.length === 1 ? "" : "s"} from this mock`
       : "Targeted drill",
     reason: conceptOrder.length
-      ? `Built from the ${conceptOrder.length} concept${conceptOrder.length === 1 ? "" : "s"} you missed — different questions, same rules.`
+      ? `Built from the ${conceptOrder.length} concept${conceptOrder.length === 1 ? "" : "s"} you missed — different questions, same rules.` +
+        (caseRepairs.length ? ` Includes the rest of ${caseRepairs.length === 1 ? "a case-study story" : `${caseRepairs.length} case-study stories`} you missed part of — repairing the whole story, not just the question.` : "")
       : "Nothing missed — a short mixed set keeps things warm.",
     note: fellBack
       ? "One or more concepts had no unseen questions left, so a mock question repeats — that concept needs new variants."
@@ -1352,7 +1390,43 @@ function weaknessCentre(input) {
     .map((d) => mkProblem(d, "unseen-high-value",
       `${d.questions.length} untested question${d.questions.length === 1 ? "" : "s"} on this rule — worth meeting before test day.`));
 
+  // Case-study stories to replay: missing part of a shared-scenario story
+  // leaves the whole story fragile — the scenario is what makes it stick.
+  // One problem per damaged story with a replay-the-story action (the member
+  // questions themselves, in authored order), ahead of concept groups.
+  const caseStoryProblems = (() => {
+    const byCase = new Map();
+    for (const q of bank) {
+      if (!q || typeof q.caseId !== "string" || !q.caseId) continue;
+      const list = byCase.get(q.caseId) || [];
+      list.push(q);
+      byCase.set(q.caseId, list);
+    }
+    const out = [];
+    for (const [caseId, members] of byCase.entries()) {
+      const missed = members.filter((m) => qstats[m.id] && qstats[m.id].wrong > 0);
+      if (!missed.length) continue;
+      const attempts = members.reduce((t, m) => t + ((qstats[m.id] && qstats[m.id].attempts) || 0), 0);
+      const mistakes = members.reduce((t, m) => t + ((qstats[m.id] && qstats[m.id].wrong) || 0), 0);
+      const short = caseId.replace(/^[a-z]+-case-/, "").replace(/-/g, " ");
+      out.push({
+        key: caseId,
+        label: `Case study — ${short}`,
+        category: "case-story",
+        problem: `You missed ${missed.length} of ${members.length} in this story — replay all ${members.length} together to lock in every rule it teaches.`,
+        snoozed: !!snoozed[snoozeKey("case-story", caseId)],
+        attempts, mistakes,
+        questionIds: members.map((m) => m.id),
+        drillIds: members.map((m) => m.id),
+        actions: ["drill", "rule", "later"],
+        caseStem: typeof members[0].caseStem === "string" ? members[0].caseStem : null,
+      });
+    }
+    return out.sort((a, b) => (b.mistakes - a.mistakes) || (a.key < b.key ? -1 : 1));
+  })();
+
   const sections = [
+    { id: "case-story", title: "Case-study stories to replay", why: "You missed part of a shared-scenario story — replaying the whole story locks in every rule it teaches.", problems: caseStoryProblems },
     { id: "misconception", title: "Recurring mistakes", why: "One rule keeps catching you — fix the confusion once and it stops costing marks.", problems: misconceptionProblems },
     { id: "slow-but-correct", title: "Slow but correct", why: "You know these rules, but they are not automatic yet.", problems: slowProblems },
     { id: "recent-regression", title: "Recent regressions", why: "You previously mastered these concepts but have recently started missing them.", problems: regressionProblems },
