@@ -32,7 +32,7 @@ Two honest scoping calls that follow from this:
 | Question forms in use | 9 |
 | Active jurisdiction modules | 2 |
 | Region packs incl. Great Britain | 7 |
-| Unit test files | 63 |
+| Unit test files | 64 |
 
 <!-- product-stats:end -->
 
@@ -46,7 +46,7 @@ Two honest scoping calls that follow from this:
 | Feature | What it does |
 |---|---|
 | Onboarding | A 4-step first-run intro: what's inside, theme + read-aloud setup, and how the daily habit works — skippable, shown once |
-| Adaptive Coach | The Today Plan card answers "what should I study now" with one ranked, deterministic recommendation (fix-misconception, review-overdue, build-coverage, improve-fluency, strengthen-weak-topic, take-mock, maintain-strong, light-review): what to practise, why (measured evidence), how much, which misconception or weak concept is behind it — knowledge, retention, fluency or coverage — and what changed since your previous session — due-review sessions contain the overdue questions themselves, so following the plan reschedules exactly what it promised |
+| Adaptive Coach | The Today Plan card answers "what should I study now" with one ranked, deterministic recommendation (fix-misconception, review-overdue, build-coverage, improve-fluency, strengthen-weak-topic, take-mock, maintain-strong, light-review): what to practise, why (measured evidence), how much, which misconception or weak concept is behind it — knowledge, retention, fluency or coverage — and what changed since your previous session — due-review sessions contain the overdue questions themselves, so following the plan reschedules exactly what it promised. Fresh learners get an 8-question starting check spread across topics, so the next plan is personal from the second session |
 | Adaptive Practice | 267 universal U.S. questions plus jurisdiction packs (1906 verified questions total) across 10 topics — the Great Britain pack alone is 1565 questions across 427 concepts, spanning 9 **question forms** — junction-priority road-layout diagrams, lane-selection scenarios, sign combinations, what-happens-next chains, prioritisation drills, multi-step ordering, photo-described scenes, deliberately similar alternatives, same-concept rewording variants, and classic recall; mastery aggregates per concept (coverage × depth), then topic, then overall score |
 | Marathon Mode | The full active-jurisdiction bank in one run — anything you miss comes back until you've seen it through |
 | Mock Exams | An **Official Simulation** locked to the selected jurisdiction's real published count, time limit and pass bar (e.g. DVSA car: 50 questions, 43 to pass, 57 minutes), plus two clearly-labelled extras: **Quick Check** (10 questions) and **Weak Topics Exam** (20 questions weighted toward your lowest categories) — timed, with no feedback until you submit. Afterwards, a concise debrief (concept-level weaknesses, repeated misconceptions, slow answers, right→wrong regressions) and one primary action: **turn the mock into a targeted drill** built from the concepts missed — different questions, same rules |

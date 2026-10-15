@@ -631,9 +631,12 @@ function startSetup(mode, focusCat) {
     if (stateQuestions.length) {
       const pack = Packs.STATE_PACKS[state.settings.statePack];
       const terms = termsForPack();
+      const packBp = BLUEPRINTS[state.settings.statePack];
+      const depth = packBp ? Core.packDepthNotice(stateQuestions.length, packBp.questionCount) : null;
       items.splice(1, 0, {
         id: "state-rules", icon: "scale", name: `${pack.name} · ${terms.rulesLabel}`,
-        desc: `${stateQuestions.length} jurisdiction-specific questions · every answer cites ${terms.sourceLabel}`,
+        desc: `${stateQuestions.length} jurisdiction-specific questions · every answer cites ${terms.sourceLabel}` +
+          (depth && depth.thin ? ` · ${depth.short}` : ""),
         action: () => startPractice(shuffle(stateQuestions), terms.rulesLabel, "home"),
       });
     }
@@ -653,9 +656,13 @@ function startSetup(mode, focusCat) {
     if (bp) {
       const availability = Core.officialExamAvailability(bank, bp);
       if (availability.full) {
+        const ownCount = packId === "generic" ? 0
+          : bank.filter((q) => Array.isArray(q.jurisdiction) && q.jurisdiction.includes(packId)).length;
+        const depth = packId === "generic" ? null : Core.packDepthNotice(ownCount, bp.questionCount);
         items.push({
           id: "official", icon: "grad", name: bp.label,
-          desc: `${bp.questionCount} questions · pass ${bp.minCorrect}/${bp.questionCount} (official threshold) · ${bp.timeLimitMin ? bp.timeLimitMin + "-min limit" : `${Core.timeLimitSecs(bp.questionCount) / 60}-min pacing`} · feedback at end`,
+          desc: `${bp.questionCount} questions · pass ${bp.minCorrect}/${bp.questionCount} (official threshold) · ${bp.timeLimitMin ? bp.timeLimitMin + "-min limit" : `${Core.timeLimitSecs(bp.questionCount) / 60}-min pacing`} · feedback at end` +
+            (depth && depth.thin ? ` · includes ${ownCount} state-specific` : ""),
           action: () => startOfficialExam(packId),
         });
       } else {
@@ -854,6 +861,16 @@ function startCoachSession() {
   beginQuiz();
 }
 
+/* Quick-start baseline: up to 8 questions spread across topics for a fresh
+   learner. Practice-mode so every answer seeds mastery immediately — the
+   next Today Plan render is personal instead of generic. Falls back to the
+   bank head when the bank is smaller than the baseline. */
+function startBaseline() {
+  const set = Core.buildBaselineSet(bank, Core.BASELINE_DEFAULT_N || 8);
+  const qs = shuffle(set.length ? set : bank.slice(0, Core.BASELINE_DEFAULT_N || 8));
+  if (!qs.length) return;
+  startPractice(qs, "Starting check", "home");
+}
 function startPractice(questions, label, backTo, marathon) {
   if (!questions.length) return;
   quizBackTarget = backTo || "home";
@@ -1546,6 +1563,10 @@ function initRest() {
     }
     if (action === "coach") {
       startCoachSession();
+      return;
+    }
+    if (action === "baseline") {
+      startBaseline();
       return;
     }
     if (action === "exam") {

@@ -40,6 +40,20 @@ test.describe("onboarding", () => {
   });
 });
 
+test.describe("quick-start baseline", () => {
+  test("fresh learners get a starting check that seeds the plan", async ({ page }) => {
+    await freshApp(page);
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
+    await expect(page.locator("#planTitle")).toContainText("starting level");
+    await page.click("#btnPlanAction");
+    await expect(page.locator("#view-quiz")).toHaveClass(/active/);
+    await expect(page.locator("#qCounter")).toContainText("Q 1/8");
+    // answering lands feedback and advances — the baseline is real practice
+    await page.keyboard.press("1");
+    await expect(page.locator("#feedback")).toBeVisible();
+  });
+});
+
 test.describe("practice flow", () => {
   test("answer a question, see feedback, finish session", async ({ page }) => {
     await freshApp(page);

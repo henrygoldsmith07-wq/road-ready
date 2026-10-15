@@ -347,6 +347,20 @@
         }));
       }
     }
+    // Fresh learners get a first value in ~2 minutes: an 8-question baseline
+    // spread across topics. Its answers seed the mastery maps, so the very
+    // next Today Plan is personal instead of generic coverage.
+    // A set test date already gives a fresh learner a dated plan (covered by
+    // e2e: "test date builds a persistent daily plan") — the baseline owns
+    // only the undated fresh screen, where the plan would otherwise be
+    // generic coverage with no personal signal behind it.
+    if (state.answered === 0 && !validTestDate()) {
+      $("planTitle").textContent = "Find your starting level";
+      $("planDetail").textContent = "8 quick questions across topics — your results personalize the Today Plan.";
+      $("planMeta").textContent = "About 2 minutes · no test date needed";
+      planBtn.textContent = "Check my starting level · 8 questions";
+      planBtn.dataset.action = "baseline";
+    }
     // The date picker is a secondary control — the plan's own action stays the
     // single primary button. Shown only while the plan is undated.
     const dateBtn = $("btnPlanDate");

@@ -894,6 +894,16 @@ kbd {
 /* ---------- Mock debrief highlights ---------- */
 .debrief-highlight { margin: 8px 0 0; font-size: 13px; font-weight: 800; line-height: 1.5; }
 
+/* ---------- Reduced motion: honor the OS setting ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* ---------- Progress: learning-priority statements ---------- */
 .progress-summary { display: grid; gap: 4px; margin: 0 0 14px; }
 .progress-statement { margin: 0; font-size: 13.5px; line-height: 1.55; }

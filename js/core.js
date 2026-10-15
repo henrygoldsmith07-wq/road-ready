@@ -1131,6 +1131,66 @@ function reviewSched(sched, right, nowMs, quality) {
   }
 
   /**
+   * Quick-start baseline set: up to `n` questions spread across topics so a
+   * fresh learner's first answers seed every mastery map at once. Deterministic
+   * round-robin over alphabetically-ordered topic groups (bank order within a
+   * group); callers shuffle for presentation. Pure so the first-run plan is
+   * unit-testable.
+   * @param {Array} bank
+   * @param {number} [n]
+   */
+  const BASELINE_DEFAULT_N = 8;
+  function buildBaselineSet(bank, n) {
+    const size = Math.max(0, Math.floor(Number.isFinite(n) ? n : BASELINE_DEFAULT_N));
+    const list = Array.isArray(bank) ? bank.filter((q) => q && q.id && q.cat) : [];
+    if (!list.length || size <= 0) return [];
+    const cats = [...new Set(list.map((q) => q.cat))].sort();
+    const perCat = cats.map((cat) => list.filter((q) => q.cat === cat));
+    const picked = [];
+    const seen = new Set();
+    for (let round = 0; picked.length < size && seen.size < list.length; round++) {
+      let advanced = false;
+      for (const group of perCat) {
+        const next = group.find((q) => !seen.has(q.id));
+        if (!next) continue;
+        seen.add(next.id);
+        advanced = true;
+        if (picked.length < size) picked.push(next);
+      }
+      if (!advanced) break;
+    }
+    return picked;
+  }
+
+  /**
+   * Honest state-pack depth: how many jurisdiction-specific questions back a
+   * blueprint's official length. `thin` is true while the state's own rules
+   * cannot fill the exam alone — full mocks then lean on the universal bank,
+   * and the setup UI must say so instead of implying state-complete prep.
+   * @param {number} own state-specific question count
+   * @param {number} required blueprint questionCount
+   */
+  function packDepthNotice(own, required) {
+    const ownCount = Math.max(0, Math.floor(Number.isFinite(own) ? own : 0));
+    const need = Math.max(0, Math.floor(Number.isFinite(required) ? required : 0));
+    if (need <= 0) return { own: ownCount, required: need, pct: null, thin: false, short: "", detail: "" };
+    const thin = ownCount < need;
+    const pct = Math.min(1, ownCount / need);
+    return {
+      own: ownCount,
+      required: need,
+      pct,
+      thin,
+      short: thin
+        ? `Only ${ownCount} state-specific question${ownCount === 1 ? "" : "s"} — mocks lean on general U.S. rules`
+        : `${ownCount} state-specific questions — full state coverage`,
+      detail: thin
+        ? `This pack contributes ${ownCount} of the ${need} questions a full mock needs; the rest test general U.S. rules. Confirm your state's own limits and distances in the official handbook.`
+        : `This pack contributes ${ownCount} state-specific questions against a ${need}-question exam.`,
+    };
+  }
+
+  /**
    * Assemble a mock exam.
    * Stratified: honors the topic blueprint so every mock mirrors the real
    * test's topic mix; weakBias reserves ~60% of seats for the 3 weakest topics.
@@ -2568,6 +2628,7 @@ function reviewSched(sched, right, nowMs, quality) {
     adaptiveWeights, buildAdaptivePool, pickWeighted, missedQuestions,
     defaultSched, reviewSched, schedDue,
     shuffle, timeLimitSecs, gradeExam, examBlueprint, assembleExam, officialExamAvailability,
+    BASELINE_DEFAULT_N, buildBaselineSet, packDepthNotice,
     SIM_HAZARD_CLIPS, scaledHazardPass, combinedVerdict, simRecord, simHistory, simTrend,
     SIM_GATE_THEORY_FLOOR, simGate, simGateStats,
     hazardScore, HAZARD_PRESS_CAP, hazardAnalysis, hazardFeedback, hazardSummary,

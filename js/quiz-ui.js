@@ -73,6 +73,16 @@
       }
     }
     $("qText").textContent = q.q;
+    // Screen-reader focus: each new question announces itself. preventScroll
+    // keeps sighted users exactly where they are; the heading is focusable
+    // only programmatically (tabindex -1), never in tab order.
+    try {
+      const qh = $("qText");
+      qh.setAttribute("tabindex", "-1");
+      if (typeof qh.focus === "function" && $("view-quiz") && $("view-quiz").classList.contains("active")) {
+        qh.focus({ preventScroll: true });
+      }
+    } catch { /* focus is a courtesy — never break rendering for it */ }
 
     const box = $("choices");
     box.innerHTML = "";
@@ -129,7 +139,11 @@
         sourceLink.removeAttribute("href");
         sourceLink.removeAttribute("aria-label");
       }
-      if (btnEl) btnEl.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      if (btnEl) {
+        const reduced = typeof window !== "undefined" && window.matchMedia &&
+          window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        btnEl.scrollIntoView({ block: "nearest", behavior: reduced ? "auto" : "smooth" });
+      }
       $("btnNext").disabled = false;
       $("btnNext").focus();
       speak((right ? "Correct. " : "Not quite. ") + q.why);
