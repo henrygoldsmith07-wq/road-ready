@@ -71,12 +71,13 @@ const MIN_RETRIEVAL_DAYS = 2;
  * variants or 2 forms, so it is pinned at `learning` for good no matter how
  * well it is answered.
  *
- * This is not hypothetical in the Great Britain pack: 348 of its 359 concepts
- * ship exactly one question and 351 are confined to a single form. A learner
- * who answered every GB question correctly, five times across five days,
- * reached `secure` on 8 concepts and was still shown as "Learning" on the other
- * 351 — a map contradicting their real performance, with a permanent ceiling
- * baked into the app's main diagnostic surface.
+ * This is not hypothetical: the universal US bank still ships many
+ * single-question concepts, and the GB pack retains a handful (the live
+ * work queue is the "Concepts that cannot yet evidence transfer" table in
+ * docs/CONTENT-INVENTORY.md). A learner who answered every such question
+ * correctly, five times across five days, would still read "Learning" on
+ * those concepts — a map contradicting their real performance, with a
+ * permanent ceiling baked into the app's main diagnostic surface.
  *
  * So each concept declares the transfer it COULD have shown, and each gate is
  * the lesser of "what mastery asks for" and "what the bank makes possible". A
