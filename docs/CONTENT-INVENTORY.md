@@ -9,21 +9,21 @@
 > Regenerate with `node scripts/content-coverage.mjs --write`.
 > Every count in `README.md` should trace back to this file.
 
-**Generated:** 2026-10-14
+**Generated:** 2026-10-16
 
 ## Headline numbers
 
 | Measure | Value |
 |---|---|
-| Questions in the full bank | 1906 |
+| Questions in the full bank | 1920 |
 | Universal (US, no state pack) bank | 267 |
-| Jurisdiction-pack questions | 1639 |
-| Great Britain pack questions | 1565 |
+| Jurisdiction-pack questions | 1653 |
+| Great Britain pack questions | 1579 |
 | U.S. state-pack questions (six states) | 74 |
 | Distinct concepts | 644 |
-| Concepts with 3+ questions | 434 |
-| Concepts with 2+ question forms | 433 |
-| Concepts with a single question | 193 |
+| Concepts with 3+ questions | 441 |
+| Concepts with 2+ question forms | 440 |
+| Concepts with a single question | 186 |
 | Distinct question forms | 9 |
 | Road signs with artwork | 58 |
 | Registered jurisdictions (packs) | 8 |
@@ -41,7 +41,7 @@ The table below is the honest version of the product's coverage claim.
 | Florida (FLHSMV) | 267 | 6 | 273 | yes - 273 available, 50 needed | **6 own questions - 12% of a full exam's worth (50 needed)** |
 | Washington (DOL) | 267 | 6 | 273 | yes - 273 available, 40 needed | **6 own questions - 15% of a full exam's worth (40 needed)** |
 | Pennsylvania (PennDOT) | 267 | 7 | 274 | yes - 274 available, 18 needed | **7 own questions - 39% of a full exam's worth (18 needed)** |
-| Great Britain (DVSA car) | 0 | 1565 | 1565 | yes - 1565 available, 50 needed | 1565 own questions (3130% of a full exam's worth) |
+| Great Britain (DVSA car) | 0 | 1579 | 1579 | yes - 1579 available, 50 needed | 1579 own questions (3158% of a full exam's worth) |
 
 Read the last two columns together, because they answer different questions.
 
@@ -62,13 +62,13 @@ topic mix: the blueprint's `topicWeights` are editorial approximations
 
 | Topic | Questions | Concepts | Concepts with 2+ questions | Question forms |
 |---|---|---|---|---|
-| Safety & Emergencies | 265 | 92 | 64 | 9 |
+| Safety & Emergencies | 269 | 92 | 66 | 9 |
 | Signs & Signals | 254 | 93 | 55 | 9 |
-| People & Riders | 211 | 65 | 47 | 9 |
-| Markings & Lanes | 197 | 59 | 44 | 8 |
+| People & Riders | 213 | 65 | 48 | 9 |
+| Markings & Lanes | 199 | 59 | 45 | 8 |
+| Rules & Penalties | 189 | 69 | 46 | 9 |
 | Right of Way | 188 | 62 | 39 | 9 |
-| Rules & Penalties | 185 | 69 | 44 | 9 |
-| Speed & Distance | 169 | 56 | 40 | 8 |
+| Speed & Distance | 171 | 56 | 41 | 8 |
 | Alcohol & Drugs | 164 | 59 | 46 | 6 |
 | Parking & Stopping | 148 | 47 | 37 | 7 |
 | Vehicle Basics | 125 | 50 | 35 | 6 |
@@ -81,17 +81,17 @@ answer is evidence about one question, not about the rule.
 
 | Form | Questions | Share |
 |---|---|---|
-| recall | 466 | 24.4% |
-| scenario | 458 | 24.0% |
-| what-next | 395 | 20.7% |
+| recall | 471 | 24.5% |
+| scenario | 462 | 24.1% |
+| what-next | 400 | 20.8% |
 | multi-step | 218 | 11.4% |
-| sign-combo | 204 | 10.7% |
+| sign-combo | 204 | 10.6% |
 | diagram | 67 | 3.5% |
 | photo | 56 | 2.9% |
 | lane-choice | 28 | 1.5% |
 | prioritisation | 14 | 0.7% |
 
-Recall and scenario forms dominate. 210 concepts have fewer than
+Recall and scenario forms dominate. 203 concepts have fewer than
 three questions, which limits how well the app can verify that a learner can
 apply a rule to an unfamiliar situation rather than recognise a familiar
 prompt.
@@ -125,7 +125,6 @@ meet first; this list is the work queue, in priority order.
 | `blocked-intersection` | 1 | recall | row |
 | `brake-pedal-fault` | 1 | recall | vehicle |
 | `broken-yellow-line` | 1 | recall | markings |
-| `bus-lane-cycle-share` | 1 | scenario | markings |
 | `carbon-monoxide-risk` | 1 | recall | safety |
 | `center-turn-lane` | 1 | scenario | markings |
 | `centre-line-passing-rule` | 1 | recall | signs |
@@ -224,8 +223,9 @@ meet first; this list is the work queue, in priority order.
 | `pedestrian-crosswalk` | 1 | scenario | vulnerable |
 | `police-pull-over` | 1 | recall | laws |
 | `pre-drive-adjustment` | 1 | recall | vehicle |
+| `private-drive-yield` | 1 | recall | row |
 
-and 90 more. See `node scripts/validate-content.mjs` for the full list.
+and 83 more. See `node scripts/validate-content.mjs` for the full list.
 
 ## Source provenance
 
@@ -242,7 +242,7 @@ document.
 | fl-flhsmv-handbook | FLHSMV | FL | 2026-08-23 | 6 | 0 |
 | wa-dol-driver-guide | Washington DOL | WA | 2026-08-23 | 6 | 0 |
 | pa-penndot-driver-manual | PennDOT | PA | 2026-08-23 | 7 | 0 |
-| uk-highway-code | Department for Transport | UK | 2026-09-22 | 1350 | 0 |
+| uk-highway-code | Department for Transport | UK | 2026-09-22 | 1364 | 0 |
 | uk-know-your-traffic-signs | Department for Transport | UK | 2026-09-22 | 215 | 0 |
 | uk-theory-test-format | DVSA | UK | 2026-09-22 | 0 | 0 |
 | us-dmv-handbooks-composite | Multiple state DMVs (composite) | * | 2026-08-23 | 267 | 0 |
