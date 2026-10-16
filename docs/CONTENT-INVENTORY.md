@@ -9,21 +9,21 @@
 > Regenerate with `node scripts/content-coverage.mjs --write`.
 > Every count in `README.md` should trace back to this file.
 
-**Generated:** 2026-10-14
+**Generated:** 2026-10-16
 
 ## Headline numbers
 
 | Measure | Value |
 |---|---|
-| Questions in the full bank | 1906 |
+| Questions in the full bank | 1933 |
 | Universal (US, no state pack) bank | 267 |
-| Jurisdiction-pack questions | 1639 |
+| Jurisdiction-pack questions | 1666 |
 | Great Britain pack questions | 1565 |
-| U.S. state-pack questions (six states) | 74 |
-| Distinct concepts | 644 |
-| Concepts with 3+ questions | 434 |
-| Concepts with 2+ question forms | 433 |
-| Concepts with a single question | 193 |
+| U.S. state-pack questions (six states) | 101 |
+| Distinct concepts | 652 |
+| Concepts with 3+ questions | 435 |
+| Concepts with 2+ question forms | 435 |
+| Concepts with a single question | 199 |
 | Distinct question forms | 9 |
 | Road signs with artwork | 58 |
 | Registered jurisdictions (packs) | 8 |
@@ -39,8 +39,8 @@ The table below is the honest version of the product's coverage claim.
 | Texas (DPS) | 267 | 24 | 291 | yes - 291 available, 30 needed | **24 own questions - 80% of a full exam's worth (30 needed)** |
 | New York (DMV) | 267 | 6 | 273 | yes - 273 available, 20 needed | **6 own questions - 30% of a full exam's worth (20 needed)** |
 | Florida (FLHSMV) | 267 | 6 | 273 | yes - 273 available, 50 needed | **6 own questions - 12% of a full exam's worth (50 needed)** |
-| Washington (DOL) | 267 | 6 | 273 | yes - 273 available, 40 needed | **6 own questions - 15% of a full exam's worth (40 needed)** |
-| Pennsylvania (PennDOT) | 267 | 7 | 274 | yes - 274 available, 18 needed | **7 own questions - 39% of a full exam's worth (18 needed)** |
+| Washington (DOL) | 267 | 20 | 287 | yes - 287 available, 40 needed | **20 own questions - 50% of a full exam's worth (40 needed)** |
+| Pennsylvania (PennDOT) | 267 | 20 | 287 | yes - 287 available, 18 needed | 20 own questions (111% of a full exam's worth) |
 | Great Britain (DVSA car) | 0 | 1565 | 1565 | yes - 1565 available, 50 needed | 1565 own questions (3130% of a full exam's worth) |
 
 Read the last two columns together, because they answer different questions.
@@ -62,14 +62,14 @@ topic mix: the blueprint's `topicWeights` are editorial approximations
 
 | Topic | Questions | Concepts | Concepts with 2+ questions | Question forms |
 |---|---|---|---|---|
-| Safety & Emergencies | 265 | 92 | 64 | 9 |
+| Safety & Emergencies | 270 | 94 | 64 | 9 |
 | Signs & Signals | 254 | 93 | 55 | 9 |
-| People & Riders | 211 | 65 | 47 | 9 |
+| People & Riders | 216 | 67 | 47 | 9 |
 | Markings & Lanes | 197 | 59 | 44 | 8 |
-| Right of Way | 188 | 62 | 39 | 9 |
-| Rules & Penalties | 185 | 69 | 44 | 9 |
-| Speed & Distance | 169 | 56 | 40 | 8 |
-| Alcohol & Drugs | 164 | 59 | 46 | 6 |
+| Rules & Penalties | 193 | 72 | 45 | 9 |
+| Right of Way | 191 | 62 | 40 | 9 |
+| Speed & Distance | 173 | 56 | 40 | 8 |
+| Alcohol & Drugs | 166 | 60 | 46 | 6 |
 | Parking & Stopping | 148 | 47 | 37 | 7 |
 | Vehicle Basics | 125 | 50 | 35 | 6 |
 
@@ -81,17 +81,17 @@ answer is evidence about one question, not about the rule.
 
 | Form | Questions | Share |
 |---|---|---|
-| recall | 466 | 24.4% |
-| scenario | 458 | 24.0% |
-| what-next | 395 | 20.7% |
-| multi-step | 218 | 11.4% |
-| sign-combo | 204 | 10.7% |
+| recall | 476 | 24.6% |
+| scenario | 475 | 24.6% |
+| what-next | 395 | 20.4% |
+| multi-step | 218 | 11.3% |
+| sign-combo | 204 | 10.6% |
 | diagram | 67 | 3.5% |
 | photo | 56 | 2.9% |
-| lane-choice | 28 | 1.5% |
+| lane-choice | 28 | 1.4% |
 | prioritisation | 14 | 0.7% |
 
-Recall and scenario forms dominate. 210 concepts have fewer than
+Recall and scenario forms dominate. 217 concepts have fewer than
 three questions, which limits how well the app can verify that a learner can
 apply a rule to an unfamiliar situation rather than recognise a familiar
 prompt.
@@ -129,6 +129,7 @@ meet first; this list is the work queue, in priority order.
 | `carbon-monoxide-risk` | 1 | recall | safety |
 | `center-turn-lane` | 1 | scenario | markings |
 | `centre-line-passing-rule` | 1 | recall | signs |
+| `chain-law` | 1 | scenario | safety |
 | `chevron-sign` | 1 | recall | signs |
 | `child-restraint` | 1 | recall | safety |
 | `child-restraint-seat` | 1 | recall | safety |
@@ -140,7 +141,6 @@ meet first; this list is the work queue, in priority order.
 | `crosswalk-pedestrian-priority` | 1 | recall | row |
 | `cyclist-swerve` | 1 | recall | vulnerable |
 | `dead-end-sign` | 1 | recall | signs |
-| `distracted-driving` | 1 | recall | laws |
 | `divided-highway-sign` | 1 | recall | signs |
 | `do-not-enter-sign` | 1 | recall | signs |
 | `documents-to-carry` | 1 | recall | laws |
@@ -168,6 +168,7 @@ meet first; this list is the work queue, in priority order.
 | `headlight-failure` | 1 | recall | vehicle |
 | `headlight-flash-response` | 1 | recall | row |
 | `headlight-use-required` | 1 | recall | safety |
+| `headlight-work-zone` | 1 | recall | safety |
 | `headphones-while-driving` | 1 | recall | laws |
 | `high-beam-dimming` | 1 | recall | safety |
 | `highway-shoulder-stop` | 1 | recall | parking |
@@ -176,9 +177,14 @@ meet first; this list is the work queue, in priority order.
 | `hill-sign` | 1 | recall | signs |
 | `horn-use` | 1 | recall | vehicle |
 | `horse-and-rider` | 1 | recall | vulnerable |
+| `horse-buggy` | 1 | scenario | vulnerable |
 | `hot-car` | 1 | recall | safety |
 | `hov-lane-marking` | 1 | recall | markings |
+| `ignition-interlock` | 1 | recall | alcohol |
+| `implied-consent` | 1 | recall | laws |
 | `implied-consent-refusal` | 1 | recall | alcohol |
+| `intermediate-license` | 1 | recall | laws |
+| `junior-license` | 1 | recall | laws |
 | `keep-right-sign` | 1 | recall | signs |
 | `lane-end-merge` | 1 | recall | markings |
 | `leaving-parking-space` | 1 | recall | parking |
@@ -192,6 +198,7 @@ meet first; this list is the work queue, in priority order.
 | `medicine-and-driving` | 1 | recall | alcohol |
 | `merge-sign` | 1 | recall | signs |
 | `mirror-limits` | 1 | recall | vehicle |
+| `motorcycle-helmet` | 1 | recall | vulnerable |
 | `motorcycle-indicators` | 1 | recall | vulnerable |
 | `motorcycle-lane-sharing` | 1 | recall | vulnerable |
 | `motorcycle-lane-splitting` | 1 | scenario | vulnerable |
@@ -217,15 +224,8 @@ meet first; this list is the work queue, in priority order.
 | `parking-clearances` | 1 | recall | parking |
 | `parking-near-fire-station` | 1 | recall | parking |
 | `passing-and-speed-limit` | 1 | recall | speed |
-| `passing-distance` | 1 | recall | speed |
-| `passing-on-the-right` | 1 | recall | markings |
-| `pedestrian-against-signal` | 1 | recall | vulnerable |
-| `pedestrian-crossing-sign` | 1 | recall | signs |
-| `pedestrian-crosswalk` | 1 | scenario | vulnerable |
-| `police-pull-over` | 1 | recall | laws |
-| `pre-drive-adjustment` | 1 | recall | vehicle |
 
-and 90 more. See `node scripts/validate-content.mjs` for the full list.
+and 97 more. See `node scripts/validate-content.mjs` for the full list.
 
 ## Source provenance
 
@@ -240,8 +240,8 @@ document.
 | tx-dps-driver-handbook | Texas DPS | TX | 2026-08-23 | 24 | 0 |
 | ny-dmv-driver-manual | New York DMV | NY | 2026-08-23 | 6 | 0 |
 | fl-flhsmv-handbook | FLHSMV | FL | 2026-08-23 | 6 | 0 |
-| wa-dol-driver-guide | Washington DOL | WA | 2026-08-23 | 6 | 0 |
-| pa-penndot-driver-manual | PennDOT | PA | 2026-08-23 | 7 | 0 |
+| wa-dol-driver-guide | Washington DOL | WA | 2026-08-23 | 20 | 0 |
+| pa-penndot-driver-manual | PennDOT | PA | 2026-08-23 | 20 | 0 |
 | uk-highway-code | Department for Transport | UK | 2026-09-22 | 1350 | 0 |
 | uk-know-your-traffic-signs | Department for Transport | UK | 2026-09-22 | 215 | 0 |
 | uk-theory-test-format | DVSA | UK | 2026-09-22 | 0 | 0 |
