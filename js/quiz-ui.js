@@ -94,9 +94,11 @@
     $("btnNext").textContent = s.i + 1 >= total ? "Finish" : "Next";
     const hint = document.querySelector(".kbd-hint");
     if (hint) hint.innerHTML = s.mode === "exam"
-      ? `Tip: press <kbd>1</kbd>–<kbd>4</kbd> to answer — it advances automatically`
-      : `Tip: press <kbd>1</kbd>–<kbd>4</kbd> to answer, <kbd>Enter</kbd> for next`;
+      ? `Tip: press <kbd>1</kbd>–<kbd>4</kbd> to answer — it advances automatically · <kbd>R</kbd> to report a problem`
+      : `Tip: press <kbd>1</kbd>–<kbd>4</kbd> to answer, <kbd>Enter</kbd> for next · <kbd>R</kbd> to report a problem`;
     updateFlagBtn();
+    updateReportBtn();
+    closeReport();
     speak((q.caseStem ? "Case study scenario. " + q.caseStem + " " : "") + q.q + ". " + q.choices.map((c, i) => (i + 1) + ". " + c).join(" "));
   }
 
@@ -334,6 +336,65 @@
     updateFlagBtn();
   }
 
+  /* Question issue reports (errata outbox): filed on the device, reviewed
+   * from the Weakness Centre, carried in the export bundle. */
+  function currentReport() {
+    const s = session();
+    if (!s) return null;
+    const state = ctx.getState();
+    const map = (state.issueReports && typeof state.issueReports === "object") ? state.issueReports : {};
+    return { q: s.questions[s.i], rep: map[s.questions[s.i].id] || null };
+  }
+
+  function updateReportBtn() {
+    const { icon } = ctx;
+    const cur = currentReport();
+    if (!cur) return;
+    const btn = $("btnReport");
+    if (!btn) return;
+    const has = !!cur.rep;
+    btn.classList.toggle("flagged", has);
+    btn.setAttribute("aria-pressed", has ? "true" : "false");
+    btn.innerHTML = `${icon("flag", 13)} ${has ? "Reported" : "Report"}`;
+  }
+
+  function openReport() {
+    const cur = currentReport();
+    if (!cur) return;
+    const pane = $("reportPane");
+    if (!pane) return;
+    const kindEl = $("repKind");
+    const noteEl = $("repNote");
+    const kinds = (ctx.Core && ctx.Core.ISSUE_KINDS) || [];
+    if (kindEl) kindEl.value = (cur.rep && kinds.includes(cur.rep.kind)) ? cur.rep.kind : "wrong-answer";
+    if (noteEl) noteEl.value = (cur.rep && typeof cur.rep.note === "string") ? cur.rep.note : "";
+    pane.hidden = false;
+    if (kindEl) kindEl.focus();
+  }
+
+  function closeReport() {
+    const pane = $("reportPane");
+    if (pane) pane.hidden = true;
+  }
+
+  function saveReport() {
+    const { Core, getState, save } = ctx;
+    const cur = currentReport();
+    if (!cur || !Core) return;
+    const state = getState();
+    if (!state.issueReports || typeof state.issueReports !== "object" || Array.isArray(state.issueReports)) {
+      state.issueReports = {};
+    }
+    const kindEl = $("repKind");
+    const noteEl = $("repNote");
+    const r = Core.fileIssueReport(state.issueReports, cur.q.id,
+      kindEl ? kindEl.value : "other", noteEl ? noteEl.value : "", Date.now());
+    if (!r.ok) return;
+    save();
+    closeReport();
+    updateReportBtn();
+  }
+
   /** Answer the choice at display position (keyboard 1–4). */
   function answerDisplayPosition(disp) {
     const s = session();
@@ -354,5 +415,6 @@
     init(deps) { ctx = deps; },
     renderQuiz, renderTimer, answer, renderRepair, markChoiceButtons,
     updateFlagBtn, toggleFlag, answerDisplayPosition,
+    updateReportBtn, openReport, closeReport, saveReport,
   };
 })();

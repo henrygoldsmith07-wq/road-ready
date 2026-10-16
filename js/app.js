@@ -1018,6 +1018,7 @@ function onSimHazardComplete(h) {
 function beginQuiz() {
   $("qTimer").hidden = session.mode !== "exam";
   $("btnFlag").hidden = false;
+  $("btnReport").hidden = false;
   $("btnQuit").textContent = session.mode === "exam" ? "Submit" : "End";
   if (session.mode === "exam") {
     clearInterval(session.timerId);
@@ -1199,6 +1200,9 @@ function finishSession(timedOut) {
   stopSpeaking();
 }
 function toggleFlag() { if (QuizUI) QuizUI.toggleFlag(); }
+function openReport() { if (QuizUI) QuizUI.openReport(); }
+function saveReport() { if (QuizUI) QuizUI.saveReport(); }
+function cancelReport() { if (QuizUI) QuizUI.closeReport(); }
 
 /* ---------------- STATS & CALIBRATION ----------------
  * Rendering and wiring live in js/stats-ui.js; the learning logic stays in
@@ -1470,6 +1474,9 @@ function initRest() {
     finishSession();
   });
   on($("btnFlag"), "click", toggleFlag);
+  on($("btnReport"), "click", openReport);
+  on($("btnReportSave"), "click", saveReport);
+  on($("btnReportCancel"), "click", cancelReport);
   on($("btnAgain"), "click", () => {
     // Post-mock: the primary action is the targeted drill built from the
     // concepts missed — not a blind replay of the same mock.
@@ -1668,6 +1675,7 @@ function initRest() {
       + "• exam results, mock history and score snapshots\n"
       + "• day streak, study time and XP\n"
       + "• flagged questions and sign-flashcard tracking\n"
+      + "• reported question issues\n"
       + "• hazard best score\n"
       + "• outcome journal and pre-test predictions\n"
       + "• Drive Log sessions and instructor notes\n"
@@ -1715,6 +1723,7 @@ function initRest() {
         if (b && !session.answeredCurrent) { b.classList.add("picked"); b.click(); }
       } else if (e.key === "Enter") { if (!$("btnNext").disabled) nextQuestion(); }
       else if (e.key.toLowerCase() === "f") toggleFlag();
+      else if (e.key.toLowerCase() === "r") openReport();
     } else if (active.id === "view-flashcards") {
       if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flipCard(); }
       else if (e.key === "ArrowRight") fcMove(1);

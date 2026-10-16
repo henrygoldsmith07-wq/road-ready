@@ -159,6 +159,7 @@
           <span class="flex-spacer"></span>
           <button class="pill" id="btnTTS" title="Read questions aloud" aria-pressed="false"></button>
           <button class="pill flag-btn" id="btnFlag" title="Flag this question for review" aria-pressed="false">Flag</button>
+          <button class="pill flag-btn" id="btnReport" title="Report a problem with this question" aria-pressed="false">Report</button>
         </div>
       </div>
 
@@ -173,6 +174,26 @@
           <div class="fb-why" id="fbWhy"></div>
           <div class="fb-repair" id="fbRepair" hidden></div>
           <a class="source-link" id="fbSource" target="_blank" rel="noopener noreferrer" hidden></a>
+        </div>
+        <div class="report-pane" id="reportPane" hidden>
+          <h3>Report a problem with this question</h3>
+          <p class="muted">Saved on this device and included in your backup. Withdraw it any time from Review.</p>
+          <label class="report-row">What is wrong?
+            <select id="repKind">
+              <option value="wrong-answer">The correct answer is wrong</option>
+              <option value="unclear-wording">Unclear or confusing wording</option>
+              <option value="outdated-rule">Outdated rule or figure</option>
+              <option value="typo">Typo</option>
+              <option value="other">Something else</option>
+            </select>
+          </label>
+          <label class="report-row">Details (optional, 500 characters max)
+            <textarea id="repNote" rows="3" maxlength="500" placeholder="What should it say instead?"></textarea>
+          </label>
+          <div class="report-actions">
+            <button class="btn primary" id="btnReportSave">Save report</button>
+            <button class="btn ghost" id="btnReportCancel">Cancel</button>
+          </div>
         </div>
       </div>
 
