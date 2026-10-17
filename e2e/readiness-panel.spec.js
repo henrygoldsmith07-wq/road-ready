@@ -15,9 +15,10 @@ test.describe("readiness panel", () => {
     await expect(page.locator("#rpBand")).toContainText("Not Started");
     /* The single next action must live in the Today Plan card, not be restated
      * by a second control in the progress panel. The title is the Adaptive
-     * Coach's recommendation (a question count, a review, or a mock). */
+     * Coach's recommendation (a question count, a review, a mock, or the
+     * fresh-learner starting check). */
     const title = await page.locator("#planTitle").textContent();
-    expect(title).toMatch(/\d+ questions|review|mock|session|Set (your )?test date/i);
+    expect(title).toMatch(/\d+ questions|review|mock|session|starting level|Set (your )?test date/i);
     await expect(page.locator("#rpStart")).toHaveCount(0);
   });
 

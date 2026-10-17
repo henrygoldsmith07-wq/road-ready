@@ -434,7 +434,9 @@ test.describe("official simulation", () => {
       const before = await page.locator("#qCounter").innerText();
       await page.locator("#choices .choice").first().click();
       if (i === 49) break;
-      await expect.poll(async () => page.locator("#qCounter").innerText(), { timeout: 5000 }).not.toBe(before);
+      // 15s budget: on loaded CI runners the lazy UK-pack reload between exam
+      // questions can exceed the default 5s; the assertion itself is unchanged.
+      await expect.poll(async () => page.locator("#qCounter").innerText(), { timeout: 15000 }).not.toBe(before);
     }
     // Exactly one run of three consecutive questions shares one scenario;
     // every other question shows no scenario card.

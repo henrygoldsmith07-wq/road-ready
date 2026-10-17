@@ -9,18 +9,24 @@ async function freshApp(page) {
 }
 
 test.describe("home → Today Plan adaptive action", () => {
-  test("fresh learner sees a coverage plan with a why and one primary action", async ({ page }) => {
+  test("fresh learner sees the starting-check plan with a why and one primary action", async ({ page }) => {
     await freshApp(page);
     if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
     await expect(page.locator("#todayPlanCard")).toBeVisible();
     const title = await page.locator("#planTitle").textContent();
-    // deterministic coach output for a fresh learner: coverage work first
-    expect(title).toMatch(/questions|review|mock|session/i);
+    // deterministic coach output for a fresh learner: the quick-start baseline
+    // comes before coverage work, so the next plan is personal (see the
+    // "fresh learners get a starting check" journey in e2e/app.spec.js)
+    expect(title).toMatch(/starting level/i);
     // the "why" is always visible in the rationale list or the meta line
     const why = (await page.locator("#planRationale").textContent()) + (await page.locator("#planMeta").textContent());
     expect(why.trim().length).toBeGreaterThan(0);
     // exactly one primary action on the plan card
     await expect(page.locator("#todayPlanCard .plan-action")).toHaveCount(1);
+    // the action launches the 8-question baseline quiz, not settings
+    await page.locator("#btnPlanAction").click();
+    await expect(page.locator("#view-quiz")).toHaveClass(/active/);
+    await expect(page.locator("#qCounter")).toContainText("Q 1/8");
   });
 
   test("plan action launches the coach's concrete drill", async ({ page }) => {
