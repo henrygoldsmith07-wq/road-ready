@@ -378,6 +378,10 @@ test.describe("official simulation", () => {
   });
 
   test("GB simulation embeds one adjacent DVSA case-study triple", async ({ page }) => {
+    // Budget, not leniency: this test walks all 50 DVSA questions (~1s each
+    // action round-trip plus the lazy UK-pack load), so the 45s default is a
+    // coin flip on slower runners. Assertions below are unchanged.
+    test.slow();
     await freshApp(page);
     if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
     await page.locator('#bottomNav button[data-nav="stats"]').click();
