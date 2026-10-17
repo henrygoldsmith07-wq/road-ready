@@ -81,6 +81,37 @@ test.describe("practice flow", () => {
     expect(answered).toBeGreaterThanOrEqual(1);
   });
 
+  test("report a question issue, review it, withdraw it", async ({ page }) => {
+    await freshApp(page);
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
+    await page.locator("#topicBrowser").evaluate((d) => { d.open = true; });
+    await page.locator("#topicGrid .topic-card").first().click();
+    await expect(page.locator("#view-quiz")).toHaveClass(/active/);
+
+    // file a report from the quiz card
+    await page.click("#btnReport");
+    await expect(page.locator("#reportPane")).toBeVisible();
+    await page.locator("#repKind").selectOption("typo");
+    await page.locator("#repNote").fill("e2e probe note");
+    await page.click("#btnReportSave");
+    await expect(page.locator("#reportPane")).toBeHidden();
+    await expect(page.locator("#btnReport")).toContainText("Reported");
+    const count = await page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem("roadready.v1")).issueReports || {}).length);
+    expect(count).toBe(1);
+
+    // visible in the Weakness Centre with a working withdraw
+    await page.keyboard.press("1");
+    await expect(page.locator("#feedback")).toBeVisible();
+    await page.click("#btnQuit");
+    await page.locator("#btnHomeR").click();
+    await page.locator("#qaReview").click();
+    await expect(page.locator("#view-review")).toHaveClass(/active/);
+    await expect(page.locator("#reportedIssues")).toBeVisible();
+    await expect(page.locator("#reportedIssues")).toContainText("e2e probe note");
+    await page.locator("#reportedIssues button", { hasText: "Withdraw" }).click();
+    await expect(page.locator("#reportedIssues")).toHaveCount(0);
+  });
+
   test("XP accrues and persists across reloads", async ({ page }) => {
     await freshApp(page);
     if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");

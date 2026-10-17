@@ -98,6 +98,7 @@
       host.innerHTML = "";
       list.innerHTML = `<p class="muted">No weaknesses — keep practising and anything that slips will gather here.</p>`;
       $("btnDrillMissed").style.display = "none";
+      renderReports();
       return;
     }
     if (!visibleSections.length && wc.snoozedCount > 0) {
@@ -109,6 +110,7 @@
       host.replaceChildren();
       host.appendChild(snoozeToggle(hiddenSnoozed, wc.snoozedCount));
       renderMissedTail();
+      renderReports();
       return;
     }
     sub.textContent = "Weaknesses, sorted by what matters most — each one is solvable.";
@@ -118,6 +120,7 @@
         (wc.snoozedCount && !showSnoozed ? ` · ${wc.snoozedCount} snoozed for later` : "");
     }
     host.replaceChildren();
+    renderReports();
     if (hiddenSnoozed > 0 || (showSnoozed && wc.snoozedCount > 0)) {
       host.appendChild(snoozeToggle(hiddenSnoozed, wc.snoozedCount));
     }
@@ -205,6 +208,96 @@
       host.appendChild(card);
     });
     renderMissedTail();
+  }
+
+  /* Reported question issues (errata outbox): filed from the quiz card, kept
+   * on the device, carried in the export bundle. Each entry re-practices the
+   * live question, copies out as a maintainer-ready summary, or is withdrawn.
+   * A report whose question id left the bank reads as likely-fixed-upstream. */
+  function renderReports() {
+    const { Core, getState, getBank, getQuestion, icon, escapeHTML, startPractice, alert } = ctx;
+    const host = $("reviewGroups");
+    if (!host) return;
+    const old = $("reportedIssues");
+    if (old) old.remove();
+    const state = getState();
+    const byId = {};
+    getBank().forEach((q) => { if (q && q.id) byId[q.id] = q; });
+    const items = Core.listedIssueReports(state.issueReports, byId);
+    if (!items.length) return;
+    const card = document.createElement("div");
+    card.className = "card review-group";
+    card.id = "reportedIssues";
+    const head = document.createElement("div");
+    head.className = "rg-head";
+    const title = document.createElement("h2");
+    title.className = "rg-title";
+    title.textContent = "Reported question issues";
+    const count = document.createElement("span");
+    count.className = "badge warn";
+    count.textContent = String(items.length);
+    head.append(title, count);
+    const why = document.createElement("p");
+    why.className = "rg-why";
+    why.textContent = "Problems you filed from the quiz card. They stay on this device and travel with your backup — withdraw any that no longer apply.";
+    const listEl = document.createElement("ul");
+    listEl.className = "rg-items";
+    items.forEach((it) => {
+      const li = document.createElement("li");
+      const label = document.createElement("b");
+      const kindLabel = (Core.ISSUE_KIND_LABELS || {})[it.kind] || it.kind;
+      label.textContent = it.stale ? `${kindLabel} · no longer in the bank` : kindLabel;
+      const detail = document.createElement("span");
+      detail.textContent = (it.question ? it.question.q : `Question ${it.qid}`)
+        + (it.note ? ` — “${it.note}”` : "")
+        + ` (${new Date(it.at).toISOString().slice(0, 10)})`;
+      li.append(label, detail);
+      const actions = document.createElement("div");
+      actions.className = "rg-actions";
+      if (!it.stale && it.question) {
+        const drill = document.createElement("button");
+        drill.type = "button";
+        drill.className = "btn ghost rg-drill";
+        drill.innerHTML = `${icon("target", 13)} Practice this question`;
+        on(drill, "click", () => {
+          const q = getQuestion(it.qid);
+          if (q) startPractice([q], "Reported question", "review");
+        });
+        actions.appendChild(drill);
+      }
+      const withdraw = document.createElement("button");
+      withdraw.type = "button";
+      withdraw.className = "btn ghost rg-later";
+      withdraw.textContent = "Withdraw";
+      on(withdraw, "click", () => {
+        const st = ctx.getState();
+        if (!st.issueReports) st.issueReports = {};
+        Core.withdrawIssueReport(st.issueReports, it.qid);
+        ctx.save();
+        render();
+      });
+      actions.appendChild(withdraw);
+      li.appendChild(actions);
+      listEl.appendChild(li);
+    });
+    const copyBtn = document.createElement("button");
+    copyBtn.type = "button";
+    copyBtn.className = "btn ghost rg-rule";
+    copyBtn.textContent = "Copy summary for the maintainer";
+    on(copyBtn, "click", () => {
+      const summary = JSON.stringify(items.map((it) => ({
+        id: it.qid, kind: it.kind, note: it.note, reported: new Date(it.at).toISOString().slice(0, 10),
+        question: it.question ? it.question.q : null,
+        answer: it.question ? it.question.choices[it.question.a] : null,
+      })), null, 2);
+      const done = () => (alert || window.alert)("Summary copied — paste it into an email or issue to the maintainer.");
+      const fallback = () => (alert || window.alert)("Copy is unavailable here — your reports also travel with Settings → Export backup.");
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+        navigator.clipboard.writeText(summary).then(done, fallback);
+      } else fallback();
+    });
+    card.append(head, why, listEl, copyBtn);
+    host.prepend(card);
   }
 
   /** Drill every missed question (the Review screen's bottom action). */

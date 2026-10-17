@@ -86,6 +86,7 @@
       v: SCHEMA_VERSION,
       qstats: {},        // qid -> {seen, correct, wrong, lastSeen, lastWrong, fastWrong, slowRight, sched:{due, ef, interval, reps}}
       flagged: {},       // qid -> true
+      issueReports: {},  // qid -> {kind, note, at} learner-filed content reports (errata outbox), local only
       reviewSnoozed: {},  // "category:conceptKey" -> snoozedAt ms (Weakness Centre "Mark for later")
       exams: [],         // {date, label, pct, correct, total, pass, durationSec}
       answered: 0,
@@ -177,6 +178,27 @@
       s.qstats[qid] = st;
     });
     s.flagged = plainObject(s.flagged);
+    // Learner-filed content reports: bounded and shape-checked like snoozes
+    // so a corrupt or hostile payload cannot bloat the save file. Unknown
+    // question ids simply match nothing at render time.
+    s.issueReports = plainObject(s.issueReports);
+    {
+      const clean = {};
+      for (const k of Object.keys(s.issueReports)) {
+        if (typeof k !== "string" || !k || k.length > 64) continue;
+        const r = plainObject(s.issueReports[k]);
+        if (!ISSUE_KINDS.includes(r.kind)) continue;
+        const at = num(r.at, 0, 0, 8.64e15);
+        if (!at) continue;
+        clean[k] = {
+          kind: r.kind,
+          note: typeof r.note === "string" ? r.note.slice(0, MAX_ISSUE_NOTE) : "",
+          at,
+        };
+      }
+      // keep the most recent 200 so the map cannot grow without bound
+      s.issueReports = Object.fromEntries(Object.entries(clean).sort((a, b) => a[1].at - b[1].at).slice(-MAX_ISSUE_REPORTS));
+    }
     // Weakness-Centre snoozes: bounded, timestamped, and keyed by a short
     // "category:conceptKey" string so a corrupt or hostile payload cannot
     // bloat the save file. Unknown keys simply match nothing at render time.
@@ -2486,6 +2508,66 @@ function reviewSched(sched, right, nowMs, quality) {
   }
   function nowMs(ms) { return typeof ms === "number" && isFinite(ms) ? ms : Date.now(); }
 
+  /* ---------------- question issue reports (errata outbox) ---------------- */
+  // A learner who spots a wrong answer or a misleading explanation files it
+  // here instead of shouting into the void: the report stays on the device,
+  // rides along in the export bundle, and is listed for review with a
+  // one-tap practice drill and a copyable summary. Fixed upstream content
+  // resolves the report when its question id disappears or changes.
+  const ISSUE_KINDS = ["wrong-answer", "unclear-wording", "outdated-rule", "typo", "other"];
+  const ISSUE_KIND_LABELS = {
+    "wrong-answer": "Wrong answer",
+    "unclear-wording": "Unclear wording",
+    "outdated-rule": "Outdated rule",
+    "typo": "Typo",
+    "other": "Something else",
+  };
+  const MAX_ISSUE_REPORTS = 200;
+  const MAX_ISSUE_NOTE = 500;
+
+  /**
+   * File (or re-file) a content report. Mutates the passed map like the
+   * other state helpers; returns {ok:true} or {ok:false, error}.
+   */
+  function fileIssueReport(reports, qid, kind, note, nowMs) {
+    if (!reports || typeof reports !== "object" || Array.isArray(reports)) return { ok: false, error: "bad-reports" };
+    if (typeof qid !== "string" || !qid || qid.length > 64) return { ok: false, error: "bad-qid" };
+    if (!ISSUE_KINDS.includes(kind)) return { ok: false, error: "bad-kind" };
+    const at = num(nowMs, 0, 0, 8.64e15) || Date.now();
+    reports[qid] = {
+      kind,
+      note: typeof note === "string" ? note.slice(0, MAX_ISSUE_NOTE).trim() : "",
+      at,
+    };
+    // bound the map: drop the oldest beyond the cap
+    const keys = Object.keys(reports).sort((a, b) => (reports[a].at || 0) - (reports[b].at || 0));
+    while (keys.length > MAX_ISSUE_REPORTS) delete reports[keys.shift()];
+    return { ok: true };
+  }
+
+  /** Remove a report. Returns true when one existed. */
+  function withdrawIssueReport(reports, qid) {
+    if (!reports || typeof reports !== "object" || Array.isArray(reports)) return false;
+    if (!Object.prototype.hasOwnProperty.call(reports, qid)) return false;
+    delete reports[qid];
+    return true;
+  }
+
+  /** Reports joined to live bank questions, newest first; stale ids are flagged, not hidden. */
+  function listedIssueReports(reports, questionsById, nowMs) {
+    const map = plainObject(reports);
+    const out = [];
+    for (const qid of Object.keys(map)) {
+      const r = plainObject(map[qid]);
+      if (!ISSUE_KINDS.includes(r.kind)) continue;
+      const q = questionsById ? questionsById[qid] : null;
+      out.push({ qid, kind: r.kind, note: typeof r.note === "string" ? r.note : "", at: num(r.at, 0, 0, 8.64e15) || 0, stale: !q, question: q || null });
+    }
+    void nowMs;
+    out.sort((a, b) => b.at - a.at);
+    return out;
+  }
+
   /* ---------------- import / export ---------------- */  /* ---------------- import / export ---------------- */
   const EXPORT_APP_ID = "road-ready";
 
@@ -2651,6 +2733,8 @@ function reviewSched(sched, right, nowMs, quality) {
     normalizeRt, pushRtSample, rtPercentiles, classifyResponse, applyFluency, answerFluency,
     MAX_RETRIEVAL_DAYS, noteRetrieval,
     exportBundle, parseImport,
+    ISSUE_KINDS, ISSUE_KIND_LABELS, MAX_ISSUE_REPORTS, MAX_ISSUE_NOTE,
+    fileIssueReport, withdrawIssueReport, listedIssueReports,
     finderTokens, searchBank, searchSigns,
     installPromptState,
   };

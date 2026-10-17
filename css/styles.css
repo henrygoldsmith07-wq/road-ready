@@ -908,3 +908,11 @@ kbd {
 .progress-summary { display: grid; gap: 4px; margin: 0 0 14px; }
 .progress-statement { margin: 0; font-size: 13.5px; line-height: 1.55; }
 .progress-statement + .progress-statement { color: var(--muted); }
+
+/* ---------- Quiz: question issue reports (errata outbox) ---------- */
+.report-pane { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+.report-pane h3 { font-size: 14px; margin: 0 0 2px; }
+.report-row { display: block; margin: 8px 0; font-size: 13px; }
+.report-row select, .report-row textarea { display: block; width: 100%; margin-top: 4px; font: inherit; font-size: 13px; padding: 8px; border: 1px solid var(--line-strong); border-radius: 8px; background: transparent; color: var(--text); }
+.report-row textarea { resize: vertical; }
+.report-actions { display: flex; gap: 8px; margin-top: 8px; }

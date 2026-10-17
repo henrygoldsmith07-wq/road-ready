@@ -35,6 +35,7 @@ location a field could quietly survive in.
 | Preferences | selected jurisdiction, pass mark, exam length, feedback on/off, read-aloud on/off, theme |
 | Your test date | used only on-device to size the daily plan |
 | Flagged questions | which questions you flagged |
+| Reported question issues | problems you reported on questions, with the kind and your note |
 | Snoozed weaknesses | Weakness-Centre items you marked for later, with when you snoozed them (auto-cleared when repaired or after 30 days) |
 | Sign flashcards | known / still-learning per sign |
 | Hazard best score | from the hazard-perception trainer |
