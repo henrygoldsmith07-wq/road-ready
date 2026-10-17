@@ -15,15 +15,15 @@
 
 | Measure | Value |
 |---|---|
-| Questions in the full bank | 2002 |
+| Questions in the full bank | 2016 |
 | Universal (US, no state pack) bank | 363 |
-| Jurisdiction-pack questions | 1639 |
-| Great Britain pack questions | 1565 |
+| Jurisdiction-pack questions | 1653 |
+| Great Britain pack questions | 1579 |
 | U.S. state-pack questions (six states) | 74 |
 | Distinct concepts | 644 |
-| Concepts with 3+ questions | 480 |
-| Concepts with 2+ question forms | 479 |
-| Concepts with a single question | 147 |
+| Concepts with 3+ questions | 487 |
+| Concepts with 2+ question forms | 486 |
+| Concepts with a single question | 140 |
 | Distinct question forms | 9 |
 | Road signs with artwork | 58 |
 | Registered jurisdictions (packs) | 8 |
@@ -41,7 +41,7 @@ The table below is the honest version of the product's coverage claim.
 | Florida (FLHSMV) | 363 | 6 | 369 | yes - 369 available, 50 needed | **6 own questions - 12% of a full exam's worth (50 needed)** |
 | Washington (DOL) | 363 | 6 | 369 | yes - 369 available, 40 needed | **6 own questions - 15% of a full exam's worth (40 needed)** |
 | Pennsylvania (PennDOT) | 363 | 7 | 370 | yes - 370 available, 18 needed | **7 own questions - 39% of a full exam's worth (18 needed)** |
-| Great Britain (DVSA car) | 0 | 1565 | 1565 | yes - 1565 available, 50 needed | 1565 own questions (3130% of a full exam's worth) |
+| Great Britain (DVSA car) | 0 | 1579 | 1579 | yes - 1579 available, 50 needed | 1579 own questions (3158% of a full exam's worth) |
 
 Read the last two columns together, because they answer different questions.
 
@@ -62,13 +62,13 @@ topic mix: the blueprint's `topicWeights` are editorial approximations
 
 | Topic | Questions | Concepts | Concepts with 2+ questions | Question forms |
 |---|---|---|---|---|
-| Safety & Emergencies | 285 | 92 | 74 | 9 |
+| Safety & Emergencies | 289 | 92 | 76 | 9 |
 | Signs & Signals | 268 | 93 | 62 | 9 |
-| People & Riders | 223 | 65 | 52 | 9 |
-| Markings & Lanes | 205 | 59 | 48 | 8 |
+| People & Riders | 225 | 65 | 53 | 9 |
+| Markings & Lanes | 207 | 59 | 49 | 8 |
 | Right of Way | 200 | 62 | 45 | 9 |
-| Rules & Penalties | 191 | 69 | 47 | 9 |
-| Speed & Distance | 175 | 56 | 43 | 8 |
+| Rules & Penalties | 195 | 69 | 49 | 9 |
+| Speed & Distance | 177 | 56 | 44 | 8 |
 | Alcohol & Drugs | 174 | 59 | 51 | 6 |
 | Parking & Stopping | 152 | 47 | 39 | 7 |
 | Vehicle Basics | 129 | 50 | 36 | 6 |
@@ -81,17 +81,17 @@ answer is evidence about one question, not about the rule.
 
 | Form | Questions | Share |
 |---|---|---|
-| scenario | 503 | 25.1% |
-| recall | 467 | 23.3% |
-| what-next | 437 | 21.8% |
-| multi-step | 218 | 10.9% |
-| sign-combo | 210 | 10.5% |
+| scenario | 507 | 25.1% |
+| recall | 472 | 23.4% |
+| what-next | 442 | 21.9% |
+| multi-step | 218 | 10.8% |
+| sign-combo | 210 | 10.4% |
 | diagram | 68 | 3.4% |
 | photo | 56 | 2.8% |
 | lane-choice | 29 | 1.4% |
 | prioritisation | 14 | 0.7% |
 
-Recall and scenario forms dominate. 164 concepts have fewer than
+Recall and scenario forms dominate. 157 concepts have fewer than
 three questions, which limits how well the app can verify that a learner can
 apply a rule to an unfamiliar situation rather than recognise a familiar
 prompt.
@@ -105,7 +105,6 @@ meet first; this list is the work queue, in priority order.
 | Concept | Questions | Forms | Topic |
 |---|---|---|---|
 | `bike-lane-turns` | 1 | scenario | laws |
-| `bus-lane-cycle-share` | 1 | scenario | markings |
 | `center-turn-lane` | 1 | scenario | markings |
 | `child-restraint` | 1 | recall | safety |
 | `distracted-driving` | 1 | recall | laws |
@@ -186,7 +185,6 @@ meet first; this list is the work queue, in priority order.
 | `railroad-stop` | 1 | recall | signs |
 | `raised-pavement-markers` | 1 | recall | markings |
 | `reckless-driving` | 1 | recall | laws |
-| `red-x-lane` | 1 | recall | laws |
 | `regulatory-vs-warning` | 1 | recall | signs |
 | `reversing-camera` | 1 | recall | vehicle |
 | `reversing-yield` | 1 | recall | row |
@@ -198,9 +196,6 @@ meet first; this list is the work queue, in priority order.
 | `school-bus-divided` | 1 | recall | row |
 | `school-bus-undivided` | 1 | recall | row |
 | `school-crossing-vs-zone` | 1 | recall | signs |
-| `school-keep-clear` | 1 | recall | laws |
-| `school-patrol-stop` | 1 | scenario | vulnerable |
-| `school-run-vigilance` | 1 | what-next | safety |
 | `school-zone-sign` | 1 | recall | signs |
 | `school-zone-speed` | 1 | scenario | vulnerable |
 | `seat-belt-law` | 1 | recall | safety |
@@ -210,7 +205,6 @@ meet first; this list is the work queue, in priority order.
 | `signalling-requirement` | 1 | recall | laws |
 | `slippery-road-sign` | 1 | recall | signs |
 | `slow-driving-hazard` | 1 | recall | speed |
-| `smart-motorway-stranded` | 1 | what-next | safety |
 | `soft-shoulder-sign` | 1 | recall | signs |
 | `solid-white-lane-line` | 1 | recall | markings |
 | `speed-and-stopping-distance` | 1 | recall | speed |
@@ -224,8 +218,14 @@ meet first; this list is the work queue, in priority order.
 | `stopped-emergency-vehicle` | 1 | recall | row |
 | `stopping-distance-components` | 1 | recall | speed |
 | `stuck-accelerator` | 1 | recall | safety |
+| `suspended-licence` | 1 | recall | laws |
+| `t-intersection-priority` | 1 | recall | row |
+| `tailgating-response` | 1 | recall | safety |
+| `texting-while-driving` | 1 | recall | safety |
+| `tire-blowout` | 1 | multi-step | safety |
+| `towing-chains` | 1 | recall | vehicle |
 
-and 44 more. See `node scripts/validate-content.mjs` for the full list.
+and 37 more. See `node scripts/validate-content.mjs` for the full list.
 
 ## Source provenance
 
@@ -242,7 +242,7 @@ document.
 | fl-flhsmv-handbook | FLHSMV | FL | 2026-08-23 | 6 | 0 |
 | wa-dol-driver-guide | Washington DOL | WA | 2026-08-23 | 6 | 0 |
 | pa-penndot-driver-manual | PennDOT | PA | 2026-08-23 | 7 | 0 |
-| uk-highway-code | Department for Transport | UK | 2026-09-22 | 1350 | 0 |
+| uk-highway-code | Department for Transport | UK | 2026-09-22 | 1364 | 0 |
 | uk-know-your-traffic-signs | Department for Transport | UK | 2026-09-22 | 215 | 0 |
 | uk-theory-test-format | DVSA | UK | 2026-09-22 | 0 | 0 |
 | us-dmv-handbooks-composite | Multiple state DMVs (composite) | * | 2026-08-23 | 363 | 0 |
