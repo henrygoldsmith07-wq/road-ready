@@ -15,15 +15,15 @@
 
 | Measure | Value |
 |---|---|
-| Questions in the full bank | 2071 |
-| Universal (US, no state pack) bank | 363 |
-| Jurisdiction-pack questions | 1708 |
+| Questions in the full bank | 2119 |
+| Universal (US, no state pack) bank | 397 |
+| Jurisdiction-pack questions | 1722 |
 | Great Britain pack questions | 1579 |
-| U.S. state-pack questions (six states) | 129 |
+| U.S. state-pack questions (six states) | 143 |
 | Distinct concepts | 659 |
-| Concepts with 3+ questions | 489 |
-| Concepts with 2+ question forms | 490 |
-| Concepts with a single question | 146 |
+| Concepts with 3+ questions | 513 |
+| Concepts with 2+ question forms | 514 |
+| Concepts with a single question | 122 |
 | Distinct question forms | 9 |
 | Road signs with artwork | 58 |
 | Registered jurisdictions (packs) | 8 |
@@ -34,13 +34,13 @@ The table below is the honest version of the product's coverage claim.
 
 | Jurisdiction | Universal bank | Own pack questions | Total available | Unique questions for an official-length mock | Own-pack depth vs a full exam |
 |---|---|---|---|---|---|
-| General U.S. rules — no state pack selected | 363 | 0 | 363 | n/a (no published exam spec) | n/a |
-| California (DMV) | 363 | 25 | 388 | yes - 388 available, 46 needed | **25 own questions - 54% of a full exam's worth (46 needed)** |
-| Texas (DPS) | 363 | 24 | 387 | yes - 387 available, 30 needed | **24 own questions - 80% of a full exam's worth (30 needed)** |
-| New York (DMV) | 363 | 20 | 383 | yes - 383 available, 20 needed | 20 own questions (100% of a full exam's worth) |
-| Florida (FLHSMV) | 363 | 20 | 383 | yes - 383 available, 50 needed | **20 own questions - 40% of a full exam's worth (50 needed)** |
-| Washington (DOL) | 363 | 20 | 383 | yes - 383 available, 40 needed | **20 own questions - 50% of a full exam's worth (40 needed)** |
-| Pennsylvania (PennDOT) | 363 | 20 | 383 | yes - 383 available, 18 needed | 20 own questions (111% of a full exam's worth) |
+| General U.S. rules — no state pack selected | 397 | 0 | 397 | n/a (no published exam spec) | n/a |
+| California (DMV) | 397 | 25 | 422 | yes - 422 available, 46 needed | **25 own questions - 54% of a full exam's worth (46 needed)** |
+| Texas (DPS) | 397 | 26 | 423 | yes - 423 available, 30 needed | **26 own questions - 87% of a full exam's worth (30 needed)** |
+| New York (DMV) | 397 | 24 | 421 | yes - 421 available, 20 needed | 24 own questions (120% of a full exam's worth) |
+| Florida (FLHSMV) | 397 | 24 | 421 | yes - 421 available, 50 needed | **24 own questions - 48% of a full exam's worth (50 needed)** |
+| Washington (DOL) | 397 | 22 | 419 | yes - 419 available, 40 needed | **22 own questions - 55% of a full exam's worth (40 needed)** |
+| Pennsylvania (PennDOT) | 397 | 22 | 419 | yes - 419 available, 18 needed | 22 own questions (122% of a full exam's worth) |
 | Great Britain (DVSA car) | 0 | 1579 | 1579 | yes - 1579 available, 50 needed | 1579 own questions (3158% of a full exam's worth) |
 
 Read the last two columns together, because they answer different questions.
@@ -62,16 +62,16 @@ topic mix: the blueprint's `topicWeights` are editorial approximations
 
 | Topic | Questions | Concepts | Concepts with 2+ questions | Question forms |
 |---|---|---|---|---|
-| Safety & Emergencies | 300 | 98 | 76 | 9 |
-| Signs & Signals | 268 | 93 | 62 | 9 |
-| People & Riders | 236 | 67 | 56 | 9 |
-| Rules & Penalties | 211 | 74 | 53 | 9 |
-| Markings & Lanes | 207 | 59 | 49 | 8 |
-| Right of Way | 204 | 62 | 46 | 9 |
-| Speed & Distance | 185 | 56 | 44 | 8 |
-| Alcohol & Drugs | 178 | 60 | 52 | 6 |
-| Parking & Stopping | 153 | 48 | 39 | 7 |
-| Vehicle Basics | 129 | 50 | 36 | 6 |
+| Safety & Emergencies | 314 | 98 | 83 | 9 |
+| Signs & Signals | 270 | 93 | 63 | 9 |
+| People & Riders | 238 | 67 | 57 | 9 |
+| Rules & Penalties | 221 | 74 | 58 | 9 |
+| Markings & Lanes | 209 | 59 | 50 | 8 |
+| Right of Way | 208 | 62 | 48 | 9 |
+| Speed & Distance | 187 | 56 | 45 | 8 |
+| Alcohol & Drugs | 180 | 60 | 53 | 6 |
+| Parking & Stopping | 157 | 48 | 41 | 7 |
+| Vehicle Basics | 135 | 50 | 39 | 6 |
 
 A high concept count with a low "concepts with variation" number means the
 topic is broad but shallow: each rule is tested by one question, so a right
@@ -81,17 +81,17 @@ answer is evidence about one question, not about the rule.
 
 | Form | Questions | Share |
 |---|---|---|
-| scenario | 535 | 25.8% |
-| recall | 499 | 24.1% |
-| what-next | 442 | 21.3% |
-| multi-step | 218 | 10.5% |
-| sign-combo | 210 | 10.1% |
-| diagram | 68 | 3.3% |
-| photo | 56 | 2.7% |
+| scenario | 554 | 26.1% |
+| recall | 504 | 23.8% |
+| what-next | 466 | 22.0% |
+| multi-step | 218 | 10.3% |
+| sign-combo | 210 | 9.9% |
+| diagram | 68 | 3.2% |
+| photo | 56 | 2.6% |
 | lane-choice | 29 | 1.4% |
 | prioritisation | 14 | 0.7% |
 
-Recall and scenario forms dominate. 170 concepts have fewer than
+Recall and scenario forms dominate. 146 concepts have fewer than
 three questions, which limits how well the app can verify that a learner can
 apply a rule to an unfamiliar situation rather than recognise a familiar
 prompt.
@@ -104,30 +104,6 @@ meet first; this list is the work queue, in priority order.
 
 | Concept | Questions | Forms | Topic |
 |---|---|---|---|
-| `alternate-side-parking` | 1 | recall | parking |
-| `bike-lane-turns` | 1 | scenario | laws |
-| `center-turn-lane` | 1 | scenario | markings |
-| `chain-law` | 1 | scenario | safety |
-| `child-restraint` | 1 | recall | safety |
-| `driveway-exit` | 1 | scenario | laws |
-| `dwi-child-passenger` | 1 | recall | alcohol |
-| `freeway-entrance-ramp` | 1 | recall | speed |
-| `freeway-merge-priority` | 1 | recall | row |
-| `frost-clearance` | 1 | recall | vehicle |
-| `fuel-reserve` | 1 | recall | vehicle |
-| `gps-while-driving` | 1 | recall | laws |
-| `green-arrow-light` | 1 | recall | signs |
-| `group-of-cyclists` | 1 | recall | vulnerable |
-| `hazard-lights` | 1 | recall | laws |
-| `headlight-failure` | 1 | recall | vehicle |
-| `headlight-flash-response` | 1 | recall | row |
-| `headlight-use-required` | 1 | recall | safety |
-| `headlight-wipers` | 1 | scenario | safety |
-| `headlight-work-zone` | 1 | recall | safety |
-| `headlights-in-rain` | 1 | recall | safety |
-| `headphones-while-driving` | 1 | recall | laws |
-| `high-beam-dimming` | 1 | recall | safety |
-| `highway-shoulder-stop` | 1 | recall | parking |
 | `hill-crest-speed` | 1 | recall | speed |
 | `hill-parking-rationale` | 1 | recall | parking |
 | `hill-sign` | 1 | recall | signs |
@@ -224,8 +200,32 @@ meet first; this list is the work queue, in priority order.
 | `stopped-emergency-vehicle` | 1 | recall | row |
 | `stopping-distance-components` | 1 | recall | speed |
 | `stuck-accelerator` | 1 | recall | safety |
+| `suspended-licence` | 1 | recall | laws |
+| `t-intersection-priority` | 1 | recall | row |
+| `tailgating-response` | 1 | recall | safety |
+| `texting-while-driving` | 1 | recall | safety |
+| `tire-blowout` | 1 | multi-step | safety |
+| `towing-chains` | 1 | recall | vehicle |
+| `truck-following-downgrade` | 1 | recall | speed |
+| `truck-no-zones` | 1 | recall | safety |
+| `turn-across-bike-lane` | 1 | recall | row |
+| `turn-priority` | 1 | what-next | row |
+| `two-way-left-turn-lane` | 1 | recall | markings |
+| `two-way-traffic-sign` | 1 | recall | signs |
+| `tyre-blowout` | 1 | recall | safety |
+| `tyre-pressure-source` | 1 | recall | vehicle |
+| `tyre-tread-test` | 1 | recall | vehicle |
+| `u-turn-legality` | 1 | recall | laws |
+| `unattended-vehicle-damage` | 1 | recall | safety |
+| `uncontrolled-intersection-tie` | 1 | recall | row |
+| `under-21-alcohol-limit` | 1 | recall | alcohol |
+| `uphill-stop-in-traffic` | 1 | recall | vehicle |
+| `wiper-condition` | 1 | recall | vehicle |
+| `work-zone-authority` | 1 | recall | signs |
+| `work-zone-sign` | 1 | recall | signs |
+| `work-zone-speed` | 1 | recall | speed |
 
-and 50 more. See `node scripts/validate-content.mjs` for the full list.
+and 26 more. See `node scripts/validate-content.mjs` for the full list.
 
 ## Source provenance
 
@@ -237,15 +237,15 @@ document.
 | Source | Authority | Jurisdiction | Verified | Questions citing it directly | Via category default |
 |---|---|---|---|---|---|
 | ca-dmv-driver-handbook | California DMV | CA | 2026-08-23 | 25 | 0 |
-| tx-dps-driver-handbook | Texas DPS | TX | 2026-08-23 | 24 | 0 |
-| ny-dmv-driver-manual | New York DMV | NY | 2026-08-23 | 20 | 0 |
-| fl-flhsmv-handbook | FLHSMV | FL | 2026-08-23 | 20 | 0 |
-| wa-dol-driver-guide | Washington DOL | WA | 2026-08-23 | 20 | 0 |
-| pa-penndot-driver-manual | PennDOT | PA | 2026-08-23 | 20 | 0 |
+| tx-dps-driver-handbook | Texas DPS | TX | 2026-08-23 | 26 | 0 |
+| ny-dmv-driver-manual | New York DMV | NY | 2026-08-23 | 24 | 0 |
+| fl-flhsmv-handbook | FLHSMV | FL | 2026-08-23 | 24 | 0 |
+| wa-dol-driver-guide | Washington DOL | WA | 2026-08-23 | 22 | 0 |
+| pa-penndot-driver-manual | PennDOT | PA | 2026-08-23 | 22 | 0 |
 | uk-highway-code | Department for Transport | UK | 2026-09-22 | 1364 | 0 |
 | uk-know-your-traffic-signs | Department for Transport | UK | 2026-09-22 | 215 | 0 |
 | uk-theory-test-format | DVSA | UK | 2026-09-22 | 0 | 0 |
-| us-dmv-handbooks-composite | Multiple state DMVs (composite) | * | 2026-08-23 | 363 | 0 |
+| us-dmv-handbooks-composite | Multiple state DMVs (composite) | * | 2026-08-23 | 397 | 0 |
 
 A source older than `VERIFICATION_MAX_AGE_DAYS` (365) fails content QA
 (`scripts/content-checks.mjs`, rule `provenance-stale`), so the table above
