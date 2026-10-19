@@ -783,8 +783,11 @@
   </div>
 </div>
 
-<!-- window.__lastError is read by e2e/app.spec.js after a fresh page.open(). -->
-<script src="js/boot-error.js"></script>
+<!-- window.__lastError is read by e2e/app.spec.js after a fresh page.open().
+     Deferred (not inline) so the strict CSP stays intact and the request no
+     longer blocks first paint; document order still runs it before every
+     other deferred script, so no app error escapes capture. -->
+<script src="js/boot-error.js" defer></script>
 <!-- Data + logic load in the same order the classic app expects, but deferred:
      parsing happens in parallel instead of blocking first paint. The execution
      order of deferred scripts is still document order, so app.js boots last. -->
