@@ -95,17 +95,24 @@ jobs:
       - uses: actions/setup-node@v7
         with: { node-version: 24, cache: npm }
       - run: npm ci
-      - name: Run Lighthouse against the served app
+      - name: Run Lighthouse against the served app (median of 3)
         run: |
           node serve.js &
           sleep 2
-          npx --yes lighthouse@13.5.0 http://localhost:8321 \
-            --output=json --output-path=lighthouse.json \
-            --only-categories=performance,accessibility,best-practices,seo \
-            --chrome-flags="--headless=new" --quiet
+          for i in 1 2 3; do
+            npx --yes lighthouse@13.5.0 http://localhost:8321 \
+              --output=json --output-path=lighthouse-$i.json \
+              --only-categories=performance,accessibility,best-practices,seo \
+              --chrome-flags="--headless=new" --quiet
+          done
           node -e "
-            const r = require('./lighthouse.json');
-            const s = Object.fromEntries(Object.entries(r.categories).map(([k,v])=>[k,v.score]));
+            const fs = require('fs');
+            const runs = [1,2,3].map(i => JSON.parse(fs.readFileSync('./lighthouse-'+i+'.json','utf8')));
+            const perfs = runs.map(r => r.categories.performance.score).sort((a,b)=>a-b);
+            const medianPerf = perfs[1];
+            const first = runs[0].categories;
+            const s = { performance: medianPerf, accessibility: first.accessibility.score, 'best-practices': first['best-practices'].score, seo: first.seo.score };
+            console.log('performance runs:', perfs, 'median:', medianPerf);
             console.log(s);
             const min = { performance: .7, accessibility: .9, 'best-practices': .9, seo: .8 };
             for (const [k,v] of Object.entries(min)) {
