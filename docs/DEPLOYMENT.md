@@ -27,6 +27,15 @@ No accounts configured? Deploy the static app as-is — sign-in never appears an
 2. Configure branch protection on `main` to require the CI checks (Settings → Branches). Suggested minimum: require `lint-and-typecheck`, `unit-and-content`, `audit`, `backend-postgres`, `e2e`, and `lighthouse`; require at least one review; disallow force pushes.
 3. Prefer deploying from the `main` branch only (Vercel: Production Branch = `main`). A broken commit that cannot reach `main` cannot silently become production.
 
+## Deployment Protection (decision)
+
+**Decision: Standard Protection — production stays public, previews stay gated.**
+
+- Production (the `main` branch on the production domain) must remain **unprotected**. Road Ready is a public, no-login PWA: enabling protection on “All Deployments” would put Vercel Authentication or a password in front of every anonymous learner, breaking open study access, PWA installability, offline-first loading, SEO, and the Lighthouse CI gate.
+- Preview deployments keep **Vercel Authentication** under the **Standard Protection** scope, so in-progress content branches are never publicly browsable.
+- This is a dashboard setting (Project → Settings → Deployment Protection), not code: `vercel.json` has no field for it, so there is nothing to commit — record any change here. To apply: scope = Standard Protection, method = Vercel Authentication.
+- No CI impact: E2E and Lighthouse run against local `serve.js`, never against preview URLs. If preview-URL testing is ever needed, use Protection Bypass for Automation and store the secret in the CI provider’s secrets — never in the repo.
+
 ## Service worker & cache versioning
 
 `sw.js`'s `VERSION` is **generated** — a content hash of every precached shell file, produced by `scripts/update-sw.mjs`:
