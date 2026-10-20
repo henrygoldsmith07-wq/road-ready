@@ -116,6 +116,56 @@
     void getBank;
   }
 
+  /** Instructor / parent summary: the same measured values as the statements
+   *  above, rendered to plain text by Explain and copied on explicit tap
+   *  only — nothing leaves the device except through the learner's own paste.
+   *  Uses textContent-safe construction everywhere; the report itself is
+   *  plain text, never HTML. */
+  function wireShareProgress() {
+    const btn = $("btnShareProgress");
+    if (!btn || btn.dataset.wired) return;
+    btn.dataset.wired = "1";
+    on(btn, "click", () => {
+      const { Core, Coach, Explain, CATEGORIES, getState,
+        catQ, catAccuracy, termsForPack, todayStr, toast, hazardCategories } = ctx;
+      const state = getState();
+      let jurisdiction = state.settings.statePack;
+      try {
+        const t = termsForPack(state.settings.statePack);
+        if (t && t.regionLabel) jurisdiction = t.regionLabel;
+      } catch { /* keep the pack id */ }
+      const weak = Object.entries(CATEGORIES)
+        .map(([id, c]) => ({ name: c.name, m: Core.topicMastery(catQ(id), state.qstats), acc: catAccuracy(id) }))
+        .filter((t) => t.acc !== null)
+        .sort((a, b) => a.m - b.m)
+        .slice(0, 3)
+        .map((t) => t.name);
+      const hazardRows = Core.hazardCategorySkill(
+        (state.hazardLog || []).map((h) => ({ scenario: h.scenario, pts: h.pts, outcome: h.band === "late" || h.band === "early" ? "late" : "window", anticipation: h.band === "instant" || h.band === "good" ? "anticipatory" : "reactive" })),
+        hazardCategories,
+      );
+      const text = Explain.instructorSummary({
+        jurisdictionLabel: jurisdiction,
+        dateISO: todayStr(),
+        answered: state.answered,
+        accuracyPct: state.answered ? 100 * state.correctCount / state.answered : null,
+        streakDays: state.streak.count,
+        recentMocks: state.exams.slice(-3).map((e) => ({ correct: e.correct, total: e.total })),
+        weakTopics: weak,
+        misconceptionCount: Coach.activeMisconceptions(state.misconceptions).length,
+        hazard: hazardRows.length >= 2
+          ? { best: hazardRows[hazardRows.length - 1].category.replace(/-/g, " "), worst: hazardRows[0].category.replace(/-/g, " ") }
+          : null,
+        nextStep: weak.length ? `Focus the next session on ${weak[0]}.` : null,
+      });
+      const done = () => toast("Summary copied", "Paste it into a message to your instructor or parent.", "download");
+      const fallback = () => toast("Copy unavailable", "This browser blocked copying — use Settings → Export backup to share the full file instead.", "warn");
+      if (typeof navigator !== "undefined" && navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+        navigator.clipboard.writeText(text).then(done, fallback);
+      } else fallback();
+    });
+  }
+
   function render() {
     const { Core, ACHIEVEMENTS, getState, escapeHTML, icon, fmtTime, levelFor,
       hazardScenarioCount, renderFluency,
@@ -123,6 +173,7 @@
       PackIds, todayStr } = ctx;
     const state = getState();
     renderProgressSummary();
+    wireShareProgress();
 
     const acc = state.answered ? Math.round(100 * state.correctCount / state.answered) : null;
     $("ssAnswered").textContent = state.answered;

@@ -450,3 +450,48 @@ describe("evidence-aware coach ranking (cooldowns and escalation)", () => {
     expect(JSON.stringify(Coach.recommend(input))).toBe(JSON.stringify(Coach.recommend(input)));
   });
 });
+
+describe("thin-concept next actions (no impossible transfer asks)", () => {
+  const thinQs = () => [q("t1", "thin-rule", "recall")];
+
+  it("a single-question learning concept never asks for a different style", () => {
+    const bank = thinQs();
+    const rows = Mastery.conceptMap(bank, {
+      t1: { seen: 2, correct: 1, wrong: 1, lastSeen: NOW - DAY },
+    }, {}, NOW);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].transfer.canShowTransfer).toBe(false);
+    expect(rows[0].nextAction.label).not.toMatch(/different question style/i);
+    expect(rows[0].nextAction.label).not.toMatch(/more variations/i);
+    expect(["retrieval", "retry", "build", "fluency", "review", "repair"].includes(rows[0].nextAction.kind) || rows[0].nextAction.kind === "retrieval").toBe(true);
+  });
+
+  it("a single-question secure concept never asks to prove it on more variations", () => {
+    const bank = thinQs();
+    const day = (n) => NOW - n * DAY;
+    const r = Mastery.conceptState(bank, {
+      t1: { seen: 6, correct: 6, wrong: 0, lastSeen: day(1), retrievalDays: ["2026-10-01", "2026-09-30", "2026-09-29"] },
+    }, null, NOW);
+    const action = Mastery.nextActionFor(r, null);
+    expect(action.label).not.toMatch(/more variations/i);
+    expect(action.label).not.toMatch(/different question style/i);
+  });
+
+  it("a single-question seen concept asks for a retry, not variations", () => {
+    const bank = thinQs();
+    const rows = Mastery.conceptMap(bank, {
+      t1: { seen: 1, correct: 0, wrong: 1, lastSeen: NOW - DAY },
+    }, {}, NOW);
+    expect(rows[0].state).toBe("seen");
+    expect(rows[0].nextAction.label).toMatch(/try this rule again/i);
+  });
+
+  it("a multi-question concept keeps the transfer recommendation", () => {
+    const bank = conceptQs();
+    const r = Mastery.conceptState(bank, {
+      c1: { seen: 3, correct: 3, wrong: 0, lastSeen: NOW - DAY },
+    }, null, NOW);
+    const action = Mastery.nextActionFor(r, null);
+    expect(action.label).toMatch(/different question style/i);
+  });
+});
