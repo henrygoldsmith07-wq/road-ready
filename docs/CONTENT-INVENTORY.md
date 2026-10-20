@@ -91,55 +91,26 @@ answer is evidence about one question, not about the rule.
 | lane-choice | 33 | 1.4% |
 | prioritisation | 16 | 0.7% |
 
-Recall and scenario forms dominate. 36 concepts have fewer than
-three questions, which limits how well the app can verify that a learner can
-apply a rule to an unfamiliar situation rather than recognise a familiar
-prompt.
+Recall and scenario forms dominate. 5 concepts cannot
+evidence transfer at all, which limits how well the app can verify that a
+learner can apply a rule to an unfamiliar situation rather than recognise a
+familiar prompt.
 
 ## Concepts that cannot yet evidence transfer
 
 Listed so the gap is visible in review rather than hidden inside a topic total.
-Batch 1 of the content plan targets the concepts a learner is most likely to
-meet first; this list is the work queue, in priority order.
+A concept appears here when it offers fewer than two questions, or fewer than
+two question forms — the same test the mastery engine applies, so this list is
+exactly the set of concepts the app can never show transfer for. Add a second
+form (not merely a second near-identical question) to clear a row.
 
 | Concept | Questions | Forms | Topic |
 |---|---|---|---|
 | `signal-distance` | 1 | recall | safety |
 | `slower-traffic-keep-right` | 1 | recall | laws |
 | `towing-chains` | 1 | recall | vehicle |
-| `signalling-requirement` | 2 | recall, scenario | laws |
-| `skid-recovery` | 2 | recall, scenario | safety |
-| `slow-driving-hazard` | 2 | recall, what-next | speed |
-| `soft-shoulder-sign` | 2 | recall, what-next | signs |
-| `solid-white-lane-line` | 2 | recall, diagram | markings |
-| `speed-and-stopping-distance` | 2 | recall, diagram | speed |
-| `speed-limit-sign` | 2 | recall, scenario | signs |
-| `stale-green-light` | 2 | recall, what-next | signs |
-| `standard-drink-equivalence` | 2 | recall, diagram | alcohol |
-| `steering-hand-position` | 2 | recall, what-next | vehicle |
-| `stop-ahead-sign` | 2 | recall, scenario | signs |
-| `stopped-emergency-vehicle` | 2 | recall, what-next | row |
-| `stopping-distance-components` | 2 | recall, scenario | speed |
-| `stuck-accelerator` | 2 | recall, what-next | safety |
-| `suspended-licence` | 2 | recall, what-next | laws |
-| `t-intersection-priority` | 2 | recall, diagram | row |
-| `tailgating-response` | 2 | recall, what-next | safety |
-| `texting-while-driving` | 2 | recall, prioritisation | safety |
-| `tire-blowout` | 2 | multi-step, scenario | safety |
-| `truck-following-downgrade` | 2 | recall, scenario | speed |
-| `truck-no-zones` | 2 | recall, scenario | safety |
-| `turn-across-bike-lane` | 2 | recall, lane-choice | row |
-| `turn-priority` | 2 | what-next, scenario | row |
-| `two-way-left-turn-lane` | 2 | recall, diagram | markings |
-| `tyre-blowout` | 2 | recall, what-next | safety |
-| `tyre-tread-test` | 2 | recall, scenario | vehicle |
-| `u-turn-legality` | 2 | recall, scenario | laws |
-| `unattended-vehicle-damage` | 2 | recall, scenario | safety |
-| `uncontrolled-intersection-tie` | 2 | recall, scenario | row |
-| `under-21-alcohol-limit` | 2 | recall, scenario | alcohol |
-| `uphill-stop-in-traffic` | 2 | recall, scenario | vehicle |
-| `work-zone-sign` | 2 | recall, diagram | signs |
-| `wrong-way-sign` | 2 | recall, diagram | signs |
+| `motorcycle-helmet` | 3 | recall | vulnerable |
+| `zero-tolerance` | 6 | recall | alcohol |
 
 
 ## Source provenance
