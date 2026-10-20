@@ -23,7 +23,7 @@ const WRITE = process.argv.includes("--write");
 const CHECK = process.argv.includes("--check");
 
 const C = loadContent();
-const { QUESTIONS, CATEGORIES, STATE_PACKS, SOURCE_REGISTRY, EXAM_BLUEPRINTS, JURISDICTIONS } = C;
+const { QUESTIONS, CATEGORIES, STATE_PACKS, SOURCE_REGISTRY, EXAM_BLUEPRINTS } = C;
 const { stats, warnings } = runChecks(C);
 
 const conceptKey = (q) => (q && typeof q.concept === "string" && q.concept.trim())
@@ -50,10 +50,6 @@ const conceptQuestions = [...conceptGroups.entries()].map(([key, qs]) => ({
 
 /* ---------------- roll-ups ---------------- */
 const byJurisdiction = {};
-const jurisdictionOf = (q) => {
-  if (Array.isArray(q.jurisdiction) && q.jurisdiction.length) return q.jurisdiction[0];
-  return q.cat; // never happens; defensive
-};
 
 // Universal bank = the US default bank, available to every US pack.
 const universal = QUESTIONS.filter((q) => !Array.isArray(q.jurisdiction) || !q.jurisdiction.length);
@@ -97,7 +93,6 @@ const thinConcepts = conceptQuestions
   .filter((c) => c.questions.length < 3)
   .sort((a, b) => a.questions.length - b.questions.length || a.key.localeCompare(b.key));
 
-const singleFormConcepts = conceptQuestions.filter((c) => c.forms.length < 2 && c.questions.length >= 2);
 const formCounts = {};
 for (const q of QUESTIONS) formCounts[q.form || "recall"] = (formCounts[q.form || "recall"] || 0) + 1;
 

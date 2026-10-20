@@ -9,7 +9,9 @@
  * Update flow: a newly installed worker waits (browser default). The page
  * sends it "skip-waiting", it activates, deletes every older cache, claims
  * clients, and the page shows a "Reload" toast. Mixed old/new asset versions
- * are avoided by rebuilding the whole cache per version and deleting the rest.
+ * are avoided by rebuilding the whole cache per version and deleting the rest,
+ * and by serving precached shell files only from their own version's cache:
+ * a running worker never writes a newer deploy's file into its older cache.
  *
  * API responses can contain signed-in account details and the user's synced
  * backup. They must always go directly to the network and must never enter
@@ -19,7 +21,7 @@
 "use strict";
 
 // scripts/update-sw.mjs rewrites the line below — do not edit by hand.
-const VERSION = "v.8ff93b702d20";
+const VERSION = "v.bd278cb77d33";
 const CACHE = `roadready-${VERSION}`;
 const SHELL = [
   "./",
@@ -63,6 +65,7 @@ const SHELL = [
   "js/guide.js",
   "js/app.js",
 ];
+const SHELL_URLS = new Set(SHELL.map((path) => new URL(path, location.href).href));
 
 self.addEventListener("install", (e) => {
   e.waitUntil(
@@ -96,21 +99,33 @@ self.addEventListener("fetch", (e) => {
   // a previous account's response.
   if (url.pathname === "/api" || url.pathname.startsWith("/api/")) return;
 
-  // Navigations: try network, fall back to cached shell (works offline).
+  // Navigations: try network, fall back to cached shell (works offline). Only
+  // successful pages are kept, keyed without the query string so one-off URLs
+  // such as /?signin=ok neither pile up nor shadow the shell.
   if (req.mode === "navigate") {
+    const key = url.origin + url.pathname;
     e.respondWith(
       fetch(req)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(req, copy));
+          if (res && res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put(key, copy));
+          }
           return res;
         })
-        .catch(() => caches.match(req).then((hit) => hit || caches.match("index.html")))
+        .catch(() => caches.match(key).then((hit) => hit || caches.match("index.html")))
     );
     return;
   }
 
-  // Assets: stale-while-revalidate.
+  // Precached shell files: this version's cache only. A deploy reaches users
+  // as a new worker with a new cache, never one file at a time.
+  if (SHELL_URLS.has(url.href)) {
+    e.respondWith(caches.open(CACHE).then((c) => c.match(req)).then((hit) => hit || fetch(req)));
+    return;
+  }
+
+  // Other assets: stale-while-revalidate.
   e.respondWith(
     caches.match(req).then((hit) => {
       const refresh = fetch(req)

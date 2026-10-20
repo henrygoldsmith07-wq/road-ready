@@ -31,7 +31,15 @@ function sql() {
   return client;
 }
 
+// Test seam: route queries through another Postgres client (the integration
+// test runs these exact statements through node-postgres). null restores Neon.
+let executor = null;
+export function setQueryExecutor(fn) {
+  executor = fn;
+}
+
 export async function queryRows(text, params = []) {
+  if (executor) return executor(text, params);
   return sql().query(text, params);
 }
 
@@ -40,8 +48,12 @@ export async function queryRows(text, params = []) {
  * one as needed.
  *
  * Matching is by google_sub first — it survives the user changing the address
- * on their Google account — then by email. Email is only trusted as a link key
- * because the caller has already verified Google marked it verified.
+ * on their Google account, and the stored email follows the change unless
+ * another account already holds the new address. Email is only a link key for
+ * a row that has never been bound to a Google subject: Google reassigns
+ * addresses (Workspace accounts especially), so a verified email arriving with
+ * a different sub is a different person and must not inherit the account.
+ * That case resolves no row and the sign-in is refused.
  *
  * One statement, so two concurrent first sign-ins cannot both insert.
  */
@@ -49,7 +61,13 @@ export async function upsertGoogleUser(profile) {
   const email = String(profile.email).trim().toLowerCase();
   const rows = await queryRows(
     `WITH linked AS (
-       UPDATE users SET name = COALESCE($3, name), image = COALESCE($4, image)
+       UPDATE users
+          SET email = CASE
+                WHEN EXISTS (SELECT 1 FROM users other
+                              WHERE other.email = $1 AND other.google_sub IS DISTINCT FROM $2)
+                THEN users.email ELSE $1 END,
+              name = COALESCE($3, name),
+              image = COALESCE($4, image)
         WHERE google_sub = $2
         RETURNING *
      ), inserted AS (
@@ -60,6 +78,7 @@ export async function upsertGoogleUser(profile) {
           SET google_sub = EXCLUDED.google_sub,
               name = COALESCE(users.name, EXCLUDED.name),
               image = COALESCE(users.image, EXCLUDED.image)
+        WHERE users.google_sub IS NULL
        RETURNING *
      )
      SELECT * FROM linked
@@ -67,7 +86,7 @@ export async function upsertGoogleUser(profile) {
      SELECT * FROM inserted`,
     [email, profile.sub, profile.name ?? null, profile.image ?? null],
   );
-  if (!rows[0]) throw new Error('Could not resolve a Google account');
+  if (!rows[0]) throw new Error('This email belongs to an account linked to a different Google sign-in');
   return rows[0];
 }
 

@@ -9,7 +9,7 @@
 > Regenerate with `node scripts/content-coverage.mjs --write`.
 > Every count in `README.md` should trace back to this file.
 
-**Generated:** 2026-10-19
+**Generated:** 2026-10-20
 
 ## Headline numbers
 
@@ -182,15 +182,8 @@ cannot silently go stale.
 
 ## Open review notes from content QA
 
-4 advisory notes, grouped by rule. These are surfaced, never
+0 advisory notes, grouped by rule. These are surfaced, never
 silently dropped, and none of them fail the build on their own.
-
-### explanation — 4
-
-- [uk-478] explanation shares no wording with the correct answer — check it explains the right option
-- [uk-1419] explanation shares no wording with the correct answer — check it explains the right option
-- [uk-1479] explanation shares no wording with the correct answer — check it explains the right option
-- [uk-1504] explanation shares no wording with the correct answer — check it explains the right option
 
 ## Reproducing this file
 

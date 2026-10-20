@@ -21,7 +21,6 @@ const problems = [];
 const warnings = [];
 
 /* 1. concept coverage */
-const noConcept = bank.filter((q) => !q.concept);
 const topicFallback = bank.filter((q) => !q.concept).length;
 if (topicFallback > 0) {
   problems.push(`${topicFallback} questions have no concept and would fall back to topic:<cat>`);
@@ -96,7 +95,7 @@ for (const [id, concept] of Object.entries(registry)) {
   applicable++;
 }
 if (stale) problems.push(`QUESTION_CONCEPTS has ${stale} entries for ids not in the bank`);
-console.log(`registry: ${Object.keys(registry).length} entries, ${applicable} apply, ${inlineConcepts.size} inline in the bank`);
+console.log(`registry: ${Object.keys(registry).length} entries, ${applicable} apply, ${contradicting} contradict the bank, ${inlineConcepts.size} inline in the bank`);
 
 /* 8. coverage picture (reported, not failed on — the gaps are the point) */
 const perConcept = new Map();
