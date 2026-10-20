@@ -17,7 +17,14 @@ const CSP =
   "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; " +
   "manifest-src 'self'; worker-src 'self'";
 http.createServer((req, res) => {
-  const urlPath = decodeURIComponent(req.url.split("?")[0]);
+  let urlPath;
+  try {
+    urlPath = decodeURIComponent(req.url.split("?")[0]);
+  } catch {
+    // Malformed percent-encoding: refuse the request, don't crash the server.
+    res.writeHead(400, { "Content-Type": "text/plain" });
+    return res.end("bad request");
+  }
   // Stand in for the serverless backend when accounts are not configured:
   // the session endpoint exists in production and answers "signed out", so a
   // local run must not log a console error Lighthouse would flag.
@@ -32,7 +39,8 @@ http.createServer((req, res) => {
   let p = urlPath;
   if (p === "/") p = "/index.html";
   const file = path.join(root, p);
-  if (!file.startsWith(root) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
+  // root + separator: a bare prefix check would also admit ../road-ready-x/.
+  if (!file.startsWith(root + path.sep) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
     res.writeHead(404, { "Content-Type": "text/plain" });
     return res.end("not found");
   }

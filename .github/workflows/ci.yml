@@ -39,6 +39,10 @@ jobs:
       - run: npm run test:unit
       - run: npm run validate   # strict content QA incl. provenance + freshness + blueprints + jurisdiction contract
       - run: npm run hygiene    # cross-project contamination guard
+      - run: npm run content:coverage:check   # docs/CONTENT-INVENTORY.md matches the bank
+      - run: npm run check:concepts
+      - run: npm run check:privacy
+      - run: npm run check:product            # product-surface regression guards
 
   backend-postgres:
     runs-on: ubuntu-latest

@@ -215,7 +215,7 @@
    * live question, copies out as a maintainer-ready summary, or is withdrawn.
    * A report whose question id left the bank reads as likely-fixed-upstream. */
   function renderReports() {
-    const { Core, getState, getBank, getQuestion, icon, escapeHTML, startPractice, alert } = ctx;
+    const { Core, getState, getBank, getQuestion, icon, startPractice, alert } = ctx;
     const host = $("reviewGroups");
     if (!host) return;
     const old = $("reportedIssues");

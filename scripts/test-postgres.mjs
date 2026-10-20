@@ -1,6 +1,14 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import pg from "pg";
+import {
+  deleteUser,
+  findUserById,
+  readState,
+  setQueryExecutor,
+  upsertGoogleUser,
+  writeState,
+} from "../api/_lib/db.js";
 
 const { Client } = pg;
 const connectionString = process.env.TEST_DATABASE_URL;
@@ -27,51 +35,60 @@ try {
     }
   }
 
-  const user = await client.query(
-    `insert into users (email, google_sub, name)
-     values ('integration@example.com', 'google-sub-1', 'Integration')
-     returning id`,
-  );
-  const userId = user.rows[0].id;
+  // From here on every statement is the production SQL in api/_lib/db.js,
+  // routed through this client instead of Neon's HTTP driver.
+  setQueryExecutor((text, params) => client.query(text, params).then((r) => r.rows));
+  const expect = (ok, message) => { if (!ok) throw new Error(message); };
 
-  const inserted = await client.query(
-    `insert into user_state (user_id, payload, version, revision)
-     values ($1, $2::jsonb, 1, 1)
-     returning revision`,
-    [userId, JSON.stringify({ bundle: "v1" })],
-  );
-  if (String(inserted.rows[0].revision) !== "1") throw new Error("initial revision is not 1");
+  /* ---------- account resolution ---------- */
+  const user = await upsertGoogleUser({ sub: "google-sub-1", email: "Integration@Example.com", name: "Integration" });
+  expect(user.email === "integration@example.com", "email was not normalised to lower case");
+  const userId = user.id;
 
-  // This is the same compare-and-swap shape used by api/_lib/db.js.
-  const update = async (expected, bundle) => client.query(
-    `update user_state
-        set payload = $2::jsonb, updated_at = now(), revision = revision + 1
-      where user_id = $1 and revision = $3::bigint
-      returning revision, payload`,
-    [userId, JSON.stringify({ bundle }), String(expected)],
-  );
+  const again = await upsertGoogleUser({ sub: "google-sub-1", email: "integration@example.com", name: null });
+  expect(again.id === userId && again.name === "Integration", "a repeat sign-in did not resolve the same account");
 
-  const staleBefore = await update(0, "stale-before");
-  if (staleBefore.rowCount !== 0) throw new Error("stale revision unexpectedly overwrote state");
+  // The holder changes the address on their Google account: same sub, new email.
+  const moved = await upsertGoogleUser({ sub: "google-sub-1", email: "moved@example.com" });
+  expect(moved.id === userId && moved.email === "moved@example.com", "the stored email did not follow the Google account");
 
-  const current = await update(1, "v2");
-  if (current.rowCount !== 1 || String(current.rows[0].revision) !== "2") {
-    throw new Error("current revision did not advance atomically");
+  // A legacy row with no Google subject yet links by verified email.
+  const legacy = await client.query("insert into users (email) values ('legacy@example.com') returning id");
+  const linkedLegacy = await upsertGoogleUser({ sub: "google-sub-legacy", email: "legacy@example.com" });
+  expect(linkedLegacy.id === legacy.rows[0].id && linkedLegacy.google_sub === "google-sub-legacy", "a legacy row was not linked by email");
+
+  // A reassigned address arriving with a different sub must not inherit the account.
+  let refused = false;
+  try {
+    await upsertGoogleUser({ sub: "google-sub-intruder", email: "moved@example.com" });
+  } catch {
+    refused = true;
   }
+  expect(refused, "a different Google subject took over an account by email");
+  const owner = await findUserById(userId);
+  expect(owner.google_sub === "google-sub-1", "the existing account's Google subject was overwritten");
 
-  const staleAfter = await update(1, "stale-after");
-  if (staleAfter.rowCount !== 0) throw new Error("replayed revision unexpectedly overwrote newer state");
+  // Moving to an address another account holds keeps the old one rather than failing.
+  const blocked = await upsertGoogleUser({ sub: "google-sub-1", email: "legacy@example.com" });
+  expect(blocked.id === userId && blocked.email === "moved@example.com", "an email change collided with another account");
 
-  const stored = await client.query("select payload, revision from user_state where user_id = $1", [userId]);
-  if (stored.rows[0].payload.bundle !== "v2" || String(stored.rows[0].revision) !== "2") {
-    throw new Error("stored state changed after a rejected stale write");
-  }
+  /* ---------- sync snapshot compare-and-swap ---------- */
+  const first = await writeState(userId, { bundle: "v1" }, 1, null);
+  expect(first && String(first.revision) === "1", "initial revision is not 1");
+  expect((await writeState(userId, { bundle: "dup" }, 1, null)) === null, "a create overwrote an existing snapshot");
 
-  await client.query("delete from users where id = $1", [userId]);
-  const remaining = await client.query("select count(*)::int as n from user_state where user_id = $1", [userId]);
-  if (remaining.rows[0].n !== 0) throw new Error("user_state did not cascade-delete with the account");
+  expect((await writeState(userId, { bundle: "stale-before" }, 1, "0")) === null, "stale revision unexpectedly overwrote state");
+  const current = await writeState(userId, { bundle: "v2" }, 1, "1");
+  expect(current && String(current.revision) === "2", "current revision did not advance atomically");
+  expect((await writeState(userId, { bundle: "stale-after" }, 1, "1")) === null, "replayed revision unexpectedly overwrote newer state");
 
-  console.log(`postgres integration: PASS (${migrations.length} migrations, CAS + cascade verified)`);
+  const stored = await readState(userId);
+  expect(stored.payload.bundle === "v2" && String(stored.revision) === "2", "stored state changed after a rejected stale write");
+
+  await deleteUser(userId);
+  expect((await readState(userId)) === null, "user_state did not cascade-delete with the account");
+
+  console.log(`postgres integration: PASS (${migrations.length} migrations, account linking + CAS + cascade verified)`);
 } finally {
   await client.end();
 }

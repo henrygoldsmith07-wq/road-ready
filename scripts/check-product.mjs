@@ -23,7 +23,6 @@ import { loadContent } from "./content-loader.mjs";
 
 const C = loadContent();
 const bank = C.QUESTIONS;
-const NOW = 1750000000000;
 const problems = [];
 
 /* ---------- 1. first-run copy is truthful ---------- */
