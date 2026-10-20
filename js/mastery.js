@@ -258,6 +258,7 @@ function conceptMap(topicQuestions, qstats, misconceptions, nowMs) {
       display: r.display,
       questionCount: qs.length,
       evidence: r.evidence,
+      transfer: r.transfer || transferCeiling(qs),
       misconception: mis && !mis.repairedAt ? mis : null,
       nextAction: nextActionFor(r, mis),
     });
@@ -277,14 +278,30 @@ function nextActionFor(r, mis) {
   if (r.overlay === "misconception") return { kind: "repair", label: "Repair misconception" };
   if (r.overlay === "needs-review") return { kind: "review", label: `Review ${ev.overdue || ev.due} due question${(ev.overdue || ev.due) === 1 ? "" : "s"}` };
   if (r.state === "unseen") return { kind: "cover", label: "Introduce this concept" };
-  if (r.state === "seen") return { kind: "build", label: "Answer more variations" };
+  // Transfer-aware actions: never recommend a "different style" or "more
+  // variations" the bank cannot offer. A single-question / single-form
+  // concept has no transfer to demonstrate, so the action must be something
+  // the learner can actually do (retry, spaced retrieval, fluency).
+  // `transfer` rides on the conceptState result; when absent (older callers,
+  // unit-built rows) default to the historic behaviour rather than guessing.
+  const cap = r && r.transfer ? r.transfer : null;
+  const canShowTransfer = cap ? !!cap.canShowTransfer : true;
+  const offeredCount = cap ? cap.offered : (Array.isArray(ev.questionIds) ? ev.questionIds.length : 2);
+  const narrowBank = offeredCount <= 1;
+  if (r.state === "seen") {
+    if (narrowBank) return { kind: "retry", label: "Try this rule again" };
+    return { kind: "build", label: "Answer more variations" };
+  }
   if (r.state === "learning") {
-    if (ev.forms < MIN_FORMS_SECURE) return { kind: "transfer", label: "Try a different question style" };
+    if (canShowTransfer && ev.forms < MIN_FORMS_SECURE) return { kind: "transfer", label: "Try a different question style" };
     if (ev.slowRight >= 2) return { kind: "fluency", label: "Speed up retrieval" };
+    if (!canShowTransfer && (ev.retrievalDays || 0) < 2) return { kind: "retrieval", label: "Answer again on another day" };
+    if (narrowBank) return { kind: "retrieval", label: "Answer again after a break" };
     return { kind: "build", label: "Answer more variations" };
   }
   if (r.state === "secure") {
-    if (ev.variants < MIN_VARIANTS_STRONG) return { kind: "transfer", label: "Prove it on more variations" };
+    if (canShowTransfer && ev.variants < MIN_VARIANTS_STRONG) return { kind: "transfer", label: "Prove it on more variations" };
+    if (!canShowTransfer && ev.slowRight >= 2) return { kind: "fluency", label: "Speed up retrieval" };
     return { kind: "maintain", label: "Spaced review will keep it" };
   }
   return { kind: "maintain", label: "Maintenance only" };

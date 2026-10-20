@@ -111,6 +111,9 @@
         ul.appendChild(li);
       };
       addFact(`${ev.correct} correct of ${ev.attempts} answered (${row.questionCount} question${row.questionCount === 1 ? "" : "s"} in this concept).`);
+      if (row.transfer && !row.transfer.canShowTransfer && row.questionCount <= 2) {
+        addFact(`Only ${row.questionCount} question${row.questionCount === 1 ? "" : "s"} cover${row.questionCount === 1 ? "s" : ""} this rule in the current bank, so progress here is proved by repeat retrieval on different days rather than different wordings.`);
+      }
       // Recent answers: derived honestly from the stored history, never invented.
       if (ev.lastSeen) {
         const recent = ev.lastWrong && ev.lastWrong >= ev.lastSeen ? "your most recent answer was wrong" : "your most recent answer was correct";

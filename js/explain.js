@@ -355,10 +355,62 @@ function firstSentence(s) {
   return (m ? m[0] : t).trim();
 }
 
+/* ---------------- instructor / parent summary ---------------- */
+// A plain-text progress summary the learner can copy for an instructor or a
+// parent — the offline-first answer to instructor-linked accounts: nothing is
+// sent anywhere, the learner chooses what to share, and the numbers are the
+// same derivations the Progress screen already shows. Pure and DOM-free so it
+// is unit-testable; the caller supplies precomputed values, never raw state.
+//
+// Every interpolated free-text value is flattened to one line so a hostile or
+// multiline topic name cannot forge extra report lines. The footer states the
+// honesty contract: a study heuristic, never a pass prediction.
+function instructorSummary(input) {
+  const src = (input && typeof input === "object") ? input : {};
+  const oneLine = (s) => String(s == null ? "" : s).replace(/[\r\n]+/g, " ").trim();
+  const num = (v, fallback) => (Number.isFinite(Number(v)) ? Number(v) : fallback);
+  const lines = [];
+  const jurisdiction = oneLine(src.jurisdictionLabel) || "driving theory";
+  const date = oneLine(src.dateISO) || new Date().toISOString().slice(0, 10);
+  lines.push(`Road Ready — progress summary (${jurisdiction}) — ${date}`);
+  const answered = Math.max(0, Math.floor(num(src.answered, 0)));
+  if (answered <= 0) {
+    lines.push("No questions answered yet — study has not started.");
+  } else {
+    const acc = src.accuracyPct == null ? null : num(src.accuracyPct, NaN);
+    lines.push(`Questions answered: ${answered}${Number.isFinite(acc) ? ` (${Math.round(acc)}% correct)` : ""}.`);
+  }
+  lines.push(`Day streak: ${Math.max(0, Math.floor(num(src.streakDays, 0)))}.`);
+  const mocks = Array.isArray(src.recentMocks) ? src.recentMocks.slice(-3) : [];
+  if (!mocks.length) {
+    lines.push("Mock exams: none taken yet.");
+  } else {
+    const last = mocks[mocks.length - 1];
+    const score = last && Number.isFinite(Number(last.correct)) && Number.isFinite(Number(last.total))
+      ? ` — latest ${last.correct}/${last.total}` : "";
+    lines.push(`Mock exams: ${mocks.length} recent${score}.`);
+  }
+  const weak = Array.isArray(src.weakTopics)
+    ? src.weakTopics.map(oneLine).filter(Boolean).slice(0, 3) : [];
+  lines.push(weak.length ? `Weakest topics: ${weak.join("; ")}.` : "Weakest topics: none identified yet.");
+  const mis = Math.max(0, Math.floor(num(src.misconceptionCount, 0)));
+  lines.push(mis ? `Recurring misconceptions: ${mis} outstanding.` : "Recurring misconceptions: none outstanding.");
+  const hz = src.hazard && (oneLine(src.hazard.best) || oneLine(src.hazard.worst)) ? src.hazard : null;
+  if (hz) {
+    const best = oneLine(hz.best), worst = oneLine(hz.worst);
+    lines.push(`Hazard detection: strongest ${best || "—"}, weakest ${worst || "—"}.`);
+  }
+  const next = oneLine(src.nextStep);
+  lines.push(`Suggested next step: ${next || "Keep following the Today Plan."}`);
+  lines.push("These figures describe study so far. They are a study heuristic, not a predicted pass probability, and theory readiness is not practical-driving readiness.");
+  return lines.join("\n");
+}
+
 const RoadReadyExplain = {
   T, DISTRACTOR_TRAPS, distractorTrap, classifyMistake, classifyMistakeWithTrap,
   explainRecommendation,
   wrongAnswerBreakdown, temptingReason, firstSentence,
+  instructorSummary,
 };
 
 if (typeof module !== "undefined" && module.exports) module.exports = RoadReadyExplain;

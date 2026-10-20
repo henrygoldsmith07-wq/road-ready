@@ -258,6 +258,35 @@ test.describe("flashcards & settings", () => {
     expect(bundle.state).toBeTruthy();
   });
 
+  test("progress share copies a plain-text instructor summary", async ({ page }) => {
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(String(e.message)));
+    await freshApp(page);
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
+    // seed one answered question so the summary has measured values
+    await page.locator("#topicBrowser").evaluate((d) => { d.open = true; });
+    await page.locator("#topicGrid .topic-card").first().click();
+    await page.keyboard.press("1");
+    await page.waitForTimeout(150);
+    await page.locator('#bottomNav button[data-nav="stats"]').click();
+    await expect(page.locator("#btnShareProgress")).toBeVisible();
+    // capture instead of touching the real clipboard: permissions vary by
+    // browser project, but the app's writeText call is what matters here
+    await page.evaluate(() => {
+      window.__shared = null;
+      const c = navigator.clipboard;
+      if (c) c.writeText = (t) => { window.__shared = t; return Promise.resolve(); };
+    });
+    await page.locator("#btnShareProgress").click();
+    await expect.poll(() => page.evaluate(() => window.__shared)).not.toBeNull();
+    const shared = await page.evaluate(() => String(window.__shared || ""));
+    expect(shared).toContain("Road Ready — progress summary");
+    expect(shared).toContain("Questions answered: 1");
+    expect(shared).toContain("study heuristic, not a predicted pass probability");
+    expect(shared).not.toContain("<");
+    expect(errors).toEqual([]);
+  });
+
   test("import restores a backup round-trip", async ({ page }) => {
     await freshApp(page);
     if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
