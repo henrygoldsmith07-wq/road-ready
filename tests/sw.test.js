@@ -3,10 +3,11 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { setTimeout as tick } from "node:timers/promises";
 
 const SRC = readFileSync(fileURLToPath(new URL("../sw.js", import.meta.url)), "utf8");
 
-function loadSW() {
+function loadSW(fetchImpl = async () => { throw new Error("offline"); }) {
   const listeners = {};
   let skipWaitingCalled = false;
   const selfObj = {
@@ -42,7 +43,7 @@ function loadSW() {
     },
   };
   const fn = new Function("self", "caches", "location", "fetch", "URL", SRC);
-  fn(selfObj, cachesApi, { origin: "https://road.ready" }, async () => { throw new Error("offline"); }, URL);
+  fn(selfObj, cachesApi, { origin: "https://road.ready", href: "https://road.ready/sw.js" }, fetchImpl, URL);
   const dispatch = async (event, payload = {}) => {
     for (const fn of listeners[event] || []) await fn({ waitUntil: (p) => p, respondWith: (p) => p, ...payload });
   };
@@ -106,6 +107,34 @@ describe("service worker", () => {
     expect(responded).toBe("unset");
     const allPuts = Object.values(sw.stores).flatMap((store) => store.puts || []);
     expect(allPuts.some((entry) => entry.url.includes("/api/"))).toBe(false);
+  });
+
+  it("caches only successful navigations, keyed without the query string", async () => {
+    const network = { "https://road.ready/?signin=ok": { ok: true, clone() { return this; } }, "https://road.ready/missing": { ok: false, status: 404, clone() { return this; } } };
+    const sw = loadSW(async (req) => network[req.url]);
+    await sw.dispatch("install");
+    for (const url of Object.keys(network)) {
+      let responded;
+      await sw.dispatch("fetch", { request: { method: "GET", mode: "navigate", url }, respondWith: (p) => { responded = p; } });
+      await responded;
+    }
+    await tick(0); // let the fire-and-forget cache writes land
+    const puts = Object.values(sw.stores).flatMap((store) => store.puts.map((e) => e.url));
+    expect(puts).toContain("https://road.ready/");
+    expect(puts.some((u) => u.includes("?"))).toBe(false);
+    expect(puts.some((u) => u.includes("missing"))).toBe(false);
+  });
+
+  it("serves precached shell files from cache without refreshing them from the network", async () => {
+    let fetched = 0;
+    const sw = loadSW(async () => { fetched++; return { ok: true, clone() { return this; } }; });
+    await sw.dispatch("install");
+    const cache = await sw.cachesApi.open(Object.keys(sw.stores)[0]);
+    await cache.put("https://road.ready/js/app.js", { ok: true });
+    let responded;
+    await sw.dispatch("fetch", { request: { method: "GET", url: "https://road.ready/js/app.js" }, respondWith: (p) => { responded = p; } });
+    expect(await responded).toBeTruthy();
+    expect(fetched).toBe(0);
   });
 
   it("acts on a skip-waiting message by calling skipWaiting", async () => {
