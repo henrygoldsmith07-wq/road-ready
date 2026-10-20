@@ -1481,6 +1481,25 @@ function sourceForQuestion(question) {
   return question && question.sourceId ? SOURCE_REGISTRY[question.sourceId] || null : null;
 }
 
+/* Single shared citation model for every feedback surface (practice feedback,
+ * results debrief, review centre). Universal questions carry a sourceId but no
+ * per-question section (manifest section: null), and the composite basis has
+ * no single URL — callers must use this instead of interpolating
+ * q.sourceSection or source.url directly, or the UI renders "undefined" and
+ * dead links for every universal question. */
+function citationForQuestion(question) {
+  const source = sourceForQuestion(question);
+  if (!source) return null;
+  const section = (question && question.sourceSection) || null;
+  return {
+    label: source.citationLabel || "Official source",
+    detail: section ? `${source.agency} · ${section}` : source.title,
+    url: source.url || null,
+    section,
+    title: source.title,
+  };
+}
+
 function packSource(packId) {
   const pack = STATE_PACKS[packId] || STATE_PACKS.generic;
   return pack.sourceId ? SOURCE_REGISTRY[pack.sourceId] || null : null;
@@ -1489,7 +1508,7 @@ function packSource(packId) {
 const RoadReadyPacks = {
   SOURCE_REGISTRY, UNIVERSAL_DEFAULTS, CONCEPT_FACT_KEYS, VERIFICATION_MAX_AGE_DAYS,
   STATE_PACKS, PACK_IDS, filterBankForPack, packFacts,
-  allPackQuestions, sourceForQuestion, packSource,
+  allPackQuestions, sourceForQuestion, citationForQuestion, packSource,
   ensureUkPack, ukLoaded,
 };
 if (typeof module !== "undefined" && module.exports) module.exports = RoadReadyPacks;

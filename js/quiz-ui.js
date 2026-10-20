@@ -113,7 +113,7 @@
   }
 
   function answer(origIdx, btnEl) {
-    const { icon, speak, sourceForQuestion, recordAnswer, finishSession } = ctx;
+    const { icon, speak, citationForQuestion, recordAnswer, finishSession } = ctx;
     const s = session();
     if (!s || s.answeredCurrent) return;
     s.answeredCurrent = true;
@@ -130,13 +130,24 @@
       $("fbHead").innerHTML = right ? `<span class="ok">${icon("check", 15)} Correct</span>` : `<span class="bad">${icon("x", 15)} Not quite</span>`;
       renderFeedbackDetail(q, right, s);
       renderRepair(q, right);
-      const source = sourceForQuestion(q);
+      // Shared model with sourceCitationHTML (app.js): never interpolate
+      // q.sourceSection or source.url directly — see citationForQuestion.
+      const citation = typeof citationForQuestion === "function" ? citationForQuestion(q) : null;
       const sourceLink = $("fbSource");
-      sourceLink.hidden = !source;
-      if (source) {
-        sourceLink.href = source.url;
-        sourceLink.textContent = `Official source: ${source.agency} · ${q.sourceSection} ↗`;
-        sourceLink.setAttribute("aria-label", `Open ${source.title}, section ${q.sourceSection}, in a new tab`);
+      sourceLink.hidden = !citation;
+      if (citation) {
+        if (citation.url) {
+          sourceLink.href = citation.url;
+          sourceLink.textContent = `${citation.label}: ${citation.detail} ↗`;
+          sourceLink.setAttribute("aria-label", citation.section
+            ? `Open ${citation.title}, section ${citation.section}, in a new tab`
+            : `Open ${citation.title} in a new tab`);
+        } else {
+          // The composite basis has no single URL — text, not a dead link.
+          sourceLink.removeAttribute("href");
+          sourceLink.textContent = `${citation.label}: ${citation.detail}`;
+          sourceLink.removeAttribute("aria-label");
+        }
       } else {
         sourceLink.removeAttribute("href");
         sourceLink.removeAttribute("aria-label");
@@ -423,7 +434,7 @@
   window.RoadReadyQuizUI = {
     /**
      * @param {{CATEGORIES, icon, escapeHTML, signArt, shuffle, speak, getState,
-     *          getBank, Coach, Core, getSession, sourceForQuestion,
+     *          getBank, Coach, Core, getSession, citationForQuestion,
      *          recordAnswer, finishSession, save}} deps
      */
     init(deps) { ctx = deps; },

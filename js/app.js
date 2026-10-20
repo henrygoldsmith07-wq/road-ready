@@ -144,7 +144,7 @@ if (ConceptMapUI) {
 if (QuizUI) {
   QuizUI.init(Object.assign(extractedDeps(), {
     getSession: () => session,
-    sourceForQuestion: (q) => Packs.sourceForQuestion(q),
+    citationForQuestion: (q) => Packs.citationForQuestion(q),
     recordAnswer: (q, right) => recordAnswer(q, right),
     finishSession: (timedOut) => finishSession(timedOut),
     save: () => save(),
@@ -1053,13 +1053,11 @@ function tickTimer() {
 function escapeHTML(s) { return Format.escapeHTML ? Format.escapeHTML(s) : s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 
 function sourceCitationHTML(q) {
-  const source = Packs.sourceForQuestion(q);
-  if (!source) return "";
-  const detail = q.sourceSection ? `${source.agency} · ${q.sourceSection}` : source.title;
-  const label = source.citationLabel || "Official source";
+  const c = Packs.citationForQuestion(q);
+  if (!c) return "";
   // composite sources cite many documents and may have no single URL
-  if (!source.url) return `<span class="source-link">${escapeHTML(label)}: ${escapeHTML(detail)}</span>`;
-  return `<a class="source-link" href="${escapeHTML(source.url)}" target="_blank" rel="noopener noreferrer">${escapeHTML(label)}: ${escapeHTML(detail)} ↗</a>`;
+  if (!c.url) return `<span class="source-link">${escapeHTML(c.label)}: ${escapeHTML(c.detail)}</span>`;
+  return `<a class="source-link" href="${escapeHTML(c.url)}" target="_blank" rel="noopener noreferrer">${escapeHTML(c.label)}: ${escapeHTML(c.detail)} ↗</a>`;
 }
 
 /* Quiz rendering + answer feedback live in js/quiz-ui.js; this file keeps the
