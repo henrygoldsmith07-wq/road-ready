@@ -11,7 +11,7 @@ process.env.AUTH_SECRET = 'test-secret-not-a-real-one';
 process.env.AUTH_GOOGLE_ID = 'test-client-id.apps.googleusercontent.com';
 process.env.AUTH_GOOGLE_SECRET = 'test-client-secret';
 
-const { issueSession, readSession, encodeFlowValue, decodeFlowValue, SESSION_TOKEN_VERSION } =
+const { issueSession, readSession, readCookies, encodeFlowValue, decodeFlowValue, SESSION_TOKEN_VERSION } =
   await import('../api/_lib/session.js');
 const { verifyIdToken, resetJwksCache, createNonce } = await import('../api/_lib/google.js');
 const { accountConfiguration, authOrigin } = await import('../api/_lib/config.js');
@@ -132,6 +132,18 @@ describe('session tokens', () => {
     for (const bad of [undefined, null, '', 'nodot', 'a.b', '....', 42, {}]) {
       expect(readSession(bad)).toBe(null);
     }
+  });
+});
+
+describe('cookie header parsing', () => {
+  it('decodes percent-encoded values', () => {
+    expect(readCookies({ headers: { cookie: 'a=hello%20world; b=2' } })).toEqual({ a: 'hello world', b: '2' });
+  });
+
+  it('keeps the session readable when an unrelated cookie is malformed', () => {
+    const cookies = readCookies({ headers: { cookie: 'junk=%E0%A4; roadready_session=abc.def' } });
+    expect(cookies.roadready_session).toBe('abc.def');
+    expect(cookies.junk).toBe('%E0%A4');
   });
 });
 

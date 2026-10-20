@@ -134,7 +134,16 @@ export function readCookies(req) {
   for (const part of header.split(';')) {
     const eq = part.indexOf('=');
     if (eq < 1) continue;
-    out[part.slice(0, eq).trim()] = decodeURIComponent(part.slice(eq + 1).trim());
+    const raw = part.slice(eq + 1).trim();
+    // Any cookie on this host shares the header; one with malformed
+    // percent-encoding must not take sign-in and sync down with it.
+    let value;
+    try {
+      value = decodeURIComponent(raw);
+    } catch {
+      value = raw;
+    }
+    out[part.slice(0, eq).trim()] = value;
   }
   return out;
 }
