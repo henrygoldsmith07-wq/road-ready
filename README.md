@@ -32,7 +32,7 @@ Two honest scoping calls that follow from this:
 | Question forms in use | 9 |
 | Active jurisdiction modules | 2 |
 | Region packs incl. Great Britain | 7 |
-| Unit test files | 67 |
+| Unit test files | 66 |
 
 <!-- product-stats:end -->
 
@@ -72,11 +72,11 @@ Two honest scoping calls that follow from this:
 | Test Day Plan | Save your knowledge-test date and the plan adapts to it: far out it broadens coverage; 1–2 weeks out it adds mixed recall, persistent weaknesses and more mocks; the final days prioritise weak/high-value concepts; the day before is a light review — never a cram target and never a pass prediction |
 | Official Sources | Jurisdiction-rule explanations and Study Guide facts link directly to the issuing authority's source; dedicated local-rules drills keep cited material together |
 | Settings & Data | Separate screen for jurisdiction, practice preferences, test date, backups, optional account sync and reset controls; research/calibration is collapsed under an advanced section on Progress |
+| Settings | Pass mark (75/80/85%), exam length, instant-feedback toggle, full progress reset |
 
 ## Study protocol (frozen)
 
 Exports carry `protocol: { protocolVersion: "rr-study-1.0", contentVersion, scoringVersion, masteryVersion, jurisdiction, appVersion }`. `contentVersion` fingerprints the question bank (size + id checksum), so any mid-study content or scoring change is detectable and cohorts stay comparable. Changing the bank, grading or mastery algorithm mid-study requires bumping `PROTOCOL_VERSION` in `js/core.js`; `scripts/study-report.mjs` warns when a cohort mixes versions and prints the pooled calibration curve.
-| Settings | Pass mark (75/80/85%), exam length, instant-feedback toggle, full progress reset |
 
 By default, everything is stored locally in your browser (`localStorage`). If you explicitly sign in and press **Save**, Road Ready uploads the same export bundle used by manual backup/restore to your account; nothing is uploaded automatically.
 
@@ -96,8 +96,8 @@ Questions follow general U.S. rules of the road common across state DMV handbook
 - `index.html` — app shell, views, and the study guide content
 - `css/styles.css` — monochrome dark/light theming, minimal component styles
 - `js/icons.js` — stroke icon set (~34 icons, currentColor)
-- `js/questions.js` — the universal U.S. question bank (267 Qs with explanations, 9 question forms)
-- `js/packs/uk.js` — the Great Britain (DVSA car theory) pack: region fact table + its 1565-question bank
+- `js/questions.js` — the universal U.S. question bank (with explanations; counts in Product statistics above)
+- `js/packs/uk.js` — the Great Britain (DVSA car theory) pack: region fact table + its question bank
 - `js/signs.js` — SVG road-sign library (shared artwork, per-jurisdiction wording)
 - `js/core.js` — pure engine: scoring, readiness, concept mastery, adaptive selection, spaced scheduling (questions + sign flashcards), exam assembly/grading, hazard scoring + analytics, misconception ledger, XP/levels, achievements, state migration, import/export
 - `js/coach.js` — Adaptive Coach engine (DOM-free): deterministic recommendations, concept diagnosis, misconception tracking, review grouping, weakness centre, mock debrief + post-mock drill generation, session summaries, repair reports
@@ -106,7 +106,7 @@ Questions follow general U.S. rules of the road common across state DMV handbook
 - `js/evidence.js` — internal learning-evidence module (DOM-free): local measurement of whether followed recommendations move mastery, misconception resolution rates and retention — small samples report "insufficient evidence" instead of a number
 - `js/account.js` / `js/account-ui.js` — optional account transport and isolated sync/settings controller
 - `js/practical-ui.js` / `js/study-ui.js` / `js/home-ui.js` / `js/quiz-ui.js` / `js/flashcards-ui.js` / `js/review-ui.js` / `js/results-ui.js` / `js/concept-map-ui.js` — UI-domain modules (dependency-injected, no shared globals): practical log, learner study, home/Today Plan, quiz, sign flashcards, weakness centre, results/debrief/session-summary, concept mastery maps
-- `js/hazard-scenarios.js` / `js/hazard-ui.js` / `css/hazard.css` — hazard-perception scenario bank (25 original scenes, SVG scene builders) and the training-mode UI (timeline feedback, analytics, accessible alternative)
+- `js/hazard-scenarios.js` / `js/hazard-ui.js` / `css/hazard.css` — hazard-perception scenario bank (original scenes, SVG scene builders) and the training-mode UI (timeline feedback, analytics, accessible alternative)
 - `js/guide.js` — jurisdiction-native guide visibility/source controller
 - `js/state-packs.js` — jurisdiction content packs (CA, TX, NY, FL, WA, PA, UK) and the source registry
 - `js/app.js` — orchestration: router, quiz engine, shared state, view wiring
