@@ -22,10 +22,10 @@ Two honest scoping calls that follow from this:
 
 | Figure | Count |
 |---|---|
-| Universal U.S. theory questions | 439 |
+| Universal U.S. theory questions | 463 |
 | Great Britain (DVSA car) questions | 1579 |
 | Great Britain concepts | 427 |
-| Verified questions, all packs | 2167 |
+| Verified questions, all packs | 2191 |
 | Road signs (jurisdiction-aware artwork) | 58 |
 | Hazard-perception scenarios (original) | 35 |
 | — of which multi-hazard scenes | 8 |
@@ -47,7 +47,7 @@ Two honest scoping calls that follow from this:
 |---|---|
 | Onboarding | A 4-step first-run intro: what's inside, theme + read-aloud setup, and how the daily habit works — skippable, shown once |
 | Adaptive Coach | The Today Plan card answers "what should I study now" with one ranked, deterministic recommendation (fix-misconception, review-overdue, build-coverage, improve-fluency, strengthen-weak-topic, take-mock, maintain-strong, light-review): what to practise, why (measured evidence), how much, which misconception or weak concept is behind it — knowledge, retention, fluency or coverage — and what changed since your previous session — due-review sessions contain the overdue questions themselves, so following the plan reschedules exactly what it promised. Fresh learners get an 8-question starting check spread across topics, so the next plan is personal from the second session |
-| Adaptive Practice | 439 universal U.S. questions plus jurisdiction packs (2167 verified questions total) across 10 topics — the Great Britain pack alone is 1579 questions across 427 concepts, spanning 9 **question forms** — junction-priority road-layout diagrams, lane-selection scenarios, sign combinations, what-happens-next chains, prioritisation drills, multi-step ordering, photo-described scenes, deliberately similar alternatives, same-concept rewording variants, and classic recall; mastery aggregates per concept (coverage × depth), then topic, then overall score |
+| Adaptive Practice | 463 universal U.S. questions plus jurisdiction packs (2191 verified questions total) across 10 topics — the Great Britain pack alone is 1579 questions across 427 concepts, spanning 9 **question forms** — junction-priority road-layout diagrams, lane-selection scenarios, sign combinations, what-happens-next chains, prioritisation drills, multi-step ordering, photo-described scenes, deliberately similar alternatives, same-concept rewording variants, and classic recall; mastery aggregates per concept (coverage × depth), then topic, then overall score |
 | Marathon Mode | The full active-jurisdiction bank in one run — anything you miss comes back until you've seen it through |
 | Mock Exams | An **Official Simulation** locked to the selected jurisdiction's real published count, time limit and pass bar (e.g. DVSA car: 50 questions, 43 to pass, 57 minutes), plus two clearly-labelled extras: **Quick Check** (10 questions) and **Weak Topics Exam** (20 questions weighted toward your lowest categories) — timed, with no feedback until you submit. Afterwards, a concise debrief (concept-level weaknesses, repeated misconceptions, slow answers, right→wrong regressions) and one primary action: **turn the mock into a targeted drill** built from the concepts missed — different questions, same rules |
 | Official Simulations | Pick a jurisdiction and the exam locks to its real published count, time and pass bar **only when the bank has enough unique questions**. Full pools run as locked official-format simulations; incomplete pools are explicitly labelled practice previews and cannot award an official-standard pass. Specs include CA 46/38, TX 30/21, NY 20/14, FL 50/40 in 60 min, WA 40/32, PA 18/15, GB 50/43 in 57 min (`js/exam-blueprints.js`, source-cited). The GB simulation embeds one DVSA case study: three linked questions on a shared scenario, sampled whole from seven authored stories and shown adjacently with the scenario pinned on screen (`caseId`/`caseStem` in `js/packs/uk.js`, enforced by `npm run validate`); missing part of a story pulls its sibling rules into the post-mock study session |
