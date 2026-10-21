@@ -1,4 +1,4 @@
-/* Road Ready E2E — the Content & Sources provenance ledger.
+/* Road Ready E2E â€” the Content & Sources provenance ledger.
  *
  * The ledger's value depends on it being honest, so the assertions here are
  * about honesty as much as layout: it must not claim an official document it
@@ -11,7 +11,7 @@ async function freshApp(page) {
   await page.goto("/");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await expect(page.locator("#app")).toBeVisible();
+  await expect(page.locator("#app")).toBeVisible();  await expect(page.locator("html")).toHaveAttribute("data-app-ready", "1");
 }
 
 async function openGuide(page) {
@@ -64,7 +64,7 @@ test.describe("content & sources", () => {
       localStorage.setItem("roadready.v1", JSON.stringify(s));
     });
     await page.reload();
-    await expect(page.locator("#app")).toBeVisible();
+    await expect(page.locator("#app")).toBeVisible();    await expect(page.locator("html")).toHaveAttribute("data-app-ready", "1");
     if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
     await page.locator('#bottomNav button[data-nav="guide"]').click();
     await page.locator("#btnSources").click();
@@ -111,7 +111,7 @@ test.describe("content & sources", () => {
       localStorage.setItem("roadready.v1", JSON.stringify(s));
     });
     await page.reload();
-    await expect(page.locator("#app")).toBeVisible();
+    await expect(page.locator("#app")).toBeVisible();    await expect(page.locator("html")).toHaveAttribute("data-app-ready", "1");
     if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
     await page.locator('#bottomNav button[data-nav="guide"]').click();
     await page.locator("#btnSources").click();

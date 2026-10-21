@@ -10,7 +10,7 @@ async function boot(page) {
   await page.goto("/");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await expect(page.locator("#app")).toBeVisible();
+  await expect(page.locator("#app")).toBeVisible();  await expect(page.locator("html")).toHaveAttribute("data-app-ready", "1");
   if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
   return errors;
 }
@@ -44,7 +44,7 @@ test("repeat miss raises an advisory confirm; dismissing stays put", async ({ pa
   // Reload so the app picks up the seeded exams (in-memory state would
   // otherwise overwrite them on the next save).
   await page.reload();
-  await expect(page.locator("#app")).toBeVisible();
+  await expect(page.locator("#app")).toBeVisible();  await expect(page.locator("html")).toHaveAttribute("data-app-ready", "1");
   if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
   await useGbPack(page);
 
@@ -95,7 +95,7 @@ test("accepting the advisory starts Part 1", async ({ page }) => {
     localStorage.setItem(key, JSON.stringify(s));
   }, MISS(Date.now() - 1000));
   await page.reload();
-  await expect(page.locator("#app")).toBeVisible();
+  await expect(page.locator("#app")).toBeVisible();  await expect(page.locator("html")).toHaveAttribute("data-app-ready", "1");
   if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
   await useGbPack(page);
 
@@ -144,7 +144,7 @@ test("stats shows the gate record once warnings have fired", async ({ page }) =>
     localStorage.setItem(key, JSON.stringify(s));
   });
   await page.reload();
-  await expect(page.locator("#app")).toBeVisible();
+  await expect(page.locator("#app")).toBeVisible();  await expect(page.locator("html")).toHaveAttribute("data-app-ready", "1");
   if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
 
   await page.locator('#bottomNav button[data-nav="stats"]').click();

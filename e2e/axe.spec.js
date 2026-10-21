@@ -23,6 +23,7 @@ async function freshApp(page, theme) {
   await page.goto("/");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-app-ready", "1");
   if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
   // Switch themes through the real toggle: applyTheme is synchronous, so the
   // DOM attributes and CSS custom properties are consistent before scanning.

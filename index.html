@@ -747,13 +747,16 @@
   <div class="ob-card">
     <button class="ob-skip" id="obSkip">Skip</button>
     <div class="ob-steps">
-      <div class="ob-step" data-step="0">
+      <!-- Step one carries the "on" class in the markup: js/first-paint.js
+           reveals this card during parsing, and a card whose only step is
+           display:none would paint as an empty shell until the app booted. -->
+      <div class="ob-step on" data-step="0">
         <span class="ob-ico" data-icon="car" data-size="40"></span>
         <h1>Where will you take your test?</h1>
         <p class="ob-lead">Road Ready studies only that test's rules. Pick now — you can change it later in Settings.</p>
         <div class="ob-choice">
           <span>Your jurisdiction</span>
-          <select id="obStatePack" aria-label="Your jurisdiction"></select>
+          <select id="obStatePack" aria-label="Your jurisdiction"><option value="">Loading your jurisdictions…</option></select>
         </div>
       </div>
       <div class="ob-step" data-step="1">
@@ -792,11 +795,17 @@
       </div>
     </div>
     <div class="ob-foot">
-      <div class="ob-dots" id="obDots"><span></span><span></span><span></span><span></span></div>
+      <div class="ob-dots" id="obDots"><span class="on"></span><span></span><span></span><span></span></div>
       <button class="btn primary" id="obNext">Start</button>
     </div>
   </div>
 </div>
+
+<!-- Reveal the first-run card during parsing, before the deferred app scripts
+     are even requested. Without this a new learner stares at an empty screen
+     until the whole app has loaded. Loaded without defer on purpose: it must
+     run now, not after parsing. The app still makes the final call at boot. -->
+<script src="js/first-paint.js"></script>
 
 <!-- window.__lastError is read by e2e/app.spec.js after a fresh page.open().
      Deferred (not inline) so the strict CSP stays intact and the request no

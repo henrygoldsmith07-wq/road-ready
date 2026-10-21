@@ -21,7 +21,7 @@
 "use strict";
 
 // scripts/update-sw.mjs rewrites the line below — do not edit by hand.
-const VERSION = "v.901e755066fc";
+const VERSION = "v.6444f228b00a";
 const CACHE = `roadready-${VERSION}`;
 const SHELL = [
   "./",
@@ -34,6 +34,7 @@ const SHELL = [
   "icon-maskable.png",
   "css/styles.css",
   "js/boot-error.js",
+  "js/first-paint.js",
   "js/core.js",
   "js/mastery.js",
   "js/explain.js",
