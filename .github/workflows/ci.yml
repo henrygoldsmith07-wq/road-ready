@@ -99,11 +99,17 @@ jobs:
       - uses: actions/setup-node@v7
         with: { node-version: 24, cache: npm }
       - run: npm ci
-      - name: Run Lighthouse against the served app (median of 3)
+      - name: Run Lighthouse against the served app (median of 5)
         run: |
           node serve.js &
-          sleep 2
-          for i in 1 2 3; do
+          # Wait for the server to answer, and warm it, before measuring.
+          # A fixed sleep raced the server's start-up: on a loaded runner the
+          # first measured request paid Node's start-up cost, so the score
+          # reported the runner rather than the app. Nobody opening the app
+          # waits for a cold Node process, so the measurement should not
+          # either. The thresholds below are unchanged.
+          node scripts/wait-for-server.mjs http://localhost:8321/
+          for i in 1 2 3 4 5; do
             npx --yes lighthouse@13.5.0 http://localhost:8321 \
               --output=json --output-path=lighthouse-$i.json \
               --only-categories=performance,accessibility,best-practices,seo \
@@ -111,12 +117,12 @@ jobs:
           done
           node -e "
             const fs = require('fs');
-            const runs = [1,2,3].map(i => JSON.parse(fs.readFileSync('./lighthouse-'+i+'.json','utf8')));
+            const runs = [1,2,3,4,5].map(i => JSON.parse(fs.readFileSync('./lighthouse-'+i+'.json','utf8')));
+            const median = (xs) => { const s = xs.filter(x => typeof x === 'number').sort((a,b)=>a-b); return s.length ? s[Math.floor(s.length/2)] : 0; };
+            const score = (k) => median(runs.map(r => r.categories[k].score));
+            const s = { performance: score('performance'), accessibility: score('accessibility'), 'best-practices': score('best-practices'), seo: score('seo') };
             const perfs = runs.map(r => r.categories.performance.score).sort((a,b)=>a-b);
-            const medianPerf = perfs[1];
-            const first = runs[0].categories;
-            const s = { performance: medianPerf, accessibility: first.accessibility.score, 'best-practices': first['best-practices'].score, seo: first.seo.score };
-            console.log('performance runs:', perfs, 'median:', medianPerf);
+            console.log('performance runs:', perfs, 'median:', s.performance);
             console.log(s);
             const min = { performance: .7, accessibility: .9, 'best-practices': .9, seo: .8 };
             for (const [k,v] of Object.entries(min)) {

@@ -30,6 +30,27 @@ Keep local secrets in a `.env` file. `.env`, `.env.local` and `.env.*.local` are
 2. Configure branch protection on `main` to require the CI checks (Settings → Branches). Suggested minimum: require `lint-and-typecheck`, `unit-and-content`, `audit`, `backend-postgres`, `e2e`, and `lighthouse`; require at least one review; disallow force pushes.
 3. Prefer deploying from the `main` branch only (Vercel: Production Branch = `main`). A broken commit that cannot reach `main` cannot silently become production.
 
+## The Lighthouse gate, and what it measures
+
+The Lighthouse job scores the app served by `serve.js` and takes the **median of 5 runs**. The
+thresholds (`performance 0.70`, `accessibility 0.90`, `best-practices 0.90`, `seo 0.80`) have not
+changed and must not be loosened to make a build pass.
+
+Two details of the harness matter when a run looks wrong:
+
+- The job **waits for the server to answer** (`scripts/wait-for-server.mjs`) and warms it before
+  measuring. An earlier version slept for a fixed two seconds, which raced the server's start-up:
+  on a loaded runner the first measured request paid Node's start-up cost, so the score reported
+  the runner rather than the app. A cold first run was observed scoring 0.47 on an unchanged
+  `main`. Nobody opening the app waits for a cold Node process, so the measurement should not
+  either.
+- The median of 5 exists because a single run on a shared runner moves by more than 0.2. The
+  median is taken over all five runs for every category, so one slow run cannot decide the build.
+
+If the gate fails, check the printed `performance runs` line: one outlier low value with the rest
+comfortably above the threshold is runner noise, while a consistent set of low values is a real
+regression and should be investigated against the audit details.
+
 ## Deployment Protection (decision)
 
 **Decision: Standard Protection — production stays public, previews stay gated.**
