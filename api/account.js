@@ -10,7 +10,7 @@ import {
   readSessionPayload,
   SESSION_COOKIE,
 } from './_lib/session.js';
-import { isCrossOriginRequest } from './_lib/config.js';
+import { AccountsNotConfigured, isCrossOriginRequest } from './_lib/config.js';
 
 function json(res, status, body) {
   res.statusCode = status;
@@ -46,7 +46,8 @@ export default async function handler(req, res) {
     clearSessionCookie(res);
     return json(res, 200, { ok: true });
   } catch (error) {
-    if (error instanceof DatabaseNotConfigured || error instanceof MissingAuthSecret) {
+    if (error instanceof DatabaseNotConfigured || error instanceof MissingAuthSecret
+        || error instanceof AccountsNotConfigured) {
       // The detail names the missing environment variable. Useful to an
       // operator, informative to an unauthenticated caller — so the client
       // gets a generic message and the detail stays in the log.

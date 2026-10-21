@@ -135,6 +135,37 @@ describe("session revocation", () => {
       logged.mockRestore();
     }
   });
+
+  it("still clears the cookie when the session cannot be read", async () => {
+    // The route's contract: it can never leave someone signed in. Reading
+    // the session can fail (a missing AUTH_SECRET); the cookie must still go.
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const response = res();
+      const request = req("POST", "/api/auth/signout");
+      request.headers.cookie = "roadready_session=not-a-real-token";
+      await signoutHandler(request, response);
+      expect(String(response.headers["set-cookie"])).toMatch(/roadready_session=;/);
+    } finally {
+      logged.mockRestore();
+    }
+  });
+
+  it("clears the cookie even when the deployment is misconfigured", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    const previous = process.env.AUTH_URL;
+    process.env.AUTH_URL = "not a url at all";
+    try {
+      const response = res();
+      await signoutHandler(req("POST", "/api/auth/signout"), response);
+      expect(String(response.headers["set-cookie"])).toMatch(/roadready_session=;/);
+      // A broken configuration is reported as such, not as a CSRF refusal.
+      expect(response.statusCode).toBe(503);
+    } finally {
+      if (previous === undefined) delete process.env.AUTH_URL; else process.env.AUTH_URL = previous;
+      logged.mockRestore();
+    }
+  });
 });
 
 describe("sync input bounds", () => {
@@ -187,6 +218,15 @@ describe("sync input bounds", () => {
     expect(db.readState).not.toHaveBeenCalled();
   });
 
+  it("does not treat a parameter that merely contains meta=1 as a metadata request", async () => {
+    const response = res();
+    await syncHandler(req("GET", "/api/sync?note=meta=1"), response);
+    expect(response.statusCode).toBe(200);
+    // The full snapshot is still returned; the shape did not silently change.
+    expect(json(response).state.payload).toBeDefined();
+    expect(db.readStateMeta).not.toHaveBeenCalled();
+  });
+
   it("does not tell an unauthenticated caller which environment variables are missing", async () => {
     const response = res();
     const { default: syncWithNoDb } = { default: null };
@@ -197,6 +237,23 @@ describe("sync input bounds", () => {
     await syncHandler(req("GET", "/api/sync"), response);
     expect(response.statusCode).toBe(503);
     expect(json(response).error).not.toMatch(/DATABASE_URL|AUTH_SECRET/);
+  });
+
+  it("reports a broken AUTH_URL as a configuration problem, not a CSRF refusal", async () => {
+    const previous = process.env.AUTH_URL;
+    process.env.AUTH_URL = "not a url at all";
+    try {
+      const response = res();
+      await syncHandler(req("PUT", "/api/sync", {
+        payload: { bundle: "{}" }, expectedRevision: null,
+      }), response);
+      // 403 would read to an operator like a CSRF attack. Nothing is written
+      // either way, but the reason has to be the honest one.
+      expect(response.statusCode).toBe(503);
+      expect(json(response).error).toMatch(/not configured/i);
+    } finally {
+      if (previous === undefined) delete process.env.AUTH_URL; else process.env.AUTH_URL = previous;
+    }
   });
 });
 
@@ -218,6 +275,39 @@ describe("rate limiting", () => {
     const key = callerKey({ headers: { "x-forwarded-for": "203.0.113.9" }, socket: {} }, "a-secret");
     expect(key).not.toMatch(/203\.0\.113\.9/);
     expect(key).toHaveLength(32);
+  });
+
+  it("uses the right-most forwarded address, not the one a caller supplied", () => {
+    // A caller that sends its own X-Forwarded-For can prepend a fresh
+    // identity per request. The edge appends the real one, so the key must
+    // be built from the right-most entry.
+    const spoofed = callerKey({
+      headers: { "x-forwarded-for": "198.51.100.7, 203.0.113.9" },
+      socket: {},
+    }, "a-secret");
+    const genuine = callerKey({
+      headers: { "x-forwarded-for": "203.0.113.9" },
+      socket: {},
+    }, "a-secret");
+    expect(spoofed).toBe(genuine);
+  });
+
+  it("prefers the platform-set header over a caller-supplied one", () => {
+    const platform = callerKey({
+      headers: { "x-vercel-forwarded-for": "203.0.113.9", "x-forwarded-for": "198.51.100.7" },
+      socket: {},
+    }, "a-secret");
+    const genuine = callerKey({
+      headers: { "x-vercel-forwarded-for": "203.0.113.9" },
+      socket: {},
+    }, "a-secret");
+    expect(platform).toBe(genuine);
+  });
+
+  it("gives different callers different keys", () => {
+    const a = callerKey({ headers: { "x-forwarded-for": "203.0.113.9" }, socket: {} }, "a-secret");
+    const b = callerKey({ headers: { "x-forwarded-for": "203.0.113.10" }, socket: {} }, "a-secret");
+    expect(a).not.toBe(b);
   });
 
   it("refuses a burst of sync writes with 429", async () => {

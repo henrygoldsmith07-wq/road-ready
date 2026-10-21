@@ -59,6 +59,36 @@ export function resetLimiter() {
 }
 
 /**
+ * The caller's address, as trusted as the platform allows.
+ *
+ * A rate limit keyed on a header the caller controls is not a rate limit, so
+ * the order below matters:
+ *
+ *  1. `x-vercel-forwarded-for` — set by the Vercel edge, which strips any
+ *     client-supplied value. This is the one header here a caller cannot
+ *     forge.
+ *  2. `x-real-ip` — set by common reverse proxies, again overwritten.
+ *  3. `x-forwarded-for` — APPEND-ONLY. The right-most entry was written by
+ *     the proxy closest to this server and is the least caller-controlled.
+ *     Taking the LEFT-most entry (the common mistake) would let a caller mint
+ *     a fresh identity on every request and walk straight through the limit.
+ *  4. The socket address, when the platform gives us one.
+ */
+function clientAddress(req) {
+  const headers = (req && req.headers) || {};
+  const vercel = headers['x-vercel-forwarded-for'];
+  if (vercel) return String(vercel).split(',')[0].trim();
+  const real = headers['x-real-ip'];
+  if (real) return String(real).split(',')[0].trim();
+  const forwarded = headers['x-forwarded-for'];
+  if (forwarded) {
+    const parts = String(forwarded).split(',').map((s) => s.trim()).filter(Boolean);
+    if (parts.length) return parts[parts.length - 1];
+  }
+  return (req && req.socket && req.socket.remoteAddress) || 'unknown';
+}
+
+/**
  * A privacy-preserving caller identity for rate limiting.
  *
  * The raw IP is never stored: it is hashed with the process's AUTH_SECRET
@@ -66,9 +96,7 @@ export function resetLimiter() {
  * address, and falls back to a constant when there is no secret to hash with.
  */
 export function callerKey(req, secret) {
-  const raw = (req.headers['x-forwarded-for'] || '').split(',')[0].trim()
-    || req.socket?.remoteAddress
-    || 'unknown';
+  const raw = clientAddress(req);
   if (!secret) return 'anon';
   return createHash('sha256').update(String(secret)).update(raw).digest('base64url').slice(0, 32);
 }

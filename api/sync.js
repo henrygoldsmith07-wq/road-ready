@@ -6,7 +6,7 @@
 
 import { DatabaseNotConfigured, deleteState, findUserById, readState, readStateMeta, writeState } from './_lib/db.js';
 import { MissingAuthSecret, readCookies, readSessionPayload, SESSION_COOKIE } from './_lib/session.js';
-import { isCrossOriginRequest } from './_lib/config.js';
+import { isCrossOriginRequest, AccountsNotConfigured } from './_lib/config.js';
 import { callerKey, hit } from './_lib/ratelimit.js';
 
 /** A full study history is well under this; past it is abuse, not use. */
@@ -92,7 +92,9 @@ export default async function handler(req, res) {
       // ?meta=1 asks for the snapshot's timestamp and revision only. The
       // client polls those two columns to show "last saved ..."; fetching the
       // whole backup bundle for that shipped up to 4 MB on every poll.
-      const wantsMeta = String(req.url || '').includes('meta=1');
+      // The query is parsed rather than substring-matched, so a parameter
+      // that merely contains "meta=1" cannot switch the response shape.
+      const wantsMeta = new URLSearchParams(String(req.url || '').split('?')[1] || '').get('meta') === '1';
       if (wantsMeta) {
         const meta = await readStateMeta(user.id);
         return json(res, 200, {
@@ -165,7 +167,8 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'GET, PUT, DELETE');
     return json(res, 405, { error: 'Method not allowed' });
   } catch (error) {
-    if (error instanceof DatabaseNotConfigured || error instanceof MissingAuthSecret) {
+    if (error instanceof DatabaseNotConfigured || error instanceof MissingAuthSecret
+        || error instanceof AccountsNotConfigured) {
       // The detail names the missing environment variable. That is useful to
       // an operator and tells an unauthenticated caller exactly how this
       // deployment is configured, so the client gets a generic message and
