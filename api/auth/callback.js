@@ -22,6 +22,9 @@ import { AccountsNotConfigured, requireAccountsConfigured } from '../_lib/config
 /** Sends the browser back to the app with a message it can show. */
 function backToApp(res, params) {
   res.statusCode = 302;
+  // Without this the redirect itself can be cached, and a cached "signed in"
+  // redirect would replay the banner on a later visit.
+  res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Location', `/?${new URLSearchParams(params).toString()}`);
   res.end();
 }
@@ -79,7 +82,11 @@ export default async function handler(req, res) {
       || error instanceof MissingAuthSecret || error instanceof AccountsNotConfigured) {
       res.statusCode = 503;
       res.setHeader('Content-Type', 'application/json');
-      return res.end(JSON.stringify({ error: error.message }));
+      res.setHeader('Cache-Control', 'no-store');
+      // The detail names the missing environment variable. Keep it in the log
+      // rather than sending configuration state to the browser.
+      console.error('[auth] sign-in is not configured', error.message);
+      return res.end(JSON.stringify({ error: 'Sign-in is not available on this deployment.' }));
     }
     // Anything else is a genuine failure. Log the detail; tell the user only
     // that it did not work, since the detail can carry token material.

@@ -4,6 +4,7 @@ import { Readable } from "node:stream";
 const db = vi.hoisted(() => ({
   findUserById: vi.fn(),
   readState: vi.fn(),
+  readStateMeta: vi.fn(),
   writeState: vi.fn(),
   deleteState: vi.fn(),
   deleteUser: vi.fn(),
@@ -11,6 +12,7 @@ const db = vi.hoisted(() => ({
 
 const session = vi.hoisted(() => ({
   readSession: vi.fn(() => "user-1"),
+  readSessionPayload: vi.fn(() => ({ uid: "user-1", iat: Math.floor(Date.now() / 1000) })),
   readCookies: vi.fn(() => ({ roadready_session: "token" })),
   clearSessionCookie: vi.fn(),
 }));
@@ -19,6 +21,7 @@ vi.mock("../api/_lib/db.js", () => ({
   DatabaseNotConfigured: class DatabaseNotConfigured extends Error {},
   findUserById: db.findUserById,
   readState: db.readState,
+  readStateMeta: db.readStateMeta,
   writeState: db.writeState,
   deleteState: db.deleteState,
   deleteUser: db.deleteUser,
@@ -28,8 +31,15 @@ vi.mock("../api/_lib/session.js", () => ({
   MissingAuthSecret: class MissingAuthSecret extends Error {},
   SESSION_COOKIE: "roadready_session",
   readSession: session.readSession,
+  readSessionPayload: session.readSessionPayload,
   readCookies: session.readCookies,
   clearSessionCookie: session.clearSessionCookie,
+}));
+
+// The rate limiter is real but must not make these tests order-dependent.
+vi.mock("../api/_lib/ratelimit.js", () => ({
+  callerKey: () => "test-key",
+  hit: () => ({ allowed: true, remaining: 99, retryAfterSeconds: 0 }),
 }));
 
 const { default: syncHandler } = await import("../api/sync.js");
@@ -69,6 +79,7 @@ function jsonBody(res) {
 beforeEach(() => {
   vi.clearAllMocks();
   session.readSession.mockReturnValue("user-1");
+  session.readSessionPayload.mockReturnValue({ uid: "user-1", iat: Math.floor(Date.now() / 1000) });
   session.readCookies.mockReturnValue({ roadready_session: "token" });
   db.findUserById.mockResolvedValue({ id: "user-1", email: "person@example.com" });
 });

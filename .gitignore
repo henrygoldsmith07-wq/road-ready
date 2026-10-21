@@ -4,3 +4,9 @@ Thumbs.db
 *.log
 test-results/
 tmp-*
+
+# Local environment files. `.env.example` stays tracked as the template;
+# a real .env holds DATABASE_URL and AUTH_SECRET and must never be committed.
+.env
+.env.local
+.env.*.local

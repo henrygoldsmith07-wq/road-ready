@@ -18,8 +18,11 @@ Security headers (`Content-Security-Policy`, `X-Content-Type-Options`, `Referrer
 | `AUTH_SECRET` | accounts only | Session signing key — generate with `openssl rand -base64 32`. Production refuses keys shorter than 32 characters. |
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | accounts only | Google OAuth client (redirect: `https://<your-domain>/api/auth/callback`) |
 | `AUTH_URL` | accounts, production | Canonical origin. Production **requires** it so a spoofed `Host` header can never steer the OAuth redirect. |
+| `NODE_ENV` | accounts, production | Set to `production`. Vercel sets it automatically, and the app also treats `VERCEL_ENV=production` or `VERCEL=1` as production, so the session cookie still gets `Secure` and the `__Host-` prefix if `NODE_ENV` is ever missing. |
 
 No accounts configured? Deploy the static app as-is — sign-in never appears and the PWA works fully offline.
+
+Keep local secrets in a `.env` file. `.env`, `.env.local` and `.env.*.local` are git-ignored; `.env.example` is the tracked template.
 
 ## Before promoting a commit to production
 

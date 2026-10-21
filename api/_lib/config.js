@@ -38,7 +38,16 @@ export function requireAccountsConfigured() {
 export function authOrigin(req) {
   const configured = process.env.AUTH_URL && process.env.AUTH_URL.trim();
   if (configured) {
-    const parsed = new URL(configured);
+    // A malformed AUTH_URL must be reported as a configuration problem, not as
+    // an unexpected TypeError: the raw throw became a 500, and through the
+    // fail-closed origin guard it turned into a 403 on every mutating request
+    // with nothing in the response to explain why.
+    let parsed;
+    try {
+      parsed = new URL(configured);
+    } catch {
+      throw new AccountsNotConfigured(['a valid AUTH_URL']);
+    }
     if (!['http:', 'https:'].includes(parsed.protocol)) throw new AccountsNotConfigured(['valid AUTH_URL']);
     if (process.env.NODE_ENV === 'production' && parsed.protocol !== 'https:') {
       throw new AccountsNotConfigured(['HTTPS AUTH_URL']);

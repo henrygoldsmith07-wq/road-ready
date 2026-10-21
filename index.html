@@ -15,6 +15,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="stylesheet" href="css/styles.css">
 <link rel="stylesheet" href="css/hazard.css">
+<link rel="stylesheet" href="css/sources.css">
 <!-- The question bank is the largest script; warm it up before the deferred queue below. -->
 <link rel="preload" as="script" href="js/questions.js">
 </head>
@@ -315,6 +316,12 @@
 
       <div id="stateFacts" hidden></div>
 
+      <div class="card finder-card sources-entry">
+        <p class="finder-label">Is this content accurate?</p>
+        <p class="finder-hint">Every question names the official document it came from and the date that document was last checked. Open the ledger to see the lot.</p>
+        <button class="btn ghost" id="btnSources" type="button">Content &amp; Sources</button>
+      </div>
+
       <div id="guideUs">
       <h2 class="section-title">Written test cheat sheets</h2>
 
@@ -503,6 +510,13 @@
           <a class="source-link state-source" id="gbPracticalSource" href="#" target="_blank" rel="noopener noreferrer">Open official practical-test guidance ↗</a>
         </div>
       </div>
+    </section>
+
+    <!-- ============ CONTENT & SOURCES ============ -->
+    <section class="view" id="view-sources">
+      <h1 class="view-title">Content &amp; Sources</h1>
+      <p class="view-sub">Where every question comes from, and when it was last checked against the source.</p>
+      <div id="sourcesBody"><!-- rendered by js/sources-ui.js --></div>
     </section>
 
     <!-- ============ HAZARD PERCEPTION ============ -->
@@ -818,6 +832,8 @@
 <script src="js/hazard-scenarios.js" defer></script>
 <script src="js/hazard-ui.js" defer></script>
 <script src="js/guide.js" defer></script>
+<script src="js/sources.js" defer></script>
+<script src="js/sources-ui.js" defer></script>
 <script src="js/jurisdictions.js" defer></script>
 <!-- js/packs/uk.js loads on demand via Packs.ensureUkPack (js/state-packs.js): parsing 1.6MB of GB questions on every boot taxed first paint for sessions that never select Great Britain. -->
 <script src="js/state-packs.js" defer></script>
