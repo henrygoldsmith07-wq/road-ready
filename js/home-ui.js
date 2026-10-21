@@ -354,7 +354,17 @@
     // e2e: "test date builds a persistent daily plan") — the baseline owns
     // only the undated fresh screen, where the plan would otherwise be
     // generic coverage with no personal signal behind it.
-    if (state.answered === 0 && !validTestDate()) {
+    //
+    // "Fresh" means NO learning signal at all, not merely an answer count of
+    // zero. A learner can have question history, a tracked misconception or an
+    // overdue review while the counter still reads zero, and in that case the
+    // coach's plan (repair this misconception, these N questions are due) is
+    // strictly more useful than a starting-level check. Overriding it would
+    // hide real, actionable work.
+    const noSignalYet = state.answered === 0
+      && Object.keys(state.qstats || {}).length === 0
+      && Object.keys(state.misconceptions || {}).length === 0;
+    if (noSignalYet && !validTestDate()) {
       /* The baseline owns the WHOLE card, not just its heading.
        *
        * The card is otherwise populated from the generic "coverage"
