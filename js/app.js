@@ -1466,7 +1466,7 @@ function initRest() {
   // The card's buttons are wired now. A click that arrived while the app was
   // starting up is replayed against the live handler.
   document.documentElement.dataset.appReady = "1";
-  document.dispatchEvent(new CustomEvent("roadready:ready"));
+  document.dispatchEvent(new Event("roadready:ready"));
   registerServiceWorker();
   scheduleReminder();
   maybeStreakRiskToast();

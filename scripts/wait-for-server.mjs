@@ -10,6 +10,8 @@
  * measurement should not either. This waits for the server to answer and
  * makes one warm-up request before the measurement begins.
  */
+import { setTimeout as sleep } from "node:timers/promises";
+
 const url = process.argv[2] || "http://localhost:8321/";
 const timeoutMs = 60_000;
 const deadline = Date.now() + timeoutMs;
@@ -29,5 +31,5 @@ for (;;) {
     console.error("server did not answer within " + timeoutMs + "ms:", url);
     process.exit(1);
   }
-  await new Promise((resolve) => setTimeout(resolve, 250));
+  await sleep(250);
 }

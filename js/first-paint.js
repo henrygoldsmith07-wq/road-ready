@@ -32,7 +32,7 @@
       var state = JSON.parse(raw);
       onboarded = !!(state && state.onboarded);
     }
-  } catch (e) {
+  } catch {
     // Storage unavailable or unreadable: the app will decide at boot, and
     // showing the card is the safe default.
     onboarded = false;
@@ -49,9 +49,14 @@
   var queued = null;
   document.addEventListener("click", function (event) {
     if (document.documentElement.dataset.appReady === "1") return;
-    var target = event.target && event.target.closest
-      ? event.target.closest("#obSkip, #obNext")
-      : null;
+    // The click may land on an icon inside the button, so the button is found
+    // by walking up from whatever was actually clicked.
+    var origin = /** @type {HTMLElement|null} */ (/** @type {unknown} */ (event.target));
+    var target = /** @type {HTMLElement|null} */ (
+      origin && typeof origin.closest === "function"
+        ? origin.closest("#obSkip, #obNext")
+        : null
+    );
     if (!target) return;
     event.preventDefault();
     event.stopPropagation();
