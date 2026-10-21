@@ -9,21 +9,21 @@
 > Regenerate with `node scripts/content-coverage.mjs --write`.
 > Every count in `README.md` should trace back to this file.
 
-**Generated:** 2026-10-20
+**Generated:** 2026-10-21
 
 ## Headline numbers
 
 | Measure | Value |
 |---|---|
-| Questions in the full bank | 2390 |
+| Questions in the full bank | 2405 |
 | Universal (US, no state pack) bank | 625 |
-| Jurisdiction-pack questions | 1765 |
+| Jurisdiction-pack questions | 1780 |
 | Great Britain pack questions | 1579 |
-| U.S. state-pack questions (six states) | 186 |
+| U.S. state-pack questions (six states) | 201 |
 | Distinct concepts | 659 |
-| Concepts with 3+ questions | 623 |
-| Concepts with 2+ question forms | 654 |
-| Concepts with a single question | 3 |
+| Concepts with 3+ questions | 626 |
+| Concepts with 2+ question forms | 659 |
+| Concepts with a single question | 0 |
 | Distinct question forms | 9 |
 | Road signs with artwork | 58 |
 | Registered jurisdictions (packs) | 8 |
@@ -35,12 +35,12 @@ The table below is the honest version of the product's coverage claim.
 | Jurisdiction | Universal bank | Own pack questions | Total available | Unique questions for an official-length mock | Own-pack depth vs a full exam |
 |---|---|---|---|---|---|
 | General U.S. rules — no state pack selected | 625 | 0 | 625 | n/a (no published exam spec) | n/a |
-| California (DMV) | 625 | 38 | 663 | yes - 663 available, 46 needed | **38 own questions - 83% of a full exam's worth (46 needed)** |
-| Texas (DPS) | 625 | 37 | 662 | yes - 662 available, 30 needed | 37 own questions (123% of a full exam's worth) |
-| New York (DMV) | 625 | 30 | 655 | yes - 655 available, 20 needed | 30 own questions (150% of a full exam's worth) |
-| Florida (FLHSMV) | 625 | 28 | 653 | yes - 653 available, 50 needed | **28 own questions - 56% of a full exam's worth (50 needed)** |
-| Washington (DOL) | 625 | 27 | 652 | yes - 652 available, 40 needed | **27 own questions - 68% of a full exam's worth (40 needed)** |
-| Pennsylvania (PennDOT) | 625 | 26 | 651 | yes - 651 available, 18 needed | 26 own questions (144% of a full exam's worth) |
+| California (DMV) | 625 | 41 | 666 | yes - 666 available, 46 needed | **41 own questions - 89% of a full exam's worth (46 needed)** |
+| Texas (DPS) | 625 | 40 | 665 | yes - 665 available, 30 needed | 40 own questions (133% of a full exam's worth) |
+| New York (DMV) | 625 | 32 | 657 | yes - 657 available, 20 needed | 32 own questions (160% of a full exam's worth) |
+| Florida (FLHSMV) | 625 | 32 | 657 | yes - 657 available, 50 needed | **32 own questions - 64% of a full exam's worth (50 needed)** |
+| Washington (DOL) | 625 | 29 | 654 | yes - 654 available, 40 needed | **29 own questions - 73% of a full exam's worth (40 needed)** |
+| Pennsylvania (PennDOT) | 625 | 27 | 652 | yes - 652 available, 18 needed | 27 own questions (150% of a full exam's worth) |
 | Great Britain (DVSA car) | 0 | 1579 | 1579 | yes - 1579 available, 50 needed | 1579 own questions (3158% of a full exam's worth) |
 
 Read the last two columns together, because they answer different questions.
@@ -62,16 +62,16 @@ topic mix: the blueprint's `topicWeights` are editorial approximations
 
 | Topic | Questions | Concepts | Concepts with 2+ questions | Question forms |
 |---|---|---|---|---|
+| Safety & Emergencies | 339 | 98 | 97 | 9 |
 | Signs & Signals | 337 | 93 | 93 | 9 |
-| Safety & Emergencies | 337 | 98 | 96 | 9 |
-| People & Riders | 262 | 68 | 67 | 9 |
-| Rules & Penalties | 258 | 74 | 71 | 9 |
+| People & Riders | 265 | 68 | 67 | 9 |
+| Rules & Penalties | 260 | 74 | 72 | 9 |
 | Right of Way | 236 | 63 | 62 | 9 |
 | Markings & Lanes | 229 | 59 | 59 | 8 |
 | Speed & Distance | 204 | 56 | 54 | 8 |
-| Alcohol & Drugs | 196 | 60 | 60 | 7 |
+| Alcohol & Drugs | 202 | 60 | 60 | 7 |
 | Parking & Stopping | 179 | 48 | 48 | 7 |
-| Vehicle Basics | 152 | 50 | 49 | 6 |
+| Vehicle Basics | 154 | 50 | 50 | 6 |
 
 A high concept count with a low "concepts with variation" number means the
 topic is broad but shallow: each rule is tested by one question, so a right
@@ -81,17 +81,17 @@ answer is evidence about one question, not about the rule.
 
 | Form | Questions | Share |
 |---|---|---|
-| scenario | 606 | 25.4% |
-| what-next | 584 | 24.4% |
-| recall | 577 | 24.1% |
+| scenario | 617 | 25.7% |
+| what-next | 588 | 24.4% |
+| recall | 577 | 24.0% |
 | multi-step | 218 | 9.1% |
-| sign-combo | 212 | 8.9% |
+| sign-combo | 212 | 8.8% |
 | diagram | 86 | 3.6% |
 | photo | 58 | 2.4% |
 | lane-choice | 33 | 1.4% |
 | prioritisation | 16 | 0.7% |
 
-Recall and scenario forms dominate. 5 concepts cannot
+Recall and scenario forms dominate. 0 concepts cannot
 evidence transfer at all, which limits how well the app can verify that a
 learner can apply a rule to an unfamiliar situation rather than recognise a
 familiar prompt.
@@ -106,11 +106,6 @@ form (not merely a second near-identical question) to clear a row.
 
 | Concept | Questions | Forms | Topic |
 |---|---|---|---|
-| `signal-distance` | 1 | recall | safety |
-| `slower-traffic-keep-right` | 1 | recall | laws |
-| `towing-chains` | 1 | recall | vehicle |
-| `motorcycle-helmet` | 3 | recall | vulnerable |
-| `zero-tolerance` | 6 | recall | alcohol |
 
 
 ## Source provenance
@@ -122,12 +117,12 @@ document.
 
 | Source | Authority | Jurisdiction | Verified | Questions citing it directly | Via category default |
 |---|---|---|---|---|---|
-| ca-dmv-driver-handbook | California DMV | CA | 2026-08-23 | 38 | 0 |
-| tx-dps-driver-handbook | Texas DPS | TX | 2026-08-23 | 37 | 0 |
-| ny-dmv-driver-manual | New York DMV | NY | 2026-08-23 | 30 | 0 |
-| fl-flhsmv-handbook | FLHSMV | FL | 2026-08-23 | 28 | 0 |
-| wa-dol-driver-guide | Washington DOL | WA | 2026-08-23 | 27 | 0 |
-| pa-penndot-driver-manual | PennDOT | PA | 2026-08-23 | 26 | 0 |
+| ca-dmv-driver-handbook | California DMV | CA | 2026-08-23 | 41 | 0 |
+| tx-dps-driver-handbook | Texas DPS | TX | 2026-08-23 | 40 | 0 |
+| ny-dmv-driver-manual | New York DMV | NY | 2026-08-23 | 32 | 0 |
+| fl-flhsmv-handbook | FLHSMV | FL | 2026-08-23 | 32 | 0 |
+| wa-dol-driver-guide | Washington DOL | WA | 2026-08-23 | 29 | 0 |
+| pa-penndot-driver-manual | PennDOT | PA | 2026-08-23 | 27 | 0 |
 | uk-highway-code | Department for Transport | UK | 2026-09-22 | 1364 | 0 |
 | uk-know-your-traffic-signs | Department for Transport | UK | 2026-09-22 | 215 | 0 |
 | uk-theory-test-format | DVSA | UK | 2026-09-22 | 0 | 0 |
