@@ -77,15 +77,18 @@ export function resetLimiter() {
 function clientAddress(req) {
   const headers = (req && req.headers) || {};
   const vercel = headers['x-vercel-forwarded-for'];
-  if (vercel) return String(vercel).split(',')[0].trim();
+  if (vercel) return lastEntry(vercel);
   const real = headers['x-real-ip'];
-  if (real) return String(real).split(',')[0].trim();
+  if (real) return lastEntry(real);
   const forwarded = headers['x-forwarded-for'];
-  if (forwarded) {
-    const parts = String(forwarded).split(',').map((s) => s.trim()).filter(Boolean);
-    if (parts.length) return parts[parts.length - 1];
-  }
+  if (forwarded) return lastEntry(forwarded);
   return (req && req.socket && req.socket.remoteAddress) || 'unknown';
+}
+
+/** The right-most entry of a possibly comma-separated header value. */
+function lastEntry(value) {
+  const parts = String(value).split(',').map((s) => s.trim()).filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : 'unknown';
 }
 
 /**
