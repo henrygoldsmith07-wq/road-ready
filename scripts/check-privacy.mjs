@@ -10,10 +10,17 @@ const privacyDoc = fs.readFileSync("docs/PRIVACY.md", "utf8");
 const jsFiles = fs.readdirSync("js").filter((f) => f.endsWith(".js")).map((f) => `js/${f}`);
 const jsSources = jsFiles.map((f) => fs.readFileSync(f, "utf8"));
 
-/* 1. "one key: roadready.v1" */
+/* 1. The documented key set: one progress key plus two session-only helpers
+   and the storage probe. An allow-list, not a count, so a new key must be
+   documented in docs/PRIVACY.md before it can ship. */
+const DOCUMENTED_KEYS = ["roadready.v1", "roadready.probe", "roadready.session.v1", "roadready.commute.pos"];
 const keys = new Set();
 for (const s of jsSources) for (const m of s.matchAll(/"(roadready\.[\w.-]+)"/g)) keys.add(m[1]);
-if (keys.size !== 2 || !keys.has("roadready.v1")) problems.push(`storage keys are ${[...keys].join(", ")}, doc says only roadready.v1`);
+for (const k of keys) if (!DOCUMENTED_KEYS.includes(k)) problems.push(`undocumented storage key ${k}`);
+for (const k of DOCUMENTED_KEYS) if (!keys.has(k)) problems.push(`documented storage key ${k} is no longer used`);
+if (!privacyDoc.includes("roadready.session.v1") || !privacyDoc.includes("roadready.commute.pos")) {
+  problems.push("docs/PRIVACY.md does not list the session/commute helper keys");
+}
 // roadready.probe is an availability check, written and removed in the same tick
 
 /* 2. "fetch only in account.js, only /api/*" */

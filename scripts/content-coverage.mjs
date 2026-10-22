@@ -89,8 +89,19 @@ const topicRows = Object.entries(CATEGORIES).map(([id, cat]) => {
   };
 });
 
+/* A concept can only evidence transfer when it offers >=2 questions AND >=2
+ * forms (MIN_VARIANTS_SECURE / MIN_FORMS_SECURE in js/mastery.js). This report
+ * used to list everything with fewer than three questions, which over-reported
+ * the gap: a concept with two questions in two different forms DOES evidence
+ * transfer. Measure the real gate instead, so the work queue matches what the
+ * app can actually show. */
+const MIN_VARIANTS_SECURE = 2;
+const MIN_FORMS_SECURE = 2;
+const cannotEvidenceTransfer = (c) =>
+  c.questions.length < MIN_VARIANTS_SECURE || c.forms.length < MIN_FORMS_SECURE;
+
 const thinConcepts = conceptQuestions
-  .filter((c) => c.questions.length < 3)
+  .filter(cannotEvidenceTransfer)
   .sort((a, b) => a.questions.length - b.questions.length || a.key.localeCompare(b.key));
 
 const formCounts = {};
@@ -192,17 +203,19 @@ for (const [form, n] of Object.entries(formCounts).sort((a, b) => b[1] - a[1])) 
   L.push(`| ${form} | ${n} | ${((100 * n) / QUESTIONS.length).toFixed(1)}% |`);
 }
 L.push("");
-L.push(`Recall and scenario forms dominate. ${thinConcepts.length} concepts have fewer than`);
-L.push("three questions, which limits how well the app can verify that a learner can");
-L.push("apply a rule to an unfamiliar situation rather than recognise a familiar");
-L.push("prompt.");
+L.push(`Recall and scenario forms dominate. ${thinConcepts.length} concept${thinConcepts.length === 1 ? "" : "s"} cannot`);
+L.push("evidence transfer at all, which limits how well the app can verify that a");
+L.push("learner can apply a rule to an unfamiliar situation rather than recognise a");
+L.push("familiar prompt.");
 L.push("");
 
 L.push("## Concepts that cannot yet evidence transfer");
 L.push("");
 L.push("Listed so the gap is visible in review rather than hidden inside a topic total.");
-L.push("Batch 1 of the content plan targets the concepts a learner is most likely to");
-L.push("meet first; this list is the work queue, in priority order.");
+L.push("A concept appears here when it offers fewer than two questions, or fewer than");
+L.push("two question forms — the same test the mastery engine applies, so this list is");
+L.push("exactly the set of concepts the app can never show transfer for. Add a second");
+L.push("form (not merely a second near-identical question) to clear a row.");
 L.push("");
 L.push("| Concept | Questions | Forms | Topic |");
 L.push("|---|---|---|---|");

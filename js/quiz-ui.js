@@ -141,16 +141,21 @@
       const sourceLink = $("fbSource");
       sourceLink.hidden = !citation;
       if (citation) {
+        // The last-checked date sits next to the link, so a learner who
+        // doubts the answer can see how current the rule is without leaving
+        // the screen.
+        const checked = citation.verified ? ` · checked ${citation.verified}` : "";
         if (citation.url) {
           sourceLink.href = citation.url;
-          sourceLink.textContent = `${citation.label}: ${citation.detail} ↗`;
-          sourceLink.setAttribute("aria-label", citation.section
-            ? `Open ${citation.title}, section ${citation.section}, in a new tab`
-            : `Open ${citation.title} in a new tab`);
+          sourceLink.textContent = `${citation.label}: ${citation.detail}${checked} ↗`;
+          sourceLink.setAttribute("aria-label", (citation.section
+            ? `Open ${citation.title}, ${citation.sectionKind === "rule" ? "rule" : "topic"} ${citation.section}, in a new tab`
+            : `Open ${citation.title} in a new tab`)
+            + (citation.verified ? `. Last checked ${citation.verified}` : ""));
         } else {
           // The composite basis has no single URL — text, not a dead link.
           sourceLink.removeAttribute("href");
-          sourceLink.textContent = `${citation.label}: ${citation.detail}`;
+          sourceLink.textContent = `${citation.label}: ${citation.detail}${checked}`;
           sourceLink.removeAttribute("aria-label");
         }
       } else {

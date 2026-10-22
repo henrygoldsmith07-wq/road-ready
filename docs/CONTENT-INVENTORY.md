@@ -9,21 +9,21 @@
 > Regenerate with `node scripts/content-coverage.mjs --write`.
 > Every count in `README.md` should trace back to this file.
 
-**Generated:** 2026-10-20
+**Generated:** 2026-10-21
 
 ## Headline numbers
 
 | Measure | Value |
 |---|---|
-| Questions in the full bank | 2311 |
-| Universal (US, no state pack) bank | 546 |
-| Jurisdiction-pack questions | 1765 |
+| Questions in the full bank | 2405 |
+| Universal (US, no state pack) bank | 625 |
+| Jurisdiction-pack questions | 1780 |
 | Great Britain pack questions | 1579 |
-| U.S. state-pack questions (six states) | 186 |
+| U.S. state-pack questions (six states) | 201 |
 | Distinct concepts | 659 |
-| Concepts with 3+ questions | 609 |
-| Concepts with 2+ question forms | 604 |
-| Concepts with a single question | 46 |
+| Concepts with 3+ questions | 626 |
+| Concepts with 2+ question forms | 659 |
+| Concepts with a single question | 0 |
 | Distinct question forms | 9 |
 | Road signs with artwork | 58 |
 | Registered jurisdictions (packs) | 8 |
@@ -34,13 +34,13 @@ The table below is the honest version of the product's coverage claim.
 
 | Jurisdiction | Universal bank | Own pack questions | Total available | Unique questions for an official-length mock | Own-pack depth vs a full exam |
 |---|---|---|---|---|---|
-| General U.S. rules — no state pack selected | 546 | 0 | 546 | n/a (no published exam spec) | n/a |
-| California (DMV) | 546 | 38 | 584 | yes - 584 available, 46 needed | **38 own questions - 83% of a full exam's worth (46 needed)** |
-| Texas (DPS) | 546 | 37 | 583 | yes - 583 available, 30 needed | 37 own questions (123% of a full exam's worth) |
-| New York (DMV) | 546 | 30 | 576 | yes - 576 available, 20 needed | 30 own questions (150% of a full exam's worth) |
-| Florida (FLHSMV) | 546 | 28 | 574 | yes - 574 available, 50 needed | **28 own questions - 56% of a full exam's worth (50 needed)** |
-| Washington (DOL) | 546 | 27 | 573 | yes - 573 available, 40 needed | **27 own questions - 68% of a full exam's worth (40 needed)** |
-| Pennsylvania (PennDOT) | 546 | 26 | 572 | yes - 572 available, 18 needed | 26 own questions (144% of a full exam's worth) |
+| General U.S. rules — no state pack selected | 625 | 0 | 625 | n/a (no published exam spec) | n/a |
+| California (DMV) | 625 | 41 | 666 | yes - 666 available, 46 needed | **41 own questions - 89% of a full exam's worth (46 needed)** |
+| Texas (DPS) | 625 | 40 | 665 | yes - 665 available, 30 needed | 40 own questions (133% of a full exam's worth) |
+| New York (DMV) | 625 | 32 | 657 | yes - 657 available, 20 needed | 32 own questions (160% of a full exam's worth) |
+| Florida (FLHSMV) | 625 | 32 | 657 | yes - 657 available, 50 needed | **32 own questions - 64% of a full exam's worth (50 needed)** |
+| Washington (DOL) | 625 | 29 | 654 | yes - 654 available, 40 needed | **29 own questions - 73% of a full exam's worth (40 needed)** |
+| Pennsylvania (PennDOT) | 625 | 27 | 652 | yes - 652 available, 18 needed | 27 own questions (150% of a full exam's worth) |
 | Great Britain (DVSA car) | 0 | 1579 | 1579 | yes - 1579 available, 50 needed | 1579 own questions (3158% of a full exam's worth) |
 
 Read the last two columns together, because they answer different questions.
@@ -62,16 +62,16 @@ topic mix: the blueprint's `topicWeights` are editorial approximations
 
 | Topic | Questions | Concepts | Concepts with 2+ questions | Question forms |
 |---|---|---|---|---|
-| Safety & Emergencies | 330 | 98 | 89 | 9 |
-| Signs & Signals | 302 | 93 | 79 | 9 |
-| People & Riders | 262 | 68 | 67 | 9 |
-| Rules & Penalties | 250 | 74 | 67 | 9 |
-| Right of Way | 229 | 62 | 57 | 9 |
-| Markings & Lanes | 225 | 59 | 57 | 8 |
-| Speed & Distance | 197 | 56 | 49 | 8 |
-| Alcohol & Drugs | 192 | 60 | 58 | 6 |
+| Safety & Emergencies | 339 | 98 | 97 | 9 |
+| Signs & Signals | 337 | 93 | 93 | 9 |
+| People & Riders | 265 | 68 | 67 | 9 |
+| Rules & Penalties | 260 | 74 | 72 | 9 |
+| Right of Way | 236 | 63 | 62 | 9 |
+| Markings & Lanes | 229 | 59 | 59 | 8 |
+| Speed & Distance | 204 | 56 | 54 | 8 |
+| Alcohol & Drugs | 202 | 60 | 60 | 7 |
 | Parking & Stopping | 179 | 48 | 48 | 7 |
-| Vehicle Basics | 145 | 50 | 44 | 6 |
+| Vehicle Basics | 154 | 50 | 50 | 6 |
 
 A high concept count with a low "concepts with variation" number means the
 topic is broad but shallow: each rule is tested by one question, so a right
@@ -81,79 +81,31 @@ answer is evidence about one question, not about the rule.
 
 | Form | Questions | Share |
 |---|---|---|
-| scenario | 577 | 25.0% |
-| recall | 571 | 24.7% |
-| what-next | 568 | 24.6% |
-| multi-step | 218 | 9.4% |
-| sign-combo | 210 | 9.1% |
-| diagram | 68 | 2.9% |
-| photo | 56 | 2.4% |
-| lane-choice | 29 | 1.3% |
-| prioritisation | 14 | 0.6% |
+| scenario | 617 | 25.7% |
+| what-next | 588 | 24.4% |
+| recall | 577 | 24.0% |
+| multi-step | 218 | 9.1% |
+| sign-combo | 212 | 8.8% |
+| diagram | 86 | 3.6% |
+| photo | 58 | 2.4% |
+| lane-choice | 33 | 1.4% |
+| prioritisation | 16 | 0.7% |
 
-Recall and scenario forms dominate. 50 concepts have fewer than
-three questions, which limits how well the app can verify that a learner can
-apply a rule to an unfamiliar situation rather than recognise a familiar
-prompt.
+Recall and scenario forms dominate. 0 concepts cannot
+evidence transfer at all, which limits how well the app can verify that a
+learner can apply a rule to an unfamiliar situation rather than recognise a
+familiar prompt.
 
 ## Concepts that cannot yet evidence transfer
 
 Listed so the gap is visible in review rather than hidden inside a topic total.
-Batch 1 of the content plan targets the concepts a learner is most likely to
-meet first; this list is the work queue, in priority order.
+A concept appears here when it offers fewer than two questions, or fewer than
+two question forms — the same test the mastery engine applies, so this list is
+exactly the set of concepts the app can never show transfer for. Add a second
+form (not merely a second near-identical question) to clear a row.
 
 | Concept | Questions | Forms | Topic |
 |---|---|---|---|
-| `services-sign` | 1 | recall | signs |
-| `signal-ahead-sign` | 1 | recall | signs |
-| `signal-distance` | 1 | recall | safety |
-| `signalling-requirement` | 1 | recall | laws |
-| `slippery-road-sign` | 1 | recall | signs |
-| `slow-driving-hazard` | 1 | recall | speed |
-| `slower-traffic-keep-right` | 1 | recall | laws |
-| `soft-shoulder-sign` | 1 | recall | signs |
-| `solid-white-lane-line` | 1 | recall | markings |
-| `speed-and-stopping-distance` | 1 | recall | speed |
-| `speed-limit-sign` | 1 | recall | signs |
-| `stale-green-light` | 1 | recall | signs |
-| `standard-drink-equivalence` | 1 | recall | alcohol |
-| `steering-hand-position` | 1 | recall | vehicle |
-| `stop-ahead-sign` | 1 | recall | signs |
-| `stop-sign-response` | 1 | recall | signs |
-| `stop-sign-shape` | 1 | recall | signs |
-| `stopped-emergency-vehicle` | 1 | recall | row |
-| `stopping-distance-components` | 1 | recall | speed |
-| `stuck-accelerator` | 1 | recall | safety |
-| `suspended-licence` | 1 | recall | laws |
-| `t-intersection-priority` | 1 | recall | row |
-| `tailgating-response` | 1 | recall | safety |
-| `texting-while-driving` | 1 | recall | safety |
-| `tire-blowout` | 1 | multi-step | safety |
-| `towing-chains` | 1 | recall | vehicle |
-| `truck-following-downgrade` | 1 | recall | speed |
-| `truck-no-zones` | 1 | recall | safety |
-| `turn-across-bike-lane` | 1 | recall | row |
-| `turn-priority` | 1 | what-next | row |
-| `two-way-left-turn-lane` | 1 | recall | markings |
-| `two-way-traffic-sign` | 1 | recall | signs |
-| `tyre-blowout` | 1 | recall | safety |
-| `tyre-pressure-source` | 1 | recall | vehicle |
-| `tyre-tread-test` | 1 | recall | vehicle |
-| `u-turn-legality` | 1 | recall | laws |
-| `unattended-vehicle-damage` | 1 | recall | safety |
-| `uncontrolled-intersection-tie` | 1 | recall | row |
-| `under-21-alcohol-limit` | 1 | recall | alcohol |
-| `uphill-stop-in-traffic` | 1 | recall | vehicle |
-| `wiper-condition` | 1 | recall | vehicle |
-| `work-zone-authority` | 1 | recall | signs |
-| `work-zone-sign` | 1 | recall | signs |
-| `work-zone-speed` | 1 | recall | speed |
-| `wrong-way-sign` | 1 | recall | signs |
-| `yield-sign-meaning` | 1 | recall | signs |
-| `sign-color` | 2 | sign-combo | signs |
-| `sign-shape` | 2 | sign-combo | signs |
-| `skid-recovery` | 2 | recall, scenario | safety |
-| `two-way-left-turn` | 2 | lane-choice | markings |
 
 
 ## Source provenance
@@ -165,16 +117,16 @@ document.
 
 | Source | Authority | Jurisdiction | Verified | Questions citing it directly | Via category default |
 |---|---|---|---|---|---|
-| ca-dmv-driver-handbook | California DMV | CA | 2026-08-23 | 38 | 0 |
-| tx-dps-driver-handbook | Texas DPS | TX | 2026-08-23 | 37 | 0 |
-| ny-dmv-driver-manual | New York DMV | NY | 2026-08-23 | 30 | 0 |
-| fl-flhsmv-handbook | FLHSMV | FL | 2026-08-23 | 28 | 0 |
-| wa-dol-driver-guide | Washington DOL | WA | 2026-08-23 | 27 | 0 |
-| pa-penndot-driver-manual | PennDOT | PA | 2026-08-23 | 26 | 0 |
+| ca-dmv-driver-handbook | California DMV | CA | 2026-08-23 | 41 | 0 |
+| tx-dps-driver-handbook | Texas DPS | TX | 2026-08-23 | 40 | 0 |
+| ny-dmv-driver-manual | New York DMV | NY | 2026-08-23 | 32 | 0 |
+| fl-flhsmv-handbook | FLHSMV | FL | 2026-08-23 | 32 | 0 |
+| wa-dol-driver-guide | Washington DOL | WA | 2026-08-23 | 29 | 0 |
+| pa-penndot-driver-manual | PennDOT | PA | 2026-08-23 | 27 | 0 |
 | uk-highway-code | Department for Transport | UK | 2026-09-22 | 1364 | 0 |
 | uk-know-your-traffic-signs | Department for Transport | UK | 2026-09-22 | 215 | 0 |
 | uk-theory-test-format | DVSA | UK | 2026-09-22 | 0 | 0 |
-| us-dmv-handbooks-composite | Multiple state DMVs (composite) | * | 2026-08-23 | 546 | 0 |
+| us-dmv-handbooks-composite | Multiple state DMVs (composite) | * | 2026-08-23 | 625 | 0 |
 
 A source older than `VERIFICATION_MAX_AGE_DAYS` (365) fails content QA
 (`scripts/content-checks.mjs`, rule `provenance-stale`), so the table above

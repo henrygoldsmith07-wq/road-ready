@@ -41,6 +41,10 @@ interface Window {
   RoadReadyAccount: any;
   RoadReadyAccountUI: any;
   RoadReadyGuide: any;
+  /** Present only when js/sources.js has loaded before app.js. */
+  RoadReadySources: any;
+  /** Present only when js/sources-ui.js has loaded before app.js. */
+  RoadReadySourcesUI: any;
   /** Present only when js/practical-ui.js has loaded before app.js. */
   RoadReadyPracticalUI: any;
   /** Present only when js/study-ui.js has loaded before app.js. */

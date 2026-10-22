@@ -10,8 +10,13 @@ import {
 } from '../_lib/google.js';
 import { encodeFlowValue, MissingAuthSecret, randomToken, setFlowCookie } from '../_lib/session.js';
 import { AccountsNotConfigured, requireAccountsConfigured } from '../_lib/config.js';
+import { callerKey, hit } from '../_lib/ratelimit.js';
 
 export const FLOW_COOKIE = 'roadready_oauth_flow';
+
+/** Starting a sign-in mints a nonce and a PKCE pair, so it is rate limited. */
+const SIGNIN_LIMIT = 10;
+const SIGNIN_WINDOW_MS = 60_000;
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -23,6 +28,16 @@ export default async function handler(req, res) {
   }
   try {
     requireAccountsConfigured();
+
+    const key = callerKey(req, process.env.AUTH_SECRET);
+    const limit = hit(`${key}:signin`, SIGNIN_LIMIT, SIGNIN_WINDOW_MS);
+    if (!limit.allowed) {
+      res.statusCode = 429;
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('Retry-After', String(limit.retryAfterSeconds));
+      return res.end(JSON.stringify({ error: 'Too many sign-in attempts. Try again shortly.' }));
+    }
 
     const state = randomToken();
     const nonce = createNonce();
@@ -48,7 +63,13 @@ export default async function handler(req, res) {
     res.statusCode = known ? 503 : 500;
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 'no-store');
-    res.end(JSON.stringify({ error: known ? error.message : 'Could not start sign-in' }));
+    // A configuration message names the missing environment variable, which
+    // tells an unauthenticated caller how this deployment is set up. The
+    // detail goes to the log; the client gets a generic message.
+    if (known) console.error('[auth] sign-in is not configured', error.message);
+    res.end(JSON.stringify({
+      error: known ? 'Sign-in is not available on this deployment.' : 'Could not start sign-in',
+    }));
     if (!known) console.error('[auth] failed to start Google sign-in', error);
   }
 }

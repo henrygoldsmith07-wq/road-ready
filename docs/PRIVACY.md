@@ -13,7 +13,7 @@ a normal private window and nothing about you leaves the device.
 | Question | Answer |
 |---|---|
 | Is an account required? | No. Every feature works without one. |
-| Where is study data stored? | This browser's `localStorage`, under the single key `roadready.v1`. |
+| Where is study data stored? | This browser's `localStorage`, under the one progress key `roadready.v1`. Two small session-only side keys exist: an unfinished-session snapshot and an in-tab listening position (see below). |
 | Does anything leave the device by itself? | No. No request is made at startup or during study. |
 | Does anything leave the device if I sign in? | Only what you explicitly press **Save** to upload — and only on deployments that configure accounts. |
 | Can I get my data out? | Yes — **Export** writes a plain JSON file you can re-import anywhere. |
@@ -21,11 +21,21 @@ a normal private window and nothing about you leaves the device.
 
 ## What is stored on this device
 
-One key: `roadready.v1`. There is no cookie and no IndexedDB store.
+All progress is in one record: `roadready.v1`. There is no cookie and no
+IndexedDB store.
 
-Everything is in that one record, which means deletion is complete by
+Everything durable is in that one record, which means deletion is complete by
 construction: erasing resets the whole state object, so there is no second
 location a field could quietly survive in.
+
+Two small keys exist only to help you pick an interrupted session back up, and
+they hold no new information beyond what `roadready.v1` already contains:
+
+| Key | Lifetime | What it holds |
+|---|---|---|
+| `roadready.session.v1` | Removed when the session finishes, is discarded, or is 7 days old | Which question ids an unfinished practice set or mock had reached, the answers given so far, and the exam time left |
+| `roadready.commute.pos` | This tab only (`sessionStorage`) | Which rule of the Commute Mode playlist was playing |
+| `roadready.probe` | Written and removed in the same tick | A one-off check that storage works at all |
 
 | Category | Examples |
 |---|---|
@@ -72,8 +82,9 @@ response to you pressing a button:
 |---|---|---|
 | Opening Settings | `GET /api/auth/session` | nothing beyond what any page load carries (your IP, your user-agent) |
 | Signing in | navigation to `/api/auth/google` | handled by Google's consent screen; Road Ready never sees your password |
-| Pressing **Save** | `POST /api/sync` | the same JSON bundle **Export** writes — practice and exam history, outcomes, Drive Log sessions and notes — plus the email and profile name Google returns to the server |
+| Pressing **Save** | `PUT /api/sync` | the same JSON bundle **Export** writes — practice and exam history, outcomes, Drive Log sessions and notes — plus the email and profile name Google returns to the server |
 | Pressing **Restore** | `GET /api/sync` | nothing; the body comes back |
+| Checking the "last saved" time | `GET /api/sync?meta=1` | nothing; only the save time and revision come back — never the study history |
 | **Delete copy** | `DELETE /api/sync` | nothing |
 | **Delete account** | `DELETE /api/account` | nothing |
 

@@ -5,6 +5,8 @@ import {
   deleteUser,
   findUserById,
   readState,
+  readStateMeta,
+  revokeSessions,
   setQueryExecutor,
   upsertGoogleUser,
   writeState,
@@ -85,10 +87,30 @@ try {
   const stored = await readState(userId);
   expect(stored.payload.bundle === "v2" && String(stored.revision) === "2", "stored state changed after a rejected stale write");
 
+  /* ---------- metadata read and session revocation ---------- */
+  const meta = await readStateMeta(userId);
+  expect(meta && String(meta.revision) === "2", "the metadata read did not report the current revision");
+  expect(meta && meta.payload === undefined, "the metadata read selected the payload column");
+
+  // Revoking marks the account; a session issued before that moment is dead.
+  const before = await findUserById(userId);
+  expect(before.revoked_before === null || before.revoked_before === undefined,
+    "a fresh account already carries a revocation timestamp");
+  await revokeSessions(userId);
+  const after = await findUserById(userId);
+  expect(after.revoked_before instanceof Date, "revokeSessions did not record a revocation timestamp");
+  expect(after.revoked_before.getTime() > 0, "the revocation timestamp is not usable");
+
+  // Revoking twice must not fail, and must not move the timestamp backwards.
+  const firstStamp = after.revoked_before.getTime();
+  await revokeSessions(userId);
+  const twice = await findUserById(userId);
+  expect(twice.revoked_before.getTime() >= firstStamp, "a repeated revocation moved the timestamp backwards");
+
   await deleteUser(userId);
   expect((await readState(userId)) === null, "user_state did not cascade-delete with the account");
 
-  console.log(`postgres integration: PASS (${migrations.length} migrations, account linking + CAS + cascade verified)`);
+  console.log(`postgres integration: PASS (${migrations.length} migrations, account linking + CAS + metadata + revocation + cascade verified)`);
 } finally {
   await client.end();
 }

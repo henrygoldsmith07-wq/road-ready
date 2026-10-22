@@ -71,13 +71,19 @@ const MIN_RETRIEVAL_DAYS = 2;
  * variants or 2 forms, so it is pinned at `learning` for good no matter how
  * well it is answered.
  *
- * This is not hypothetical: the universal US bank still ships many
- * single-question concepts, and the GB pack retains a handful (the live
- * work queue is the "Concepts that cannot yet evidence transfer" table in
+ * This was not hypothetical: the universal US bank shipped many
+ * single-question concepts, and the GB pack retained a handful (the live
+ * work queue was the "Concepts that cannot yet evidence transfer" table in
  * docs/CONTENT-INVENTORY.md). A learner who answered every such question
  * correctly, five times across five days, would still read "Learning" on
  * those concepts — a map contradicting their real performance, with a
  * permanent ceiling baked into the app's main diagnostic surface.
+ *
+ * Both banks have since been brought up to the gate: every concept in the
+ * US pack (206) and the GB pack (427) now offers 2+ questions across 2+
+ * forms, so nothing is pinned by the bound any more. The bound stays in the
+ * code because it remains the honest answer for any concept added later
+ * without a second form — it is the safety net, not the strategy.
  *
  * So each concept declares the transfer it COULD have shown, and each gate is
  * the lesser of "what mastery asks for" and "what the bank makes possible". A

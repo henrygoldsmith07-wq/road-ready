@@ -26,6 +26,8 @@ const QuizUI = window.RoadReadyQuizUI;
 const ConceptMapUI = window.RoadReadyConceptMapUI;
 const StatsUI = window.RoadReadyStatsUI;
 const CommuteUI = window.RoadReadyCommuteUI;
+const Sources = window.RoadReadySources;
+const SourcesUI = window.RoadReadySourcesUI;
 if (PracticalUI) {
   PracticalUI.init({
     Core,
@@ -618,8 +620,8 @@ function showView(name) {
   }
   try { stopSpeaking(); } catch { /* never break routing for audio */ }
   // Back is hidden only on Home: every other view (quiz, commute, hazard,
-  // concept map, review, stats…) is one tap away from Home via the top bar.
-  // Bottom-nav tabs stay the primary switcher; Back is the escape hatch.
+  // concept map, review, stats, the sources ledger…) returns Home from the top
+  // bar. Bottom-nav tabs stay the primary switcher; Back is the escape hatch.
   $("btnBack").hidden = (name === "home");
   /** @type {NodeListOf<HTMLElement>} */(/** @type {NodeListOf<HTMLElement>} */(document.querySelectorAll("#bottomNav button"))).forEach(b => {
     const isActive = b.dataset.nav === name || (b.dataset.nav === "practice" && name === "quiz" && quizBackTarget !== "home");
@@ -628,7 +630,7 @@ function showView(name) {
     else b.removeAttribute("aria-current");
   });
   try {
-    const titles = { home: "Road Ready — Pass Your Driving Test", quiz: "Road Ready — Quiz", commute: "Road Ready — Commute Mode", stats: "Road Ready — Your Progress", flashcards: "Road Ready — Signs", guide: "Road Ready — Study Guide", review: "Road Ready — Weaknesses", hazard: "Road Ready — Hazard Perception", setup: "Road Ready — Practice", results: "Road Ready — Results" };
+    const titles = { home: "Road Ready — Pass Your Driving Test", quiz: "Road Ready — Quiz", commute: "Road Ready — Commute Mode", stats: "Road Ready — Your Progress", flashcards: "Road Ready — Signs", guide: "Road Ready — Study Guide", review: "Road Ready — Weaknesses", hazard: "Road Ready — Hazard Perception", setup: "Road Ready — Practice", results: "Road Ready — Results", sources: "Road Ready — Sources" };
     if (titles[name]) document.title = titles[name];
   } catch { /* title is a courtesy */ }
   window.scrollTo(0, 0);
@@ -1215,9 +1217,10 @@ function escapeHTML(s) { return Format.escapeHTML ? Format.escapeHTML(s) : s.rep
 function sourceCitationHTML(q) {
   const c = Packs.citationForQuestion(q);
   if (!c) return "";
+  const checked = c.verified ? ` · checked ${c.verified}` : "";
   // composite sources cite many documents and may have no single URL
-  if (!c.url) return `<span class="source-link">${escapeHTML(c.label)}: ${escapeHTML(c.detail)}</span>`;
-  return `<a class="source-link" href="${escapeHTML(c.url)}" target="_blank" rel="noopener noreferrer">${escapeHTML(c.label)}: ${escapeHTML(c.detail)} ↗</a>`;
+  if (!c.url) return `<span class="source-link">${escapeHTML(c.label)}: ${escapeHTML(c.detail)}${escapeHTML(checked)}</span>`;
+  return `<a class="source-link" href="${escapeHTML(c.url)}" target="_blank" rel="noopener noreferrer">${escapeHTML(c.label)}: ${escapeHTML(c.detail)}${escapeHTML(checked)} ↗</a>`;
 }
 
 /* Quiz rendering + answer feedback live in js/quiz-ui.js; this file keeps the
@@ -1459,7 +1462,11 @@ function applyTheme() {
 let obStep = 0;
 function initObStatePack() {
   const sel = $("obStatePack");
-  if (!sel || sel.options.length) return;
+  if (!sel || sel.dataset.ready === "1") return;
+  // The card can be on screen before this runs: js/first-paint.js reveals it
+  // during parsing, so the static placeholder is cleared here and replaced
+  // with the real jurisdiction list.
+  sel.replaceChildren();
   const tree = (Jur.jurisdictionTree) ? Jur.jurisdictionTree({
     STATE_PACKS: Packs.STATE_PACKS,
     EXAM_BLUEPRINTS: BLUEPRINTS,
@@ -1487,6 +1494,7 @@ function initObStatePack() {
     });
   }
   sel.value = Packs.PACK_IDS.includes(state.settings.statePack) ? state.settings.statePack : "generic";
+  sel.dataset.ready = "1";
   on(sel, "change", async (e) => {
     const prev = state.settings.statePack;
     if (!(await switchPack(e.target.value))) { e.target.value = prev; return; }
@@ -1637,6 +1645,16 @@ function initRest() {
   renderHome();
   renderFlashcards();
   if (!state.onboarded) showOnboarding();
+  else {
+    // js/first-paint.js may have revealed the card during parsing, before the
+    // state was known. The app has the last word.
+    const ob = $("onboarding");
+    if (ob) ob.hidden = true;
+  }
+  // The card's buttons are wired now. A click that arrived while the app was
+  // starting up is replayed against the live handler.
+  document.documentElement.dataset.appReady = "1";
+  document.dispatchEvent(new Event("roadready:ready"));
   registerServiceWorker();
   initNetPill();
   scheduleReminder();
@@ -1663,6 +1681,13 @@ function initRest() {
     save(); applyTheme();
   });
   on($("btnBack"), "click", () => {
+    // The sources ledger is reached from the Study Guide, so back returns
+    // there rather than to the home screen.
+    if ($("view-sources") && $("view-sources").classList.contains("active")) {
+      renderStateFacts();
+      showView("guide");
+      return;
+    }
     if (session && !session.finished && session.mode === "exam" &&
         !confirm("Leave the exam? You can resume it later from Home.")) return;
     if (session && !session.finished) persistSession();
@@ -1738,6 +1763,8 @@ function initRest() {
   on($("qaCards"), "click", () => { renderFlashcards(); showView("flashcards"); });
   on($("qaPractical"), "click", () => { renderPractical(); showView("practical"); });
   on($("qaCommute"), "click", openCommute);
+  // The provenance ledger, reached from the Study Guide.
+  on($("btnSources"), "click", () => { renderSources(); showView("sources"); });
   if (PracticalUI) {
     PracticalUI.buildForm();
     on($("btnSaveSession"), "click", () => PracticalUI.saveSession());
@@ -2228,6 +2255,26 @@ function renderStateFacts() {
       ${n ? `<p class="state-qcount">${n} ${packId}-specific questions are included in your practice and exams.</p>` : ""}
       ${source ? `<a class="source-link state-source" href="${escapeHTML(source.url)}" target="_blank" rel="noopener noreferrer">Open ${escapeHTML(source.title)} ↗</a>` : ""}
     </div>`;
+}
+
+/* ---------------- CONTENT & SOURCES ----------------
+ *
+ * The provenance ledger. Every question in the active pack is traced to a
+ * named document from the issuing authority, with the date that document was
+ * last checked. The report is computed in js/sources.js (pure, unit-tested)
+ * and rendered by js/sources-ui.js. */
+function renderSources() {
+  if (!Sources || !SourcesUI) return;
+  const packId = Packs.PACK_IDS.includes(state.settings.statePack) ? state.settings.statePack : "generic";
+  const pack = Packs.STATE_PACKS[packId];
+  const report = Sources.buildReport({
+    bank,
+    registry: Packs.SOURCE_REGISTRY,
+    packLabel: pack ? pack.name : "this pack",
+    maxAgeDays: Packs.VERIFICATION_MAX_AGE_DAYS,
+    reportUrl: "https://github.com/henrygoldsmith07-wq/road-ready/issues",
+  });
+  SourcesUI.render(report);
 }
 
 /* PWA: offline-first service worker with explicit update activation.

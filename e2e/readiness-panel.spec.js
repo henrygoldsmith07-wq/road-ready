@@ -4,7 +4,7 @@ async function freshApp(page) {
   await page.goto("/");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await expect(page.locator("#app")).toBeVisible();
+  await expect(page.locator("#app")).toBeVisible();  await expect(page.locator("html")).toHaveAttribute("data-app-ready", "1");
 }
 
 test.describe("readiness panel", () => {

@@ -9,7 +9,7 @@ test("sim sitting renders per-section history with a trend line", async ({ page 
   await page.goto("/");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await expect(page.locator("#app")).toBeVisible();
+  await expect(page.locator("#app")).toBeVisible();  await expect(page.locator("html")).toHaveAttribute("data-app-ready", "1");
   if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
 
   // Seed one completed sitting: theory cleared, hazard missed.
@@ -25,7 +25,7 @@ test("sim sitting renders per-section history with a trend line", async ({ page 
     localStorage.setItem(key, JSON.stringify(s));
   });
   await page.reload();
-  await expect(page.locator("#app")).toBeVisible();
+  await expect(page.locator("#app")).toBeVisible();  await expect(page.locator("html")).toHaveAttribute("data-app-ready", "1");
   if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
 
   await page.locator('#bottomNav button[data-nav="stats"]').click();

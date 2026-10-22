@@ -21,7 +21,7 @@
 "use strict";
 
 // scripts/update-sw.mjs rewrites the line below — do not edit by hand.
-const VERSION = "v.4da857e2e472";
+const VERSION = "v.edea9dd8bebd";
 const CACHE = `roadready-${VERSION}`;
 const SHELL = [
   "./",
@@ -34,6 +34,7 @@ const SHELL = [
   "icon-maskable.png",
   "css/styles.css",
   "js/boot-error.js",
+  "js/first-paint.js",
   "js/core.js",
   "js/mastery.js",
   "js/explain.js",
@@ -64,6 +65,9 @@ const SHELL = [
   "js/hazard-ui.js",
   "css/hazard.css",
   "js/guide.js",
+  "css/sources.css",
+  "js/sources.js",
+  "js/sources-ui.js",
   "js/app.js",
 ];
 const SHELL_URLS = new Set(SHELL.map((path) => new URL(path, location.href).href));

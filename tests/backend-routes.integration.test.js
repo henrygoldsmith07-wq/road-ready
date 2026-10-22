@@ -10,16 +10,20 @@ process.env.NODE_ENV = "test";
 const db = vi.hoisted(() => ({
   findUserById: vi.fn(),
   readState: vi.fn(),
+  readStateMeta: vi.fn(),
   writeState: vi.fn(),
   deleteState: vi.fn(),
+  revokeSessions: vi.fn(),
 }));
 
 vi.mock("../api/_lib/db.js", () => ({
   DatabaseNotConfigured: class DatabaseNotConfigured extends Error {},
   findUserById: db.findUserById,
   readState: db.readState,
+  readStateMeta: db.readStateMeta,
   writeState: db.writeState,
   deleteState: db.deleteState,
+  revokeSessions: db.revokeSessions,
 }));
 
 const { issueSession, SESSION_COOKIE } = await import("../api/_lib/session.js");
