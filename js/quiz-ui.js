@@ -102,10 +102,15 @@
     $("fbSource").removeAttribute("href");
     $("btnNext").disabled = true;
     $("btnNext").textContent = s.i + 1 >= total ? "Finish" : "Next";
+    // Skip exists only while a practice question is still unanswered: once it
+    // is answered Next takes over, and exams/sims are timed so nothing may be
+    // passed over without evidence.
+    const skip = $("btnSkip");
+    if (skip) skip.hidden = s.mode !== "practice" || !!s.sim;
     const hint = document.querySelector(".kbd-hint");
     if (hint) hint.innerHTML = s.mode === "exam"
       ? `Tip: press <kbd>1</kbd>–<kbd>4</kbd> to answer — it advances automatically · <kbd>R</kbd> to report a problem`
-      : `Tip: press <kbd>1</kbd>–<kbd>4</kbd> to answer, <kbd>Enter</kbd> for next · <kbd>R</kbd> to report a problem`;
+      : `Tip: press <kbd>1</kbd>–<kbd>4</kbd> to answer, <kbd>Enter</kbd> for next, <kbd>S</kbd> to skip · <kbd>R</kbd> to report a problem`;
     updateFlagBtn();
     updateReportBtn();
     closeReport();
@@ -158,6 +163,8 @@
         btnEl.scrollIntoView({ block: "nearest", behavior: reduced ? "auto" : "smooth" });
       }
       $("btnNext").disabled = false;
+      const skipAfterAnswer = $("btnSkip");
+      if (skipAfterAnswer) skipAfterAnswer.hidden = true;
       $("btnNext").focus();
       speak((right ? "Correct. " : "Not quite. ") + q.why);
       // marathon: missed questions come back once

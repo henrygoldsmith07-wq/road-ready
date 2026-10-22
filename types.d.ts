@@ -49,6 +49,8 @@ interface Window {
   RoadReadyHomeUI: any;
   /** Present only when js/quiz-ui.js has loaded before app.js. */
   RoadReadyQuizUI: any;
+  /** Present only when js/commute-ui.js has loaded before app.js. */
+  RoadReadyCommuteUI: any;
   /** Present only when js/flashcards-ui.js has loaded before app.js. */
   RoadReadyFlashcardsUI: any;
   /** Present only when js/review-ui.js has loaded before app.js. */
@@ -59,4 +61,6 @@ interface Window {
   RoadReadyHazardUI: any;
   /** Present only when js/hazard-scenarios.js has loaded before app.js. */
   RoadReadyHazardScenarios: any;
+  /** Present only when js/concepts.js has loaded before app.js. */
+  RoadReadyConcepts: any;
 }

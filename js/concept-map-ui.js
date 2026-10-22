@@ -44,6 +44,63 @@
     return span;
   }
 
+  /* Verified teaching for one concept row: the curated rule and named trap
+   * where the bank names one, otherwise the bank's own provenance-resolved
+   * explanation, with the official source of a representative question.
+   * Returns null when nothing verified resolves — the card then stays a
+   * diagnostic with a drill action rather than teaching from thin air. */
+  function learnModel(row, topicQs) {
+    const metaFn = ctx && typeof ctx.conceptMeta === "function" ? ctx.conceptMeta : null;
+    const citeFn = ctx && typeof ctx.citationForQuestion === "function" ? ctx.citationForQuestion : null;
+    const meta = metaFn ? metaFn(row.key) : null;
+    const rule = meta && meta.rule ? String(meta.rule) : null;
+    if (!rule) return null;
+    const example = (topicQs || []).find((q) => ctx.Core.conceptKeyOf(q) === row.key) || null;
+    const citation = example && citeFn ? citeFn(example) : null;
+    return { rule, watchFor: meta.watchFor ? String(meta.watchFor) : null, citation };
+  }
+
+  function renderLearnBlock(row, topicQs) {
+    const model = learnModel(row, topicQs);
+    if (!model) return null;
+    const learn = document.createElement("div");
+    learn.className = "cm-learn";
+    const rule = document.createElement("p");
+    rule.className = "cm-rule";
+    const ruleHead = document.createElement("b");
+    ruleHead.textContent = "The rule: ";
+    rule.append(ruleHead, document.createTextNode(model.rule));
+    learn.appendChild(rule);
+    if (model.watchFor) {
+      const trap = document.createElement("p");
+      trap.className = "cm-trap";
+      const trapHead = document.createElement("b");
+      trapHead.textContent = "Common trap: ";
+      trap.append(trapHead, document.createTextNode(model.watchFor));
+      learn.appendChild(trap);
+    }
+    if (model.citation) {
+      const src = document.createElement("p");
+      src.className = "cm-source";
+      if (model.citation.url) {
+        const a = document.createElement("a");
+        a.className = "source-link";
+        a.href = model.citation.url;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.textContent = `${model.citation.label}: ${model.citation.detail} ↗`;
+        src.appendChild(a);
+      } else {
+        const span = document.createElement("span");
+        span.className = "source-link";
+        span.textContent = `${model.citation.label}: ${model.citation.detail}`;
+        src.appendChild(span);
+      }
+      learn.appendChild(src);
+    }
+    return learn;
+  }
+
   function render(topicId) {
     const { Core, Mastery, CATEGORIES, getState, getBank, icon, startPractice, shuffle, showView } = ctx;
     const state = getState();
@@ -143,6 +200,11 @@
       addFact(`Recommended next: ${row.nextAction.label}.`);
       details.appendChild(ul);
 
+      // Teach before testing: the verified rule sits above the drill action
+      // so an Unseen concept can be learned, not just practised blind.
+      const learn = renderLearnBlock(row, topicQs);
+      if (learn) details.appendChild(learn);
+
       const action = document.createElement("button");
       action.type = "button";
       action.className = "btn ghost cm-action";
@@ -180,7 +242,7 @@
   window.RoadReadyConceptMapUI = {
     /**
      * @param {{Core, Mastery, CATEGORIES, getState, getBank, icon,
-     *          startPractice, shuffle, showView}} deps
+     *          startPractice, shuffle, showView, conceptMeta, citationForQuestion}} deps
      */
     init(deps) { ctx = deps; },
     render,

@@ -2611,6 +2611,75 @@ function reviewSched(sched, right, nowMs, quality) {
   function prettyConceptKey(key) {
     return String(key == null ? "" : key).replace(/[_-]+/g, " ");
   }
+  function finderEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+  /* Light stemming so "braking" finds "brake" and "signs" finds "sign".
+     Only applied to tokens of length 4+ so BAC/bus/red keep exact matching. */
+  function finderStem(w) {
+    const s = String(w || "");
+    if (s.length > 5 && s.endsWith("ing")) return s.slice(0, -3);
+    if (s.length > 4 && s.endsWith("ied")) return s.slice(0, -3) + "y";
+    if (s.length > 4 && s.endsWith("ed")) return s.slice(0, -2);
+    if (s.length > 4 && s.endsWith("ies")) return s.slice(0, -3) + "y";
+    if (s.length > 5 && s.endsWith("es")) return s.slice(0, -2);
+    if (s.length > 4 && s.endsWith("s")) return s.slice(0, -1);
+    return s;
+  }
+  function finderWords(text) {
+    return String(text || "").split(/[^a-z0-9]+/).filter(Boolean);
+  }
+  /* Edit distance <= 1 for typo tolerance ("yeild" -> "yield").
+     Only used for tokens of length 5+, so short codes never fuzz. */
+  function finderNear(a, b) {
+    if (a === b) return true;
+    const la = a.length, lb = b.length;
+    if (Math.abs(la - lb) > 1) return false;
+    if (la === lb) {
+      let first = -1;
+      for (let i = 0; i < la; i++) {
+        if (a[i] === b[i]) continue;
+        if (first === -1) { first = i; continue; }
+        // One substitution, or one adjacent transposition (yeild/yield).
+        if (i === first + 1 && a[first] === b[i] && a[i] === b[first]) {
+          for (let j = i + 1; j < la; j++) { if (a[j] !== b[j]) return false; }
+          return true;
+        }
+        return false;
+      }
+      return first !== -1;
+    }
+    const longer = la > lb ? a : b;
+    const shorter = la > lb ? b : a;
+    let i = 0, j = 0, skipped = false;
+    while (i < longer.length && j < shorter.length) {
+      if (longer[i] === shorter[j]) { i++; j++; continue; }
+      if (skipped) return false;
+      skipped = true;
+      i++;
+    }
+    return true;
+  }
+  /* Short tokens (BAC, bus, red, 500) match on word boundaries so "BAC"
+     doesn't hit "backgrounds"; longer tokens keep substring matching.
+     When substring misses, a stem/prefix hit or a 1-edit fuzzy hit still
+     counts for tokens of length 4+/5+ respectively. */
+  function finderHit(text, t) {
+    const hay = String(text);
+    if (hay.indexOf(t) !== -1) {
+      if (t.length > 3) return true;
+      return new RegExp(`\\b${finderEsc(t)}\\b`).test(hay);
+    }
+    if (t.length < 4) return false;
+    const stemT = finderStem(t);
+    for (const w of finderWords(hay)) {
+      if (w.length < 4) continue;
+      const stemW = finderStem(w);
+      if (stemW === stemT) return true;
+      if (stemT.length >= 4 && stemW.startsWith(stemT)) return true;
+      if (stemW.length >= 4 && stemT.length >= 5 && stemT.startsWith(stemW)) return true;
+      if (t.length >= 5 && w.length >= 5 && finderNear(w, t)) return true;
+    }
+    return false;
+  }
   /**
    * @returns {{q:object, score:number}[]} best matches first, capped at opts.limit (default 12).
    * opts.labelFor maps a concept key to its display label (Coach.conceptLabel in the app).
@@ -2634,10 +2703,10 @@ function reviewSched(sched, right, nowMs, quality) {
       let ok = true;
       for (const t of tokens) {
         let best = 0;
-        if (conceptText.includes(t)) best = 5;
-        else if (qText.includes(t)) best = 4;
-        else if (choiceText.includes(t) || srcText.includes(t)) best = 3;
-        else if (whyText.includes(t)) best = 2;
+        if (finderHit(conceptText, t)) best = 5;
+        else if (finderHit(qText, t)) best = 4;
+        else if (finderHit(choiceText, t) || finderHit(srcText, t)) best = 3;
+        else if (finderHit(whyText, t)) best = 2;
         if (!best) { ok = false; break; }
         score += best;
       }
@@ -2670,9 +2739,9 @@ function reviewSched(sched, right, nowMs, quality) {
       let ok = true;
       for (const t of tokens) {
         let best = 0;
-        if (nameText.includes(t)) best = 5;
-        else if (famText.includes(t)) best = 3;
-        else if (meanText.includes(t)) best = 2;
+        if (finderHit(nameText, t)) best = 5;
+        else if (finderHit(famText, t)) best = 3;
+        else if (finderHit(meanText, t)) best = 2;
         if (!best) { ok = false; break; }
         score += best;
       }
@@ -2682,6 +2751,91 @@ function reviewSched(sched, right, nowMs, quality) {
     return out.slice(0, limit);
   }
 
+  /* ---------------- session resume (pure snapshot validation) ---------------- */
+  // Abandoned practice/exam sessions persist as a small snapshot so a quit,
+  // reload or crash can resume where the learner left off. Storage itself
+  // lives in app.js; these helpers validate shape so corrupt or stale
+  // payloads never resurrect a broken session. Test-day sims are excluded:
+  // a sitting only counts if both parts finish together.
+  const RESUME_TTL_MS = 7 * 86400000;
+  const RESUME_MODES = { practice: 1, exam: 1 };
+  function buildResumeSnapshot(o) {
+    const q = o || {};
+    if (!RESUME_MODES[q.mode]) return null;
+    if (typeof q.label !== "string" || !q.label) return null;
+    if (typeof q.pack !== "string" || !q.pack) return null;
+    if (!Array.isArray(q.qids) || !q.qids.length || q.qids.length > 500) return null;
+    if (!q.qids.every((id) => typeof id === "string" && id)) return null;
+    const i = Math.floor(q.i);
+    if (!isFinite(i) || i < 0 || i >= q.qids.length) return null;
+    if (!Array.isArray(q.answers)) return null;
+    for (const a of q.answers) {
+      if (!a || typeof a !== "object" || typeof a.qid !== "string") return null;
+      if (typeof a.right !== "boolean") return null;
+    }
+    if (q.answers.length > q.qids.length) return null;
+    const timeLeft = q.timeLeft == null ? null : Math.floor(q.timeLeft);
+    if (timeLeft != null && (!isFinite(timeLeft) || timeLeft < 0)) return null;
+    // Practice skips are reported on the results screen. Emitted only when
+    // non-zero so snapshots of a skip-free session keep their exact old shape.
+    const skipped = isFinite(q.skipped) && q.skipped > 0 ? Math.min(Math.floor(q.skipped), q.qids.length) : 0;
+    const base = {
+      v: 1, mode: q.mode, label: q.label.slice(0, 120), pack: q.pack,
+      backTo: typeof q.backTo === "string" ? q.backTo : "home",
+      tag: typeof q.tag === "string" ? q.tag.slice(0, 40) : undefined,
+      marathon: q.marathon === true ? true : undefined,
+      official: q.official === true ? true : undefined,
+      blueprintId: typeof q.blueprintId === "string" ? q.blueprintId : undefined,
+      qids: q.qids.slice(), i, answers: q.answers.map((a) => ({ qid: a.qid, picked: Math.floor(a.picked), right: a.right })),
+      timeLeft, savedAt: Math.floor(q.savedAt) || Date.now(),
+    };
+    if (skipped) base.skipped = skipped;
+    return base;
+  }
+  function parseResumeSnapshot(raw, opts) {
+    const o = opts || {};
+    const nowMs = Math.floor(o.nowMs) || Date.now();
+    let s = raw;
+    if (typeof s === "string") { try { s = JSON.parse(s); } catch { return { ok: false, error: "not-json" }; } }
+    if (!s || typeof s !== "object" || Array.isArray(s)) return { ok: false, error: "not-object" };
+    if (s.v !== 1) return { ok: false, error: "version" };
+    if (typeof o.pack === "string" && s.pack !== o.pack) return { ok: false, error: "pack-mismatch" };
+    if (!isFinite(s.savedAt) || nowMs - s.savedAt > RESUME_TTL_MS || s.savedAt > nowMs + 60000) return { ok: false, error: "stale" };
+    const rebuilt = buildResumeSnapshot(s);
+    if (!rebuilt) return { ok: false, error: "shape" };
+    if (typeof o.resolve === "function") {
+      for (const id of rebuilt.qids) { if (!o.resolve(id)) return { ok: false, error: "missing-question:" + id }; }
+    }
+    return { ok: true, snapshot: rebuilt };
+  }
+  /* ---------------- commute playlist (pure ranking) ---------------- */
+  // Hands-free audio review: weakest rules first so a 10-minute listen hits
+  // what slips, not what is already secure. Missed questions lead, then low
+  // mastery, then unseen to fill. Deterministic: ties break by question id.
+  // Listening never writes mastery — it is exposure, and the UI says so.
+  const COMMUTE_DEFAULT_N = 10;
+  function buildCommuteQueue(bank, qstats, limit) {
+    const arr = Array.isArray(bank) ? bank : [];
+    const stats = (qstats && typeof qstats === "object") ? qstats : {};
+    const n = Math.max(1, Math.min(15, Math.floor(limit) || COMMUTE_DEFAULT_N));
+    const rows = [];
+    for (const q of arr) {
+      if (!q || typeof q !== "object" || typeof q.id !== "string") continue;
+      const st = stats[q.id] || {};
+      const seen = Math.floor(st.seen) || 0;
+      const wrong = Math.floor(st.wrong) || 0;
+      const mastery = seen ? qMastery(st) : 0;
+      const bucket = wrong > 0 ? 0 : (seen > 0 && mastery < 0.8 ? 1 : 2);
+      rows.push({ id: q.id, bucket, wrong, mastery, seen });
+    }
+    rows.sort((a, b) => (a.bucket - b.bucket) || (b.wrong - a.wrong) || (a.mastery - b.mastery) || (a.id < b.id ? -1 : 1));
+    return rows.slice(0, n).map((r) => r.id);
+  }
+  function commuteLine(q) {
+    if (!q || typeof q !== "object") return "";
+    const ans = Array.isArray(q.choices) && isFinite(q.a) ? q.choices[q.a] : "";
+    return `${q.q || ""} Answer: ${ans}. ${q.why || ""}`.trim();
+  }
   /* ---------------- PWA install prompt (pure decision, DOM-free) ---------------- */
   // Decides whether Settings should offer installation. The browser owns the
   // real prompt: Chromium fires beforeinstallprompt (which the app defers),
@@ -2736,6 +2890,8 @@ function reviewSched(sched, right, nowMs, quality) {
     ISSUE_KINDS, ISSUE_KIND_LABELS, MAX_ISSUE_REPORTS, MAX_ISSUE_NOTE,
     fileIssueReport, withdrawIssueReport, listedIssueReports,
     finderTokens, searchBank, searchSigns,
+    RESUME_TTL_MS, buildResumeSnapshot, parseResumeSnapshot,
+    COMMUTE_DEFAULT_N, buildCommuteQueue, commuteLine,
     installPromptState,
   };
 

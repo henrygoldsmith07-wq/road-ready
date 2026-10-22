@@ -27,7 +27,7 @@
    * misses actually map to.
    */
   function render() {
-    const { Coach, Core, getState, getBank, getQuestion, icon, escapeHTML, sourceCitationHTML, signArt, startPractice, shuffle } = ctx;
+    const { Coach, Core, getState, getBank, getQuestion, icon, escapeHTML, sourceCitationHTML, conceptMeta, citationForQuestion, signArt, startPractice, shuffle } = ctx;
     const state = getState();
     const bank = getBank();
     if (!state.reviewSnoozed || typeof state.reviewSnoozed !== "object" || Array.isArray(state.reviewSnoozed)) {
@@ -168,13 +168,42 @@
         rule.textContent = "View rule";
         on(rule, "click", () => {
           const q = getQuestion(it.questionIds[0]);
-          if (q) {
-            const note = li.querySelector(".rg-rule-note") || document.createElement("span");
-            note.className = "rg-rule-note";
-            note.textContent = q.why;
-            li.appendChild(note);
-            rule.disabled = true;
+          if (!q) return;
+          // Verified teaching for the underlying concept — curated rule and
+          // named trap where the bank names one, otherwise the bank's own
+          // explanation — with its official source. Same model as the
+          // concept map's Learn block; never an invented sentence.
+          const meta = typeof conceptMeta === "function" ? conceptMeta(Core.conceptKeyOf(q)) : null;
+          const citation = typeof citationForQuestion === "function" ? citationForQuestion(q) : null;
+          const note = li.querySelector(".rg-rule-note") || document.createElement("span");
+          note.className = "rg-rule-note";
+          note.replaceChildren();
+          const rulePara = document.createElement("p");
+          rulePara.textContent = (meta && meta.rule) || q.why;
+          note.appendChild(rulePara);
+          if (meta && meta.watchFor) {
+            const trapPara = document.createElement("p");
+            trapPara.textContent = `Common trap: ${meta.watchFor}`;
+            note.appendChild(trapPara);
           }
+          if (citation) {
+            if (citation.url) {
+              const a = document.createElement("a");
+              a.className = "source-link";
+              a.href = citation.url;
+              a.target = "_blank";
+              a.rel = "noopener noreferrer";
+              a.textContent = `${citation.label}: ${citation.detail} ↗`;
+              note.appendChild(a);
+            } else {
+              const span = document.createElement("span");
+              span.className = "source-link";
+              span.textContent = `${citation.label}: ${citation.detail}`;
+              note.appendChild(span);
+            }
+          }
+          li.appendChild(note);
+          rule.disabled = true;
         });
         actions.appendChild(rule);
         const later = document.createElement("button");

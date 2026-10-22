@@ -69,6 +69,13 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
   background: var(--card); color: var(--muted); display: grid; place-items: center;
 }
 .icon-btn:hover { color: var(--text); border-color: var(--line-strong); }
+.topbar-actions { display: flex; align-items: center; gap: 8px; }
+.net-pill {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+  border: 1px solid var(--line-strong); border-radius: 999px; padding: 4px 9px;
+  color: var(--muted); background: var(--card); white-space: nowrap;
+}
+.net-pill[hidden] { display: none; }
 
 /* ---------- views ---------- */
 .view { display: none; animation: fadeIn 0.25s ease; }
@@ -882,11 +889,19 @@ kbd {
 .cm-facts { margin: 8px 0; padding-left: 18px; }
 .cm-facts li { font-size: 12px; line-height: 1.6; color: var(--muted); }
 .cm-action { margin-top: 2px; }
+.cm-learn { margin: 9px 0 4px; border-left: 2px solid var(--line-strong); padding: 2px 0 2px 10px; }
+.cm-rule { margin: 0; font-size: 12.5px; line-height: 1.55; }
+.cm-trap { margin: 5px 0 0; font-size: 12px; line-height: 1.55; color: var(--muted); }
+.cm-source { margin: 6px 0 0; }
+.cm-source .source-link { margin-top: 0; }
 
 /* ---------- Weakness Centre (Review Missed) ---------- */
 .rg-actions { display: flex; gap: 6px; margin-top: 7px; flex-wrap: wrap; }
 .rg-actions .btn { min-height: 36px; font-size: 11.5px; padding: 6px 11px; }
 .rg-rule-note { display: block; margin-top: 7px; font-size: 12px; line-height: 1.55; padding: 8px 11px; border-left: 2px solid var(--line-strong); }
+.rg-rule-note p { margin: 0 0 6px; }
+.rg-rule-note p:last-of-type { margin-bottom: 2px; }
+.rg-rule-note .source-link { margin-top: 4px; }
 .rg-snoozed { opacity: .65; }
 .rg-snooze-bar { display: flex; justify-content: flex-end; }
 .rg-snooze-toggle { min-height: 36px; font-size: 11.5px; }
@@ -908,6 +923,20 @@ kbd {
 .progress-summary { display: grid; gap: 4px; margin: 0 0 14px; }
 .progress-statement { margin: 0; font-size: 13.5px; line-height: 1.55; }
 .progress-statement + .progress-statement { color: var(--muted); }
+
+/* ---------- Resume banner + Commute Mode ---------- */
+#resumeBanner[hidden] { display: none; }
+.resume-box { border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 12px; margin: 12px 0; background: var(--card); display: grid; gap: 10px; }
+.resume-box:focus-within { border-color: var(--accent, var(--line-strong)); }
+.resume-text { font-size: 13.5px; line-height: 1.5; }
+.resume-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.commute-controls { display: grid; gap: 10px; }
+.commute-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.commute-list { display: grid; gap: 8px; margin-top: 12px; }
+.commute-item { text-align: left; width: 100%; cursor: pointer; }
+.commute-item:hover { border-color: var(--line-strong); }
+.commute-item.active { border-color: var(--line-strong); border-width: 2px; }
+.commute-item:focus-visible, .commute-controls button:focus-visible, .resume-actions button:focus-visible { outline: 2px solid var(--accent, #4c9aff); outline-offset: 2px; }
 
 /* ---------- Quiz: question issue reports (errata outbox) ---------- */
 .report-pane { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }

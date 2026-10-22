@@ -25,6 +25,7 @@ const HomeUI = window.RoadReadyHomeUI;
 const QuizUI = window.RoadReadyQuizUI;
 const ConceptMapUI = window.RoadReadyConceptMapUI;
 const StatsUI = window.RoadReadyStatsUI;
+const CommuteUI = window.RoadReadyCommuteUI;
 if (PracticalUI) {
   PracticalUI.init({
     Core,
@@ -70,6 +71,13 @@ function extractedDeps() {
     icon,
     escapeHTML,
     sourceCitationHTML,
+    citationForQuestion: (q) => Packs.citationForQuestion(q),
+    // Verified teaching for a concept: curated rule + named trap where the
+    // bank names one, otherwise the bank's own provenance-resolved
+    // explanation (see js/concepts.js conceptMeta). No new factual claims.
+    conceptMeta: (key, jurisdiction) => (window.RoadReadyConcepts
+      ? window.RoadReadyConcepts.conceptMeta(key, jurisdiction == null ? state.settings.statePack : jurisdiction)
+      : null),
     signArt: (id, size) => signArt(id, size),
     startPractice: (qs, label, backTo, marathon) => startPractice(qs, label, backTo, marathon),
     shuffle: (arr) => shuffle(arr),
@@ -144,7 +152,6 @@ if (ConceptMapUI) {
 if (QuizUI) {
   QuizUI.init(Object.assign(extractedDeps(), {
     getSession: () => session,
-    citationForQuestion: (q) => Packs.citationForQuestion(q),
     recordAnswer: (q, right) => recordAnswer(q, right),
     finishSession: (timedOut) => finishSession(timedOut),
     save: () => save(),
@@ -152,8 +159,19 @@ if (QuizUI) {
   }));
 }
 
+if (CommuteUI) {
+  CommuteUI.init({
+    Core,
+    getState: () => state,
+    getBank: () => bank,
+  });
+}
+
 /** Delegates to js/home-ui.js (absent only if that script failed to load). */
-function renderHome() { if (HomeUI) HomeUI.render(); }
+function renderHome() { if (HomeUI) HomeUI.render(); try { renderResumeBanner(); } catch { /* banner is additive */ } }
+/** Commute Mode: weakest-rules audio review (exposure only, no mastery writes). */
+function renderCommute() { if (CommuteUI) CommuteUI.render(); }
+function openCommute() { renderCommute(); showView("commute"); }
 
 /** Delegates to js/flashcards-ui.js (absent only if that script failed to load). */
 function renderFlashcards() { if (FlashcardsUI) FlashcardsUI.render(); }
@@ -503,7 +521,7 @@ let ttTick = 0;
 setInterval(() => {
   const v = document.querySelector(".view.active");
   if (!v) return;
-  if (["view-quiz", "view-flashcards", "view-review", "view-hazard"].includes(v.id)) {
+  if (["view-quiz", "view-flashcards", "view-review", "view-hazard", "view-commute"].includes(v.id)) {
     state.timeStudied = (state.timeStudied || 0) + 1;
     if (++ttTick % 20 === 0) save();
   }
@@ -548,6 +566,7 @@ async function switchPack(packId) {
   state.settings.statePack = packId;
   save();
   bank = Packs.filterBankForPack(ALL_QUESTIONS, state.settings.statePack);
+  try { clearResume(); } catch { /* pack switch invalidates any snapshot */ }
   return true;
 }
 /* Late-arriving GB bank (idle preload or a load that resolved after the user
@@ -585,14 +604,46 @@ const pickWeighted = (pool, n) => Core.pickWeighted(pool, n);
 let quizBackTarget = "home";
 
 function showView(name) {
+  const prev = document.querySelector(".view.active");
+  const prevName = prev ? prev.id.replace(/^view-/, "") : "";
   document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
   const v = $("view-" + name);
   if (v) v.classList.add("active");
-  if (name !== "quiz") stopSpeaking();
-  $("btnBack").hidden = !(name === "quiz" || name === "setup" || name === "results");
-  /** @type {NodeListOf<HTMLElement>} */(/** @type {NodeListOf<HTMLElement>} */(document.querySelectorAll("#bottomNav button"))).forEach(b =>
-    b.classList.toggle("active", b.dataset.nav === name || (b.dataset.nav === "practice" && name === "quiz" && quizBackTarget !== "home") ));
+  // Quiz TTS and Commute audio share speechSynthesis: always cancel app speech
+  // on navigation, and sync Commute state when leaving it so a stale "Pause"
+  // label can't survive after its audio was cancelled (commute->quiz bled
+  // audio before this). Entering commute is safe: playback starts on Play.
+  if (prevName === "commute" && name !== "commute" && CommuteUI) {
+    try { CommuteUI.stop(); } catch { /* audio sync is additive */ }
+  }
+  try { stopSpeaking(); } catch { /* never break routing for audio */ }
+  // Back is hidden only on Home: every other view (quiz, commute, hazard,
+  // concept map, review, stats…) is one tap away from Home via the top bar.
+  // Bottom-nav tabs stay the primary switcher; Back is the escape hatch.
+  $("btnBack").hidden = (name === "home");
+  /** @type {NodeListOf<HTMLElement>} */(/** @type {NodeListOf<HTMLElement>} */(document.querySelectorAll("#bottomNav button"))).forEach(b => {
+    const isActive = b.dataset.nav === name || (b.dataset.nav === "practice" && name === "quiz" && quizBackTarget !== "home");
+    b.classList.toggle("active", isActive);
+    if (isActive) b.setAttribute("aria-current", "page");
+    else b.removeAttribute("aria-current");
+  });
+  try {
+    const titles = { home: "Road Ready — Pass Your Driving Test", quiz: "Road Ready — Quiz", commute: "Road Ready — Commute Mode", stats: "Road Ready — Your Progress", flashcards: "Road Ready — Signs", guide: "Road Ready — Study Guide", review: "Road Ready — Weaknesses", hazard: "Road Ready — Hazard Perception", setup: "Road Ready — Practice", results: "Road Ready — Results" };
+    if (titles[name]) document.title = titles[name];
+  } catch { /* title is a courtesy */ }
   window.scrollTo(0, 0);
+  // Screen-reader + keyboard courtesy: move focus to the new view's heading
+  // so announcements follow the visual change. Wrapped in try/catch — focus
+  // must never break routing. Quiz keeps its own per-question focus.
+  if (name !== "quiz" && v) {
+    try {
+      const head = v.querySelector("h1, h2");
+      if (head) {
+        if (!head.hasAttribute("tabindex")) head.setAttribute("tabindex", "-1");
+        head.focus({ preventScroll: true });
+      }
+    } catch { /* focus is a courtesy — never break navigation for it */ }
+  }
 }
 
 
@@ -751,6 +802,112 @@ function setupRow(it) {
 
 /* ---------------- QUIZ ENGINE ---------------- */
 let session = null;
+/* Abandoned-session resume: a crash, reload or early exit no longer loses a
+ * mock. Snapshots persist on every answer and are validated on boot; sims
+ * are excluded because a sitting only counts if both parts finish. */
+const RESUME_KEY = "roadready.session.v1";
+let pendingResume = null;
+function resumeStore() {
+  try {
+    if (typeof localStorage === "undefined") return null;
+    return localStorage;
+  } catch { return null; }
+}
+function snapshotSession() {
+  if (!session || session.finished || session.sim) return null;
+  if (!Array.isArray(session.questions) || !session.questions.length) return null;
+  if (session.i >= session.questions.length) return null;
+  return Core.buildResumeSnapshot({
+    mode: session.mode, label: session.label, backTo: quizBackTarget,
+    pack: state.settings.statePack, tag: session.tag, marathon: session.marathon,
+    official: session.official, blueprintId: session.official && session.blueprint ? state.settings.statePack : undefined,
+    qids: session.questions.map((q) => q.id), i: session.i,
+    skipped: session.skipped || 0,
+    answers: (session.answers || []).map((a) => ({ qid: a.qid, picked: a.picked, right: a.right })),
+    timeLeft: session.mode === "exam" ? session.timeLeft : null, savedAt: Date.now(),
+  });
+}
+function persistSession() {
+  const store = resumeStore();
+  if (!store) return;
+  try {
+    const snap = snapshotSession();
+    if (snap) store.setItem(RESUME_KEY, JSON.stringify(snap));
+    else store.removeItem(RESUME_KEY);
+  } catch { /* resume is a courtesy — never break study for it */ }
+}
+function clearResume() {
+  pendingResume = null;
+  const store = resumeStore();
+  if (!store) return;
+  try { store.removeItem(RESUME_KEY); } catch { /* ignore */ }
+  try { renderResumeBanner(); } catch { /* home may not be rendered yet */ }
+}
+function loadPendingResume() {
+  const store = resumeStore();
+  if (!store) return;
+  let raw;
+  try { raw = store.getItem(RESUME_KEY); } catch { return; }
+  if (!raw) return;
+  const r = Core.parseResumeSnapshot(raw, {
+    pack: state.settings.statePack, nowMs: Date.now(),
+    resolve: (id) => !!byId[id],
+  });
+  if (r.ok) pendingResume = r.snapshot;
+  else { try { store.removeItem(RESUME_KEY); } catch { /* ignore */ } }
+}
+function resumeSnapshot() {
+  if (!pendingResume) return;
+  const snap = pendingResume;
+  const qs = snap.qids.map((id) => byId[id]).filter(Boolean);
+  if (!qs.length || snap.i >= qs.length) { clearResume(); return; }
+  let blueprint = null;
+  if (snap.official && snap.blueprintId && BLUEPRINTS[snap.blueprintId]) blueprint = BLUEPRINTS[snap.blueprintId];
+  quizBackTarget = snap.backTo || "home";
+  const restored = snap.answers.filter((a) => byId[a.qid]).map((a) => ({ qid: a.qid, picked: a.picked, right: !!a.right }));
+  session = {
+    mode: snap.mode, label: snap.label, tag: snap.tag,
+    questions: qs, i: Math.min(snap.i, qs.length - 1), correct: restored.filter((a) => a.right).length,
+    answers: restored,
+    timeLeft: snap.mode === "exam" ? (snap.timeLeft != null ? snap.timeLeft : Core.timeLimitSecs(qs.length)) : undefined,
+    endTs: 0, timerId: null, marathon: !!snap.marathon,
+    skipped: snap.skipped || 0,
+    requeued: {}, official: !!blueprint, blueprint,
+  };
+  pendingResume = null;
+  beginQuiz();
+}
+function renderResumeBanner() {
+  const host = document.getElementById("resumeBanner");
+  if (!host) return;
+  const snap = pendingResume;
+  const activeLive = session && !session.finished && Array.isArray(session.questions) && session.i < session.questions.length;
+  if (!snap || activeLive) { host.hidden = true; host.replaceChildren(); return; }
+  host.hidden = false;
+  host.replaceChildren();
+  const box = document.createElement("div");
+  box.className = "resume-box";
+  const text = document.createElement("div");
+  text.className = "resume-text";
+  const done = snap.answers.length;
+  const total = snap.qids.length;
+  text.textContent = `Unfinished ${snap.mode === "exam" ? "mock exam" : "practice"} — ${snap.label} · ${done}/${total} answered. Pick up where you left off?`;
+  const row = document.createElement("div");
+  row.className = "resume-actions";
+  const go = document.createElement("button");
+  go.type = "button";
+  go.className = "btn primary";
+  go.textContent = "Resume";
+  go.addEventListener("click", resumeSnapshot);
+  const no = document.createElement("button");
+  no.type = "button";
+  no.className = "btn ghost";
+  no.textContent = "Discard";
+  no.addEventListener("click", clearResume);
+  row.append(go, no);
+  box.append(text, row);
+  host.appendChild(box);
+}
 /* Test-day simulation staging: the banked Part 1 (theory) result waits here
  * while the hazard section runs. Nothing is logged, awarded or shown until
  * both parts report back — a sitting only counts if you finish it. */
@@ -1033,6 +1190,7 @@ function onSimHazardComplete(h) {
   });
 }
 function beginQuiz() {
+  persistSession();
   $("qTimer").hidden = session.mode !== "exam";
   $("btnFlag").hidden = false;
   $("btnReport").hidden = false;
@@ -1045,9 +1203,11 @@ function beginQuiz() {
   renderQuiz();
   showView("quiz");
 }
+let tickCount = 0;
 function tickTimer() {
   session.timeLeft--;
   renderTimer();
+  if (++tickCount % 10 === 0) persistSession();
   if (session.timeLeft <= 0) finishSession(true);
 }
 function escapeHTML(s) { return Format.escapeHTML ? Format.escapeHTML(s) : s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
@@ -1093,21 +1253,44 @@ function recordAnswer(q, right) {
   session.shownAt = 0;
   state.answered++; if (right) state.correctCount++;
   state.daily = Core.bumpDaily(state.daily, todayStr());
+  persistSession();
   touchStreak();
   addXP(Core.xpForAnswer(right));
   checkProgressAchievements();
   save();
 }
+/* Practice-only skip. Nothing is recorded — no mastery, XP, streak or answer
+ * entry — so a guess can never inflate progress. The question returns once at
+ * the end of the set (same one-shot requeue Marathon uses), which keeps the
+ * promise that "skip" means "later", not "never". */
+function skipQuestion() {
+  if (!session || session.finished || session.mode !== "practice" || session.sim) return;
+  if (session.answeredCurrent) return;
+  const q = session.questions[session.i];
+  session.skipped = (session.skipped || 0) + 1;
+  if (q && !session.requeued[q.id]) {
+    session.requeued[q.id] = true;
+    session.questions.push(q);
+  }
+  session.i++;
+  if (session.i >= session.questions.length) { finishSession(); return; }
+  persistSession();
+  renderQuiz();
+  toast("Question skipped", "No answer recorded — it comes back at the end of this set.", "flag");
+}
+
 function nextQuestion() {
   if (!session.answeredCurrent) return;
   session.answeredCurrent = false;
   session.i++;
   if (session.i >= session.questions.length) finishSession();
-  else renderQuiz();
+  else { persistSession(); renderQuiz(); }
 }
 function finishSession(timedOut) {
-  if (session.finished) return;
+  if (!session || session.finished) return;
   session.finished = true;
+  try { const st = resumeStore(); if (st) st.removeItem(RESUME_KEY); } catch { /* ignore */ }
+  pendingResume = null;
   clearInterval(session.timerId);
   clearTimeout(session.advanceId);
   // Learning evidence: close the loop on a followed coach session — UPDATE the
@@ -1197,7 +1380,11 @@ function finishSession(timedOut) {
     const total = session.answers.length;
     if (!total) { showView(quizBackTarget || "home"); return; }
     const correct = session.answers.filter(a => a.right).length;
-    const early = total < session.questions.length;
+    // Requeued skips grow the queue, so "ended early" must not be inferred
+    // from the queue length once anything was skipped — say "skipped" instead.
+    const skipped = session.skipped || 0;
+    const early = !skipped && total < session.questions.length;
+    const skipNote = skipped ? ` ${skipped} question${skipped === 1 ? "" : "s"} skipped — no answer recorded.` : "";
     session.perfectRun = correct === total && total >= 10;
     // memory-check answers feed the retention metric
     if (session.tag === "retention" && session.answers.length) {
@@ -1209,7 +1396,7 @@ function finishSession(timedOut) {
       pass: correct / total >= 0.8, correct, total, timedOut,
       answers: session.answers,
       title: "Session complete",
-      sub: `${correct} of ${total} correct.${early ? " (Ended early.)" : ""} ${correct === total ? "Perfect run." : "Review the explanations below."}`,
+      sub: `${correct} of ${total} correct.${skipNote}${early ? " (Ended early.)" : ""} ${correct === total ? "Perfect run." : "Review the explanations below."}`,
     });
   }
   stopSpeaking();
@@ -1443,6 +1630,7 @@ function showPackLoadError() {
 }
 function initRest() {
   initStatePackSelect();
+  loadPendingResume();
   renderStateFacts();
   initGuideFinder();
   initInstallPrompt();
@@ -1450,6 +1638,7 @@ function initRest() {
   renderFlashcards();
   if (!state.onboarded) showOnboarding();
   registerServiceWorker();
+  initNetPill();
   scheduleReminder();
   maybeStreakRiskToast();
   document.addEventListener("visibilitychange", () => { if (!document.hidden) { scheduleReminder(); maybeStreakRiskToast(); } });
@@ -1474,19 +1663,35 @@ function initRest() {
     save(); applyTheme();
   });
   on($("btnBack"), "click", () => {
-    if (session && session.mode === "exam" && !session.finished &&
-        !confirm("Leave the exam? Your progress will not be saved.")) return;
+    if (session && !session.finished && session.mode === "exam" &&
+        !confirm("Leave the exam? You can resume it later from Home.")) return;
+    if (session && !session.finished) persistSession();
     if (session && session.timerId) clearInterval(session.timerId);
+    renderHome();
     showView(quizBackTarget || "home");
   });
   on($("btnNext"), "click", nextQuestion);
+  on($("btnSkip"), "click", skipQuestion);
   on($("btnQuit"), "click", () => {
     if (!session) return showView("home");
-    if (session.mode === "exam" &&
-        !confirm(session.sim
-          ? "Submit Part 1? Scores stay sealed until the hazard section is done."
-          : "Submit the exam and see your score now?")) return;
+    if (session.mode === "exam") {
+      if (!confirm(session.sim
+        ? "Submit Part 1? Scores stay sealed until the hazard section is done."
+        : "Submit the exam and see your score now?")) return;
+    } else if (!session.finished && session.answers.length && session.i + 1 < session.questions.length &&
+      !confirm("End and score now? Unanswered questions won't be kept for resume.")) return;
     finishSession();
+  });
+  window.addEventListener("beforeunload", (e) => {
+    if (!session || session.finished) return;
+    if (session.answers.length >= session.questions.length) return;
+    // Practice auto-saves silently (the Home resume banner brings it back),
+    // so only interrupt navigation for a live exam or test-day sim — the one
+    // sitting where an accidental close costs a sealed score.
+    persistSession();
+    if (session.mode !== "exam" && !session.sim) return;
+    e.preventDefault();
+    e.returnValue = "";
   });
   on($("btnFlag"), "click", toggleFlag);
   on($("btnReport"), "click", openReport);
@@ -1532,6 +1737,7 @@ function initRest() {
   on($("qaExam"), "click", () => startSetup("exam"));
   on($("qaCards"), "click", () => { renderFlashcards(); showView("flashcards"); });
   on($("qaPractical"), "click", () => { renderPractical(); showView("practical"); });
+  on($("qaCommute"), "click", openCommute);
   if (PracticalUI) {
     PracticalUI.buildForm();
     on($("btnSaveSession"), "click", () => PracticalUI.saveSession());
@@ -1706,6 +1912,7 @@ function initRest() {
     // everything else in the previous state is deliberately dropped.
     state.settings.theme = theme;
     bank = Packs.filterBankForPack(ALL_QUESTIONS, state.settings.statePack);
+    try { clearResume(); } catch { /* ignore */ }
     save(); renderStateFacts(); renderStats(); renderHome(); renderFlashcards();
     alert("Erased. This device now has no study history.");
   }
@@ -1735,7 +1942,16 @@ function initRest() {
   document.addEventListener("keydown", e => {
     const active = document.querySelector(".view.active");
     if (!active) return;
+    // Never hijack typing. The report form (#repNote textarea, #repKind select)
+    // lives inside the quiz view, so without this guard typing "r"/"f" in a
+    // note reopened the report pane mid-typing and digits re-answered the
+    // question. Modifier combos are browser/OS shortcuts, not quiz controls.
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const t = /** @type {any} */ (e.target);
+    const tag = t && t.tagName ? String(t.tagName).toLowerCase() : "";
+    if (tag === "input" || tag === "textarea" || tag === "select" || (t && t.isContentEditable)) return;
     if (active.id === "view-quiz") {
+      if (e.key === "Escape" && $("reportPane") && !$("reportPane").hidden) { cancelReport(); return; }
       if (e.key >= "1" && e.key <= "4") {
         const btns = /** @type {NodeListOf<HTMLElement>} */(document.querySelectorAll("#choices .choice"));
         const b = btns[parseInt(e.key, 10) - 1];
@@ -1743,17 +1959,41 @@ function initRest() {
       } else if (e.key === "Enter") { if (!$("btnNext").disabled) nextQuestion(); }
       else if (e.key.toLowerCase() === "f") toggleFlag();
       else if (e.key.toLowerCase() === "r") openReport();
+      else if (e.key.toLowerCase() === "s" && session && session.mode === "practice") skipQuestion();
     } else if (active.id === "view-flashcards") {
       if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flipCard(); }
       else if (e.key === "ArrowRight") fcMove(1);
       else if (e.key === "ArrowLeft") fcMove(-1);
       else if (e.key.toLowerCase() === "k") fcMark(true);
       else if (e.key.toLowerCase() === "l") fcMark(false);
+    } else if (active.id === "view-commute" && CommuteUI) {
+      // Hands-free extras for people listening with the phone in a mount:
+      // Space play/pause, arrows to skip, Escape to stop.
+      if (e.key === " " || e.key === "Spacebar") { e.preventDefault(); CommuteUI.toggle(); }
+      else if (e.key === "ArrowRight") { e.preventDefault(); CommuteUI.next(); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); CommuteUI.prev(); }
+      else if (e.key === "Escape") CommuteUI.stop();
     }
     // view-hazard keyboard handling lives in js/hazard-ui.js (Space to react)
   });
 
   showView("home");
+  handleLaunchTarget();
+}
+
+/* Home-screen shortcuts (manifest.webmanifest) deep-link with ?go=practice /
+ * commute / exam. The query is consumed and stripped so a reload, a bookmark
+ * or a resumed tab does not silently restart the same screen. Skipped until
+ * onboarding is done — a first-run learner should meet the setup questions. */
+function handleLaunchTarget() {
+  let go;
+  try { go = new URLSearchParams(location.search).get("go"); } catch { return; }
+  if (!go) return;
+  try { history.replaceState(null, "", location.pathname); } catch { /* ignore */ }
+  if (!state.onboarded) return;
+  if (go === "practice") startSetup("practice");
+  else if (go === "exam") startSetup("exam");
+  else if (go === "commute") openCommute();
 }
 
 /* state pack selector (settings) — one optgroup per shipped country (US + UK) */
@@ -2013,6 +2253,25 @@ function showUpdateToast() {
   el.append(text, btn);
   host.appendChild(el);
 }
+/* Connectivity pill. Road Ready is offline-first: losing the network only
+ * costs the one-time Great Britain bank download and manual cloud sync, so
+ * the badge stays quiet and factual instead of blocking study. */
+function initNetPill() {
+  const pill = document.getElementById("netPill");
+  if (!pill) return;
+  const paint = () => {
+    let offline;
+    try { offline = navigator.onLine === false; } catch { offline = false; }
+    pill.hidden = !offline;
+    pill.title = offline
+      ? "No connection. Practice, exams and cards still work; the Great Britain bank and cloud sync need a connection."
+      : "";
+  };
+  window.addEventListener("online", paint);
+  window.addEventListener("offline", paint);
+  paint();
+}
+
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
   // file:// has no SW; only register when served over http(s)

@@ -6,7 +6,7 @@ import js from "@eslint/js";
 const ignores = { ignores: ["test-results/**", "node_modules/**"] };
 
 const browserGlobals = {
-  window: "readonly", document: "readonly", localStorage: "readonly", navigator: "readonly",
+  window: "readonly", document: "readonly", localStorage: "readonly", sessionStorage: "readonly", navigator: "readonly",
   location: "readonly", fetch: "readonly", URL: "readonly", Event: "readonly",
   Blob: "readonly", FileReader: "readonly", confirm: "readonly", alert: "readonly",
   setTimeout: "readonly", clearTimeout: "readonly", setInterval: "readonly", clearInterval: "readonly",
@@ -75,6 +75,7 @@ export default [
     languageOptions: {
       globals: {
         console: "readonly", process: "readonly", URL: "readonly", Buffer: "readonly",
+        setTimeout: "readonly", clearTimeout: "readonly", setInterval: "readonly", clearInterval: "readonly",
         localStorage: "readonly", navigator: "readonly", document: "readonly", window: "readonly",
         fetch: "readonly", QUESTIONS: "readonly", requestAnimationFrame: "readonly",
         // app.js top-level session (the running quiz), read by journey specs

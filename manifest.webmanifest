@@ -8,6 +8,35 @@
   "orientation": "portrait",
   "background_color": "#0b0b0d",
   "theme_color": "#0b0b0d",
+  "shortcuts": [
+    {
+      "name": "Start practice",
+      "short_name": "Practice",
+      "description": "Jump straight into a practice set",
+      "url": "./index.html?go=practice",
+      "icons": [
+        { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }
+      ]
+    },
+    {
+      "name": "Commute Mode",
+      "short_name": "Commute",
+      "description": "Play your weakest rules aloud",
+      "url": "./index.html?go=commute",
+      "icons": [
+        { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }
+      ]
+    },
+    {
+      "name": "Mock exam",
+      "short_name": "Mock exam",
+      "description": "Sit a timed mock under test conditions",
+      "url": "./index.html?go=exam",
+      "icons": [
+        { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }
+      ]
+    }
+  ],
   "icons": [
     {
       "src": "icon-192.png",

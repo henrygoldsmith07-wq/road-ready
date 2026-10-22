@@ -29,6 +29,10 @@
       <span class="brand-name">Road<b>Ready</b></span>
     </div>
     <div class="topbar-actions">
+      <!-- Connectivity only matters for the one-time Great Britain download and
+           manual cloud sync; everything else is on-device. Shown only when the
+           browser reports no connection, so it never nags a working session. -->
+      <span class="net-pill" id="netPill" role="status" hidden>Offline</span>
       <button id="btnTheme" class="icon-btn" aria-label="Toggle dark mode" title="Toggle theme"></button>
     </div>
   </header>
@@ -74,12 +78,15 @@
         <button class="btn ghost plan-date" id="btnPlanDate" hidden>Set test date</button>
       </div>
 
+      <div id="resumeBanner" hidden></div>
+
       <div class="quick-actions secondary-actions" aria-label="More ways to practise">
         <button class="qa" id="qaPractice"><span class="qa-ico" data-icon="book" data-size="20"></span>Practice</button>
         <button class="qa" id="qaExam"><span class="qa-ico" data-icon="clipboard" data-size="20"></span>Mock Exam</button>
         <button class="qa" id="qaCards"><span class="qa-ico" data-icon="layers" data-size="20"></span>Signs</button>
         <button class="qa" id="qaReview"><span class="qa-ico" data-icon="target" data-size="20"></span>Weaknesses</button>
         <button class="qa" id="qaPractical"><span class="qa-ico" data-icon="car" data-size="20"></span>Drive Log</button>
+        <button class="qa" id="qaCommute"><span class="qa-ico" data-icon="volume" data-size="20"></span>Commute</button>
       </div>
       <!-- Progress at a glance. Hidden until there is at least one answered
            question: "0 answered / – accuracy / 0 streak / – best" is noise on
@@ -199,6 +206,9 @@
 
       <div class="quiz-actions">
         <button class="btn ghost" id="btnQuit">End</button>
+        <!-- Practice only: no evidence is recorded for a skipped question, it
+             simply returns once at the end of the set (see skipQuestion). -->
+        <button class="btn ghost" id="btnSkip" hidden>Skip</button>
         <button class="btn primary" id="btnNext" disabled>Next</button>
       </div>
       <p class="kbd-hint">Tip: press <kbd>1</kbd>–<kbd>4</kbd> to answer, <kbd>Enter</kbd> for next</p>
@@ -520,6 +530,27 @@
       </div>
     </section>
 
+    <!-- ============ COMMUTE MODE ============ -->
+    <section class="view" id="view-commute">
+      <h1 class="view-title">Commute Mode</h1>
+      <p class="view-sub" id="coSub">Your weakest rules, read aloud hands-free.</p>
+      <div class="card commute-controls">
+        <div class="commute-row">
+          <span class="pill" id="coPos" role="status" aria-live="polite">0/0</span>
+          <span class="flex-spacer"></span>
+          <button class="btn ghost" id="coPrev">Prev</button>
+          <button class="btn primary" id="coPlay">Play weakest 10</button>
+          <button class="btn ghost" id="coNext">Next</button>
+        </div>
+        <div class="commute-row">
+          <button class="pill" id="coAuto" aria-pressed="true">Autoplay on</button>
+          <button class="pill" id="coStop">Stop</button>
+        </div>
+        <p class="state-note" id="coSupport" hidden>This browser has no speech support — the list below still works as a reading review.</p>
+      </div>
+      <div id="coList" class="commute-list"></div>
+    </section>
+
     <!-- ============ STATS ============ -->
     <section class="view" id="view-stats">
       <h1 class="view-title">Your Progress</h1>
@@ -814,6 +845,7 @@
 <script src="js/results-ui.js" defer></script>
 <script src="js/home-ui.js" defer></script>
 <script src="js/quiz-ui.js" defer></script>
+<script src="js/commute-ui.js" defer></script>
 <script src="js/stats-ui.js" defer></script>
 <script src="js/hazard-scenarios.js" defer></script>
 <script src="js/hazard-ui.js" defer></script>

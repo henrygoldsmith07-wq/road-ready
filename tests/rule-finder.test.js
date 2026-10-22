@@ -63,6 +63,49 @@ describe("searchBank", () => {
   });
 });
 
+describe("short-token matching", () => {
+  it("a 3-letter token matches whole words, not substrings (BAC vs backgrounds)", () => {
+    const bacBank = [q("b1", { q: "What is the adult BAC limit?", why: "the limit is 0.08 percent" })];
+    expect(Core.searchBank(bacBank, "bac").map((r) => r.q.id)).toEqual(["b1"]);
+    const bgBank = [q("b2", { q: "What should you check?", why: "check the background traffic before moving" })];
+    expect(Core.searchBank(bgBank, "bac")).toEqual([]);
+  });
+
+  it("short sign tokens match names/words, not mid-word substrings", () => {
+    const lib = {
+      town: { name: "Town Centre", family: "Direction", meaning: "White backgrounds with black lettering." },
+      bac: { name: "BAC rule sign", family: "Regulatory", meaning: "Reminds of the limit." },
+    };
+    expect(Core.searchSigns(lib, "bac").map((r) => r.id)).toEqual(["bac"]);
+  });
+
+  it("short numeric tokens still match figures (500 ft, 0.08)", () => {
+    const numBank = [q("n1", { q: "When do you dim high beams?", why: "dim within 500 ft of oncoming traffic" })];
+    expect(Core.searchBank(numBank, "500").map((r) => r.q.id)).toEqual(["n1"]);
+  });
+});
+
+describe("finder robustness (stemming + typo tolerance)", () => {
+  const stemBank = [
+    q("b1", { q: "When must you brake before a junction?", why: "braking early keeps control" }),
+    q("b2", { q: "Who must yield at a roundabout?", why: "yield to traffic already there" }),
+  ];
+  it("matches inflected forms: braking -> brake, yielding -> yield, signs -> sign", () => {
+    expect(Core.searchBank(stemBank, "braking").map((r) => r.q.id)).toContain("b1");
+    expect(Core.searchBank(stemBank, "yielding").map((r) => r.q.id)).toContain("b2");
+    expect(Core.searchBank(stemBank, "brakes").map((r) => r.q.id)).toContain("b1");
+  });
+  it("tolerates one-letter typos for longer tokens", () => {
+    expect(Core.searchBank(stemBank, "yeild").map((r) => r.q.id)).toContain("b2");
+    expect(Core.searchBank(stemBank, "braek").map((r) => r.q.id)).toContain("b1");
+  });
+  it("does not let stemming reintroduce short-token junk", () => {
+    const junk = q("j1", { q: "How is the business district signed?", why: "backgrounds and signage" });
+    expect(Core.searchBank([junk], "bus")).toEqual([]);
+    expect(Core.searchBank([junk], "BAC")).toEqual([]);
+  });
+});
+
 describe("searchSigns", () => {
   it("matches names, families and meanings including jurisdiction alternates", () => {
     expect(Core.searchSigns(signs, "stop").map((r) => r.id)).toContain("stop");
