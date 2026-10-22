@@ -5,6 +5,7 @@ test("daily goal + reminder settings persist and drive the home screen", async (
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e.message)));
   await page.goto("/");
+  await expect(page.locator("html")).toHaveAttribute("data-app-ready", "1");
   if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
   await expect(page.locator("#view-home.active")).toBeVisible();
 

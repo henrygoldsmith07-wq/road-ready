@@ -21,6 +21,7 @@ test.describe("topic mastery display", () => {
       return ids.length;
     });
     await page.reload();
+    await expect(page.locator("html")).toHaveAttribute("data-app-ready", "1");
     if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
 
     // HOME: the Signs topic card must read exactly 100% mastery
@@ -46,6 +47,7 @@ test.describe("topic mastery display", () => {
       localStorage.setItem("roadready.v1", JSON.stringify(raw));
     });
     await page.reload();
+    await expect(page.locator("html")).toHaveAttribute("data-app-ready", "1");
     if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
 
     // concept coverage < 1 → must NOT display 100%

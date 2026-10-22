@@ -5,7 +5,7 @@ async function freshApp(page) {
   await page.goto("/");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await expect(page.locator("#app")).toBeVisible();
+  await expect(page.locator("#app")).toBeVisible();  await expect(page.locator("html")).toHaveAttribute("data-app-ready", "1");
 }
 
 test.describe("onboarding", () => {
@@ -368,7 +368,7 @@ test.describe("PWA / offline", () => {
     await page.waitForTimeout(800);
     await context.setOffline(true);
     await page.reload();
-    await expect(page.locator("#app")).toBeVisible();
+    await expect(page.locator("#app")).toBeVisible();    await expect(page.locator("html")).toHaveAttribute("data-app-ready", "1");
     await expect(page.locator(".brand-name")).toContainText("Road");
     await context.setOffline(false);
   });

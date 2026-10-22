@@ -86,7 +86,17 @@ export async function upsertGoogleUser(profile) {
      SELECT * FROM inserted`,
     [email, profile.sub, profile.name ?? null, profile.image ?? null],
   );
-  if (!rows[0]) throw new Error('This email belongs to an account linked to a different Google sign-in');
+  if (!rows[0]) {
+    // Two concurrent first sign-ins for the same Google account: the first
+    // inserts, the second's insert conflicts and its ON CONFLICT DO UPDATE
+    // no longer matches (google_sub is no longer NULL). That is a benign race,
+    // not an account-takeover attempt — so re-read by subject and let the
+    // caller proceed. Only a row that is genuinely bound to a DIFFERENT
+    // subject is refused.
+    const raced = await queryRows('select * from users where google_sub = $1', [profile.sub]);
+    if (raced[0]) return raced[0];
+    throw new Error('This email belongs to an account linked to a different Google sign-in');
+  }
   return rows[0];
 }
 
@@ -101,6 +111,33 @@ export async function readState(userId) {
     [userId],
   );
   return rows[0] ?? null;
+}
+
+/**
+ * Just the snapshot's timestamp and revision — no payload.
+ *
+ * The client polls this to show "last saved ...". Reading the full payload
+ * for that shipped the entire (up to 4 MB) backup bundle over the wire on
+ * every Settings open, to read two columns.
+ */
+export async function readStateMeta(userId) {
+  const rows = await queryRows(
+    'select updated_at, revision from user_state where user_id = $1',
+    [userId],
+  );
+  return rows[0] ?? null;
+}
+
+/**
+ * Invalidates every session for this account.
+ *
+ * A session cookie is a self-contained signed token, so clearing the cookie
+ * in the browser was the only thing signing out did — a leaked or cloned
+ * cookie kept working for its full 30-day life. Marking the account as
+ * revoked from this moment lets the routes refuse any token issued earlier.
+ */
+export async function revokeSessions(userId) {
+  await queryRows('update users set revoked_before = now() where id = $1', [userId]);
 }
 
 /**

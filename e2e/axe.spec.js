@@ -23,6 +23,7 @@ async function freshApp(page, theme) {
   await page.goto("/");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-app-ready", "1");
   if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
   // Switch themes through the real toggle: applyTheme is synchronous, so the
   // DOM attributes and CSS custom properties are consistent before scanning.
@@ -48,9 +49,15 @@ test.describe("axe WCAG audits", () => {
         await freshApp(page, theme);
       });
 
-      for (const nav of ["home", "stats", "guide", "flashcards"]) {
+      for (const nav of ["home", "stats", "guide", "flashcards", "sources"]) {
         test(`no critical/serious violations on ${nav}`, async ({ page }) => {
-          if (nav !== "home") await page.locator(`#bottomNav button[data-nav="${nav}"]`).click();
+          if (nav === "sources") {
+            // The ledger is reached from the Study Guide, not the bottom nav.
+            await page.locator('#bottomNav button[data-nav="guide"]').click();
+            await page.locator("#btnSources").click();
+          } else if (nav !== "home") {
+            await page.locator(`#bottomNav button[data-nav="${nav}"]`).click();
+          }
           const violations = await scan(page);
           expect(violations, JSON.stringify(violations.map((v) => ({ id: v.id, nodes: v.nodes.slice(0, 3).map((n) => n.target) })))).toEqual([]);
         });

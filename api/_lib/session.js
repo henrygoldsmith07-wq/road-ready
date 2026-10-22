@@ -13,14 +13,28 @@ import { createHmac, timingSafeEqual, randomBytes } from 'node:crypto';
 // `__Host-` requires Secure + Path=/ + no Domain, which is exactly how the
 // session cookie is written. In tests NODE_ENV is not "production", so the
 // plain name keeps local HTTP sign-in workable.
-export const SESSION_COOKIE = process.env.NODE_ENV === 'production' ? '__Host-roadready_session' : 'roadready_session';
+//
+// Production is detected more broadly than NODE_ENV alone. Vercel sets
+// VERCEL/VERCEL_ENV on every deployment, and a production deploy that forgot
+// NODE_ENV would otherwise ship a session cookie without `Secure` and without
+// the `__Host-` prefix — losing cookie-shadowing protection on a real account.
+const PRODUCTION = process.env.NODE_ENV === 'production'
+  || process.env.VERCEL_ENV === 'production'
+  || process.env.VERCEL === '1';
+
+export const SESSION_COOKIE = PRODUCTION ? '__Host-roadready_session' : 'roadready_session';
 export const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60;
 // Bump when the payload contract changes; readSession refuses older versions.
 export const SESSION_TOKEN_VERSION = 2;
 
+/** True when this deployment is serving production traffic. */
+export function isProduction() {
+  return PRODUCTION;
+}
+
 /** HTTPS-only cookies outside local development. */
 export function useSecureCookies() {
-  return process.env.NODE_ENV === 'production';
+  return PRODUCTION;
 }
 
 export class MissingAuthSecret extends Error {
@@ -39,7 +53,7 @@ function secret() {
   // 32 bytes of base64 is the documented generation command; anything shorter
   // than 32 characters is refused in production (still warned about locally).
   if (value.length < 32) {
-    if (process.env.NODE_ENV === 'production') {
+    if (PRODUCTION) {
       throw new MissingAuthSecret('AUTH_SECRET is too weak. Generate one with: openssl rand -base64 32');
     }
     console.warn('[auth] AUTH_SECRET is shorter than recommended (openssl rand -base64 32)');
@@ -60,8 +74,15 @@ export function issueSession(userId) {
   return `${encoded}.${b64url(sign(encoded))}`;
 }
 
-/** The user id inside a valid, unexpired token, or null. */
-export function readSession(token) {
+/**
+ * The full payload of a valid, unexpired token, or null.
+ *
+ * The routes need `iat` as well as the user id: a session revoked on the
+ * server (signed out, or signed out everywhere) is marked with a timestamp,
+ * and a token issued before that timestamp must be refused. Without `iat` a
+ * revoked session would keep working for its full 30-day life.
+ */
+export function readSessionPayload(token) {
   if (typeof token !== 'string') return null;
   const dot = token.lastIndexOf('.');
   if (dot < 1) return null;
@@ -88,7 +109,13 @@ export function readSession(token) {
   // means a forged or malformed timestamp range — refuse rather than honour.
   if (payload.exp - (payload.iat || 0) > SESSION_TTL_SECONDS) return null;
   if (typeof payload.iat !== 'number' || payload.iat > now + 60) return null;
-  return payload.uid;
+  return payload;
+}
+
+/** The user id inside a valid, unexpired token, or null. */
+export function readSession(token) {
+  const payload = readSessionPayload(token);
+  return payload ? payload.uid : null;
 }
 
 function serializeCookie(name, value, maxAge) {

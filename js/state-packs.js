@@ -116,34 +116,47 @@ const SOURCE_REGISTRY = {
   "ca-dmv-driver-handbook": {
     jurisdiction: "CA", agency: "California DMV", title: "California Driver's Handbook",
     url: "https://www.dmv.ca.gov/portal/handbook/california-driver-handbook/", verified: "2026-08-23",
+    // "topic" means the per-question sourceSection is the app's own topic
+    // label, not a heading in the handbook. The ledger must not imply a
+    // heading that does not exist.
+    sectionKind: "topic",
   },
   "tx-dps-driver-handbook": {
     jurisdiction: "TX", agency: "Texas DPS", title: "Texas Driver Handbook",
     url: "https://www.dps.texas.gov/InternetForms/home/Details/304", verified: "2026-08-23",
+    sectionKind: "topic",
   },
   "ny-dmv-driver-manual": {
     jurisdiction: "NY", agency: "New York DMV", title: "New York State Driver's Manual",
     url: "https://dmv.ny.gov/book/export/html/1551", verified: "2026-08-23",
+    sectionKind: "topic",
   },
   "fl-flhsmv-handbook": {
     jurisdiction: "FL", agency: "FLHSMV", title: "Official Florida Driver License Handbook",
     url: "https://www.flhsmv.gov/pdf/handbooks/englishdriverhandbook.pdf", verified: "2026-08-23",
+    sectionKind: "topic",
   },
   "wa-dol-driver-guide": {
     jurisdiction: "WA", agency: "Washington DOL", title: "Washington State Driver Guide",
     url: "https://dol.wa.gov/driver-licenses-and-permits/driver-training-and-testing/driver-guides/washington-state-driver-guide-text-only", verified: "2026-08-23",
+    sectionKind: "topic",
   },
   "pa-penndot-driver-manual": {
     jurisdiction: "PA", agency: "PennDOT", title: "Pennsylvania Driver's Manual",
     url: "https://www.pa.gov/agencies/dmv/driver-services/pennsylvania-drivers-manual", verified: "2026-08-23",
+    sectionKind: "topic",
   },
   "uk-highway-code": {
     jurisdiction: "UK", agency: "Department for Transport", title: "The Highway Code",
     url: "https://www.gov.uk/guidance/the-highway-code", verified: "2026-09-22",
+    // "rule" means the per-question sourceSection names the actual rule, so
+    // it can be looked up directly in the document.
+    sectionKind: "rule",
   },
   "uk-know-your-traffic-signs": {
     jurisdiction: "UK", agency: "Department for Transport", title: "Know Your Traffic Signs",
     url: "https://www.gov.uk/government/publications/know-your-traffic-signs", verified: "2026-09-22",
+    sectionKind: "rule",
   },
   "uk-theory-test-format": {
     jurisdiction: "UK", agency: "DVSA", title: "Theory test: cars — multiple-choice format",
@@ -156,6 +169,11 @@ const SOURCE_REGISTRY = {
     edition: "2025–2026 editions", verified: "2026-08-23",
     citationLabel: "Reference basis",
     note: "Cites the universal bank: rules taught consistently across state handbooks. State exceptions live in jurisdiction packs.",
+    // Shown on the Content & Sources view, where the distinction between one
+    // official document and a composite of several has to be explained rather
+    // than abbreviated into a label.
+    basisNote: "This is a composite of many states' handbooks, not one official document. "
+      + "Every rule here is taught consistently across them; anything that varies by state lives in your state pack and cites that state's own handbook.",
   },
 };
 
@@ -1587,6 +1605,15 @@ function citationForQuestion(question) {
     url: source.url || null,
     section,
     title: source.title,
+    // The date the content was last checked against this document. Without it
+    // a learner cannot tell a fresh rule from one that has drifted.
+    verified: source.verified || null,
+    agency: source.agency,
+    jurisdiction: source.jurisdiction || null,
+    basis: source.citationLabel === "Reference basis" ? source.title : null,
+    // "rule" sources name the actual rule; "topic" sources name the app's
+    // own topic label. Screen-reader text must not call a topic a section.
+    sectionKind: source.sectionKind || "topic",
   };
 }
 

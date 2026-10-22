@@ -9,7 +9,7 @@ test("test-day simulation launches Part 1 and abandons cleanly", async ({ page }
   await page.goto("/");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await expect(page.locator("#app")).toBeVisible();
+  await expect(page.locator("#app")).toBeVisible();  await expect(page.locator("html")).toHaveAttribute("data-app-ready", "1");
   if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
 
   // GB pack: the real test scores hazard perception, so the sim is offered.

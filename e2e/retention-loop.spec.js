@@ -10,7 +10,7 @@ async function boot(page) {
   await page.goto("/");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await expect(page.locator("#app")).toBeVisible();
+  await expect(page.locator("#app")).toBeVisible();  await expect(page.locator("html")).toHaveAttribute("data-app-ready", "1");
   if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
   return errors;
 }
@@ -32,7 +32,7 @@ test("due-review session contains the due questions; goal names due reviews", as
     return qs.map((q) => q.id);
   });
   await page.reload();
-  await expect(page.locator("#app")).toBeVisible();
+  await expect(page.locator("#app")).toBeVisible();  await expect(page.locator("html")).toHaveAttribute("data-app-ready", "1");
   if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
 
   // The plan promises the due questions, and the goal line names the reviews.
@@ -70,7 +70,7 @@ test("goal stays honest when the count is complete but reviews are overdue", asy
     localStorage.setItem(key, JSON.stringify(s));
   });
   await page.reload();
-  await expect(page.locator("#app")).toBeVisible();
+  await expect(page.locator("#app")).toBeVisible();  await expect(page.locator("html")).toHaveAttribute("data-app-ready", "1");
   if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
 
   // The count is met, but overdue reviews keep the line from declaring victory.

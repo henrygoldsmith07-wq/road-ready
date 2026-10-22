@@ -354,12 +354,65 @@
     // e2e: "test date builds a persistent daily plan") — the baseline owns
     // only the undated fresh screen, where the plan would otherwise be
     // generic coverage with no personal signal behind it.
-    if (state.answered === 0 && !validTestDate()) {
+    //
+    // "Fresh" means NO learning signal at all, not merely an answer count of
+    // zero. A learner can have question history, a tracked misconception or an
+    // overdue review while the counter still reads zero, and in that case the
+    // coach's plan (repair this misconception, these N questions are due) is
+    // strictly more useful than a starting-level check. Overriding it would
+    // hide real, actionable work.
+    const noSignalYet = state.answered === 0
+      && Object.keys(state.qstats || {}).length === 0
+      && Object.keys(state.misconceptions || {}).length === 0;
+    if (noSignalYet && !validTestDate()) {
+      /* The baseline owns the WHOLE card, not just its heading.
+       *
+       * The card is otherwise populated from the generic "coverage"
+       * recommendation (12 questions, "Goal: Coverage climbs past 2%",
+       * "What's behind it: Coverage", a 206-concept rationale). Rendering that
+       * underneath a heading that promises an 8-question starting check made
+       * one action report two different question counts and two different
+       * durations at once — on the first screen a new learner ever sees.
+       *
+       * Every field below now describes the baseline that the button actually
+       * starts, so the card states one thing: eight questions, about two
+       * minutes, and what the learner gets out of them. */
+      const baselineN = Core.BASELINE_DEFAULT_N || 8;
       $("planTitle").textContent = "Find your starting level";
       $("planDetail").textContent = "8 quick questions across topics — your results personalize the Today Plan.";
       $("planMeta").textContent = "About 2 minutes · no test date needed";
-      planBtn.textContent = "Check my starting level · 8 questions";
+      planBtn.textContent = `Check my starting level · ${baselineN} questions`;
       planBtn.dataset.action = "baseline";
+
+      const amountEl = $("planAmount");
+      if (amountEl) { amountEl.hidden = false; amountEl.textContent = `${baselineN} questions — about 2 minutes`; }
+      const noticedEl = $("planNoticed");
+      if (noticedEl) {
+        noticedEl.hidden = false;
+        noticedEl.textContent = "You haven't answered anything yet, so there is no signal to work from yet.";
+      }
+      const whyEl = $("planWhy");
+      if (whyEl) {
+        whyEl.hidden = false;
+        whyEl.textContent = "One question from a different topic each, so your next plan can target your gaps instead of the whole bank.";
+      }
+      const goalEl = $("planGoal");
+      if (goalEl) { goalEl.hidden = false; goalEl.textContent = "Goal: finish all 8. Your first personal plan follows."; }
+      // A baseline is not a diagnosis, so it carries no "what's behind it" label.
+      if (kindEl) { kindEl.hidden = true; kindEl.textContent = ""; }
+      // The evidence drawer belongs to a diagnosis too — an empty one would
+      // just be a control with nothing behind it.
+      const evDetails = $("planEvidence");
+      if (evDetails) evDetails.hidden = true;
+      rationaleEl.hidden = false;
+      rationaleEl.replaceChildren(...[
+        "A wrong answer here is useful — it is the first evidence of where to start.",
+        "You can set a test date later; the plan works without one.",
+      ].map((line) => {
+        const li = document.createElement("li");
+        li.textContent = line;
+        return li;
+      }));
     }
     // The date picker is a secondary control — the plan's own action stays the
     // single primary button. Shown only while the plan is undated.

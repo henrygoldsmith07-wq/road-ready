@@ -21,7 +21,7 @@
     try {
       const response = await fetch("/api/auth/session", { headers: { accept: "application/json" } });
       if (!response.ok) return SIGNED_OUT;
-      const body = await response.json();
+      const body = await response.json().catch(() => ({}));
       return { available: Boolean(body.available), user: body.user || null };
     } catch {
       // file:// or a plain static host has no API routes. "No accounts" is the
@@ -44,9 +44,12 @@
   }
 
   async function remoteMeta() {
-    const response = await fetch("/api/sync", { headers: { accept: "application/json" } });
+    // ?meta=1 asks for the snapshot's timestamp and revision only. Reading the
+    // whole backup bundle for those two columns shipped up to 4 MB on every
+    // Settings open.
+    const response = await fetch("/api/sync?meta=1", { headers: { accept: "application/json" } });
     if (!response.ok) return { updatedAt: null, revision: null };
-    const body = await response.json();
+    const body = await response.json().catch(() => ({}));
     return {
       updatedAt: (body.state && body.state.updated_at) || null,
       revision: (body.state && body.state.revision) || null,
@@ -86,10 +89,13 @@
       return { status: "unavailable", message: "Sync is not configured for this deployment." };
     }
     if (!response.ok) {
+      // A non-JSON error body must not throw here: an unguarded parse
+      // rejected the promise, the caller never saw a message, and the button
+      // looked as if it had done nothing.
       const body = await response.json().catch(() => ({}));
       return { status: "error", message: body.error || "Sync failed (" + response.status + ")" };
     }
-    const body = await response.json();
+    const body = await response.json().catch(() => ({}));
     return { status: "ok", updatedAt: body.updated_at, revision: body.revision };
   }
 
@@ -100,8 +106,13 @@
     if (response.status === 503) {
       return { status: "unavailable", message: "Sync is not configured for this deployment." };
     }
-    if (!response.ok) return { status: "error", message: "Sync failed (" + response.status + ")" };
-    const body = await response.json();
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      return { status: "error", message: body.error || "Sync failed (" + response.status + ")" };
+    }
+    // Guarded: a body that is not JSON must produce a message, not a rejected
+    // promise that leaves the Restore button apparently inert.
+    const body = await response.json().catch(() => ({}));
     if (!body.state || !body.state.payload || typeof body.state.payload.bundle !== "string") {
       return { status: "empty" };
     }

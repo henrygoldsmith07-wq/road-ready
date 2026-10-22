@@ -15,6 +15,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="stylesheet" href="css/styles.css">
 <link rel="stylesheet" href="css/hazard.css">
+<link rel="stylesheet" href="css/sources.css">
 <!-- The question bank is the largest script; warm it up before the deferred queue below. -->
 <link rel="preload" as="script" href="js/questions.js">
 </head>
@@ -315,6 +316,12 @@
 
       <div id="stateFacts" hidden></div>
 
+      <div class="card finder-card sources-entry">
+        <p class="finder-label">Is this content accurate?</p>
+        <p class="finder-hint">Every question names the official document it came from and the date that document was last checked. Open the ledger to see the lot.</p>
+        <button class="btn ghost" id="btnSources" type="button">Content &amp; Sources</button>
+      </div>
+
       <div id="guideUs">
       <h2 class="section-title">Written test cheat sheets</h2>
 
@@ -503,6 +510,13 @@
           <a class="source-link state-source" id="gbPracticalSource" href="#" target="_blank" rel="noopener noreferrer">Open official practical-test guidance ↗</a>
         </div>
       </div>
+    </section>
+
+    <!-- ============ CONTENT & SOURCES ============ -->
+    <section class="view" id="view-sources">
+      <h1 class="view-title">Content &amp; Sources</h1>
+      <p class="view-sub">Where every question comes from, and when it was last checked against the source.</p>
+      <div id="sourcesBody"><!-- rendered by js/sources-ui.js --></div>
     </section>
 
     <!-- ============ HAZARD PERCEPTION ============ -->
@@ -733,13 +747,16 @@
   <div class="ob-card">
     <button class="ob-skip" id="obSkip">Skip</button>
     <div class="ob-steps">
-      <div class="ob-step" data-step="0">
+      <!-- Step one carries the "on" class in the markup: js/first-paint.js
+           reveals this card during parsing, and a card whose only step is
+           display:none would paint as an empty shell until the app booted. -->
+      <div class="ob-step on" data-step="0">
         <span class="ob-ico" data-icon="car" data-size="40"></span>
         <h1>Where will you take your test?</h1>
         <p class="ob-lead">Road Ready studies only that test's rules. Pick now — you can change it later in Settings.</p>
         <div class="ob-choice">
           <span>Your jurisdiction</span>
-          <select id="obStatePack" aria-label="Your jurisdiction"></select>
+          <select id="obStatePack" aria-label="Your jurisdiction"><option value="">Loading your jurisdictions…</option></select>
         </div>
       </div>
       <div class="ob-step" data-step="1">
@@ -778,11 +795,17 @@
       </div>
     </div>
     <div class="ob-foot">
-      <div class="ob-dots" id="obDots"><span></span><span></span><span></span><span></span></div>
+      <div class="ob-dots" id="obDots"><span class="on"></span><span></span><span></span><span></span></div>
       <button class="btn primary" id="obNext">Start</button>
     </div>
   </div>
 </div>
+
+<!-- Reveal the first-run card during parsing, before the deferred app scripts
+     are even requested. Without this a new learner stares at an empty screen
+     until the whole app has loaded. Loaded without defer on purpose: it must
+     run now, not after parsing. The app still makes the final call at boot. -->
+<script src="js/first-paint.js"></script>
 
 <!-- window.__lastError is read by e2e/app.spec.js after a fresh page.open().
      Deferred (not inline) so the strict CSP stays intact and the request no
@@ -818,6 +841,8 @@
 <script src="js/hazard-scenarios.js" defer></script>
 <script src="js/hazard-ui.js" defer></script>
 <script src="js/guide.js" defer></script>
+<script src="js/sources.js" defer></script>
+<script src="js/sources-ui.js" defer></script>
 <script src="js/jurisdictions.js" defer></script>
 <!-- js/packs/uk.js loads on demand via Packs.ensureUkPack (js/state-packs.js): parsing 1.6MB of GB questions on every boot taxed first paint for sessions that never select Great Britain. -->
 <script src="js/state-packs.js" defer></script>

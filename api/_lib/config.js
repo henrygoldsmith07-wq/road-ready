@@ -38,7 +38,16 @@ export function requireAccountsConfigured() {
 export function authOrigin(req) {
   const configured = process.env.AUTH_URL && process.env.AUTH_URL.trim();
   if (configured) {
-    const parsed = new URL(configured);
+    // A malformed AUTH_URL must be reported as a configuration problem, not as
+    // an unexpected TypeError: the raw throw became a 500, and through the
+    // fail-closed origin guard it turned into a 403 on every mutating request
+    // with nothing in the response to explain why.
+    let parsed;
+    try {
+      parsed = new URL(configured);
+    } catch {
+      throw new AccountsNotConfigured(['a valid AUTH_URL']);
+    }
     if (!['http:', 'https:'].includes(parsed.protocol)) throw new AccountsNotConfigured(['valid AUTH_URL']);
     if (process.env.NODE_ENV === 'production' && parsed.protocol !== 'https:') {
       throw new AccountsNotConfigured(['HTTPS AUTH_URL']);
@@ -59,17 +68,23 @@ export function authOrigin(req) {
 export function isCrossOriginRequest(req) {
   const origin = req.headers.origin;
   if (!origin) return false;
+  let originParsed;
   try {
-    const configured = process.env.AUTH_URL && process.env.AUTH_URL.trim();
-    if (configured || process.env.NODE_ENV === 'production') {
-      return new URL(origin).origin !== authOrigin(req);
-    }
+    originParsed = new URL(origin);
+  } catch {
+    // An Origin we cannot parse is refused. That is a request problem.
+    return true;
+  }
+  const configured = process.env.AUTH_URL && process.env.AUTH_URL.trim();
+  if (configured || process.env.NODE_ENV === 'production') {
+    // authOrigin may throw AccountsNotConfigured. That is deliberately NOT
+    // caught here: a broken AUTH_URL is a deployment problem, and the route
+    // reports it as "not configured" instead of a 403 that reads like CSRF.
+    return originParsed.origin !== authOrigin(req);
+  }
 
     // Local/test servers frequently do not receive x-forwarded-proto. Compare
     // the authority here; production still uses the exact canonical origin.
-    const host = req.headers['x-forwarded-host'] || req.headers.host;
-    return !host || new URL(origin).host !== host;
-  } catch {
-    return true;
-  }
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  return !host || originParsed.host !== host;
 }

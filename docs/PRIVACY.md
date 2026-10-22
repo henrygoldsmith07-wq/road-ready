@@ -72,8 +72,9 @@ response to you pressing a button:
 |---|---|---|
 | Opening Settings | `GET /api/auth/session` | nothing beyond what any page load carries (your IP, your user-agent) |
 | Signing in | navigation to `/api/auth/google` | handled by Google's consent screen; Road Ready never sees your password |
-| Pressing **Save** | `POST /api/sync` | the same JSON bundle **Export** writes — practice and exam history, outcomes, Drive Log sessions and notes — plus the email and profile name Google returns to the server |
+| Pressing **Save** | `PUT /api/sync` | the same JSON bundle **Export** writes — practice and exam history, outcomes, Drive Log sessions and notes — plus the email and profile name Google returns to the server |
 | Pressing **Restore** | `GET /api/sync` | nothing; the body comes back |
+| Checking the "last saved" time | `GET /api/sync?meta=1` | nothing; only the save time and revision come back — never the study history |
 | **Delete copy** | `DELETE /api/sync` | nothing |
 | **Delete account** | `DELETE /api/account` | nothing |
 
