@@ -27,6 +27,14 @@ describe("jurisdiction-native guide", () => {
     expect(dom.window.document.getElementById("guideSubtitle").textContent).toBe("US guide");
   });
 
+  it("the GB practical-test link goes to official GOV.UK guidance", () => {
+    /* It used to be href="#": a link labelled "official" that went nowhere. */
+    const html = readFileSync(fileURLToPath(new URL("../index.html", import.meta.url)), "utf8");
+    const link = html.match(/id="gbPracticalSource"[^>]*href="([^"]+)"/);
+    expect(link).toBeTruthy();
+    expect(link[1]).toBe("https://www.gov.uk/driving-test/what-happens-during-test");
+  });
+
   it("hides U.S. content for Great Britain", () => {
     const dom = makeGuide();
     dom.window.RoadReadyGuide.apply({

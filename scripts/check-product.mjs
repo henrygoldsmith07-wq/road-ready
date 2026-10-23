@@ -12,6 +12,8 @@
  *      history the topic grid, which duplicates the Practice screen, must be
  *      collapsed and the empty stat strip hidden.
  *   4. Coaching copy must never emit an unresolved template token.
+ *   5. A link that names an official source must go to that source, never to
+ *      "#". The GB practical-test link shipped as a dead anchor.
  *
  * Run: node scripts/check-product.mjs
  */
@@ -34,9 +36,18 @@ if (/performing well/i.test(fresh.noticed || "")) {
 if (!/not answered anything yet|clean slate/i.test(fresh.noticed || "")) {
   problems.push(`first-run copy does not state that nothing has been answered: "${fresh.noticed}"`);
 }
-const started = Explain.explainRecommendation(freshRec, { coverage: 0.34, untestedConcepts: 130, bankSize: bank.length, scopeLabel: "current" });
+const started = Explain.explainRecommendation(freshRec, { coverage: 0.34, untestedConcepts: 130, bankSize: bank.length, scopeLabel: "current", seenAccuracy: 0.85 });
 if (!/performing well/.test(started.noticed || "")) {
   problems.push("a learner with history lost the legitimate 'performing well' copy");
+}
+/* ...but not the other way round: "performing well" is a claim about measured
+   accuracy, and a learner answering most questions wrong did not earn it. */
+const struggling = Explain.explainRecommendation(freshRec, { coverage: 0.34, untestedConcepts: 130, bankSize: bank.length, scopeLabel: "current", seenAccuracy: 0.43 });
+if (/performing well/i.test(struggling.noticed || "")) {
+  problems.push(`a learner at 43% accuracy is told they are 'performing well': "${struggling.noticed}"`);
+}
+if (!/43%/.test(struggling.noticed || "")) {
+  problems.push(`the struggling learner's copy does not report the measured accuracy: "${struggling.noticed}"`);
 }
 
 /* ---------- 2. a fresh install is silent ---------- */
@@ -77,6 +88,12 @@ if (!stripMatch) problems.push("no #statStrip on the home view");
 else if (!/\bhidden\b/.test(stripMatch[1])) {
   problems.push("#statStrip does not start hidden — a fresh account shows '0 / – / 0 / –'");
 }
+/* no visible link may be a dead anchor ---------- */
+const deadAnchors = html.match(/<a\b[^>]*href="#"[^>]*>/g) || [];
+if (deadAnchors.length) {
+  problems.push(`${deadAnchors.length} link(s) point at "#" instead of a real destination: ${deadAnchors[0].slice(0, 90)}`);
+}
+
 /* no recommendation path may emit an unresolved token ---------- */
 for (const type of Coach.REC_TYPES ? Object.values(Coach.REC_TYPES) : []) {
   const e = Explain.explainRecommendation(

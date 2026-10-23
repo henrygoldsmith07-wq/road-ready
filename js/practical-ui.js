@@ -19,14 +19,25 @@
   function $(id) { return document.getElementById(id); }
   function on(el, ev, fn) { el.addEventListener(ev, fn); }
 
+  /* "Dual carriageway" is the GB term; the same road is a divided highway to
+   * a U.S. learner, and the log is shared by both packs. Stored ids stay
+   * stable across jurisdictions — only the label follows the selected pack. */
+  function roadTypeLabel(id) {
+    if (id === "dual-carriageway") {
+      const pack = ctx.getState().settings.statePack;
+      return pack === "UK" ? "dual carriageway" : "divided highway";
+    }
+    return id.replace(/-/g, " ");
+  }
+
   /** Renders a row of toggle chips; returns nothing, mutates `set` in place. */
-  function chipRow(host, values, set) {
+  function chipRow(host, values, set, labelFor) {
     host.textContent = "";
     for (const v of values) {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "chip";
-      b.textContent = v.replace(/-/g, " ");
+      b.textContent = labelFor ? labelFor(v) : v.replace(/-/g, " ");
       b.setAttribute("aria-pressed", String(set.has(v)));
       on(b, "click", () => {
         if (set.has(v)) set.delete(v);
@@ -40,7 +51,7 @@
   function buildForm() {
     const { Core, form } = ctx;
     chipRow($("plConditions"), Core.CONDITIONS, form.conditions);
-    chipRow($("plRoadTypes"), Core.ROAD_TYPES, form.roadTypes);
+    chipRow($("plRoadTypes"), Core.ROAD_TYPES, form.roadTypes, roadTypeLabel);
 
     const sk = $("plSkills");
     sk.textContent = "";
@@ -93,6 +104,9 @@
     const { Core, getState, save, render } = ctx;
     const log = Core.practicalLog(getState());
     if (!Number.isInteger(index) || index < 0 || index >= log.length) return;
+    // A logged session carries ratings and instructor notes that exist nowhere
+    // else; one stray tap must not erase it without asking.
+    if (!window.confirm("Delete this logged session? Its ratings and instructor notes are removed permanently.")) return;
     log.splice(index, 1);
     save();
     render();
@@ -186,7 +200,7 @@
       head.append(when, marksEl);
       const meta = document.createElement("div");
       meta.className = "outcome-meta";
-      const tags = s.conditions.concat(s.roadTypes).join(" · ");
+      const tags = s.conditions.concat(s.roadTypes.map(roadTypeLabel)).join(" · ");
       meta.textContent = (tags || "—") + (s.notes ? ` · ${s.notes.slice(0, 120)}` : "");
       const del = document.createElement("button");
       del.className = "btn ghost pl-del";

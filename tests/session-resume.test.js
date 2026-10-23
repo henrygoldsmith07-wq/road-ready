@@ -29,6 +29,22 @@ describe("resume snapshots", () => {
     expect(Core.parseResumeSnapshot(good, { pack: "generic", nowMs: Date.now(), resolve: (id) => id !== "b" }).ok).toBe(false);
   });
 
+  it("keeps the promised set size across a reload, but does not invent one", () => {
+    // A practice set grows as repair questions are appended; the snapshot has
+    // to remember where the promised set ended or the summary miscounts.
+    const grown = Core.buildResumeSnapshot(snap({
+      mode: "practice", qids: ["a", "b", "c", "d", "e"], i: 2, baseCount: 3,
+    }));
+    expect(grown.baseCount).toBe(3);
+    const r = Core.parseResumeSnapshot(grown, { pack: "generic", nowMs: Date.now(), resolve: () => true });
+    expect(r.ok).toBe(true);
+    expect(r.snapshot.baseCount).toBe(3);
+    // An un-grown queue omits the field, keeping the old snapshot shape.
+    expect(Core.buildResumeSnapshot(snap())).not.toHaveProperty("baseCount");
+    // Never larger than the queue it describes.
+    expect(Core.buildResumeSnapshot(snap({ baseCount: 99 }))).not.toHaveProperty("baseCount");
+  });
+
   it("rejects out-of-range progress and oversized banks", () => {
     expect(Core.buildResumeSnapshot(snap({ i: 5 }))).toBeNull();
     expect(Core.buildResumeSnapshot(snap({ mode: "sim" }))).toBeNull();

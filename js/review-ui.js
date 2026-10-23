@@ -166,7 +166,18 @@
         rule.type = "button";
         rule.className = "btn ghost rg-rule";
         rule.textContent = "View rule";
+        // A reveal is announced as one: the control reports its state and can
+        // be closed again. Disabling it left screen-reader users with no
+        // feedback that the rule had appeared below.
+        rule.setAttribute("aria-expanded", "false");
         on(rule, "click", () => {
+          const shown = li.querySelector(".rg-rule-note");
+          if (shown) {
+            shown.remove();
+            rule.setAttribute("aria-expanded", "false");
+            rule.textContent = "View rule";
+            return;
+          }
           const q = getQuestion(it.questionIds[0]);
           if (!q) return;
           // Verified teaching for the underlying concept — curated rule and
@@ -203,7 +214,8 @@
             }
           }
           li.appendChild(note);
-          rule.disabled = true;
+          rule.setAttribute("aria-expanded", "true");
+          rule.textContent = "Hide rule";
         });
         actions.appendChild(rule);
         const later = document.createElement("button");

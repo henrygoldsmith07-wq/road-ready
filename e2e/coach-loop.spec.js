@@ -108,8 +108,11 @@ test.describe("session summaries", () => {
     await expect(page.locator("#view-results")).toHaveClass(/active/);
     await expect(page.locator("#sessionSummary")).toBeVisible();
     const text = await page.locator("#sessionSummary").textContent();
-    expect(text).toMatch(/question/i);
-    expect(text).toMatch(/correct/i);
+    // The summary describes what the session changed; the score is stated in
+    // the header directly above it, not repeated here.
+    expect(text).toMatch(/session changed/i);
+    expect(text).toMatch(/not attempted|strengthened|still weak|measurable change/i);
+    await expect(page.locator("#resultSub")).toContainText(/correct/i);
     expect(text).not.toMatch(/guaranteed|will pass|exam ready/i);
   });
 });

@@ -20,6 +20,36 @@ test.describe("onboarding", () => {
     await expect(page.locator("#onboarding")).toBeHidden();
   });
 
+  test("first run is a modal layer: focus starts inside and skip returns focus home", async ({ page }) => {
+    await freshApp(page);
+    await expect(page.locator("#onboarding")).toBeVisible();
+    await expect(page.locator("#onboarding")).toHaveAttribute("role", "dialog");
+    // The home screen behind the card must be out of both the tab order and
+    // the accessibility tree — it is dimmed, not usable.
+    await expect.poll(() => page.evaluate(() => document.getElementById("app").inert)).toBe(true);
+    await expect(page.locator("#app")).toHaveAttribute("aria-hidden", "true");
+    const start = await page.evaluate(() => ({
+      tag: document.activeElement.tagName,
+      inside: !!document.activeElement.closest("#onboarding"),
+    }));
+    expect(start).toEqual({ tag: "H1", inside: true });
+
+    // Advancing moves focus to the next step's heading, not to a hidden one.
+    await page.click("#obNext");
+    const next = await page.evaluate(() => ({
+      inside: !!document.activeElement.closest("#onboarding"),
+      step: document.activeElement.closest(".ob-step")?.dataset.step,
+    }));
+    expect(next.inside).toBe(true);
+    expect(next.step).toBe("1");
+
+    await page.click("#obSkip");
+    await expect(page.locator("#onboarding")).toBeHidden();
+    await expect.poll(() => page.evaluate(() => document.getElementById("app").inert)).toBe(false);
+    await expect(page.locator("#app")).not.toHaveAttribute("aria-hidden", "true");
+    await expect.poll(() => page.evaluate(() => document.activeElement.id)).toBe("greeting");
+  });
+
   test("hazard row follows the chosen jurisdiction", async ({ page }) => {
     const errors = [];
     page.on("pageerror", (e) => errors.push(String(e.message)));
@@ -55,6 +85,42 @@ test.describe("quick-start baseline", () => {
 });
 
 test.describe("practice flow", () => {
+  test("empty sets are visibly unavailable and the daily set does not claim a test date it lacks", async ({ page }) => {
+    await freshApp(page);
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
+    await page.locator('#bottomNav button[data-nav="practice"]').click();
+
+    const today = page.locator("#setupList .setup-row", { hasText: "Today's Set" });
+    await expect(today).toContainText(/\d+ questions — set a test date for a dated plan/);
+    await expect(today).not.toContainText("sized to your test date");
+
+    // Nothing flagged on a fresh install: the row must not look tappable and
+    // then do nothing.
+    const flagged = page.locator("#setupList .setup-row", { hasText: "Flagged Questions" });
+    await expect(flagged).toBeDisabled();
+    await expect(flagged.locator(".chev")).toHaveCount(0);
+  });
+
+  test("question actions sit on one row of thumb-sized targets", async ({ page }) => {
+    await freshApp(page);
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
+    await page.locator("#topicBrowser").evaluate((d) => { d.open = true; });
+    await page.locator("#topicGrid .topic-card").first().click();
+    await expect(page.locator("#view-quiz")).toHaveClass(/active/);
+
+    /* Polled rather than sampled once: the view fades in with a 5px offset, so
+       two boxes measured a few frames apart could disagree on y and fail a
+       layout assertion that is in fact true. */
+    await expect.poll(async () => {
+      const flag = await page.locator("#btnFlag").boundingBox();
+      const report = await page.locator("#btnReport").boundingBox();
+      if (!flag || !report) return -1;
+      const minHeight = Math.min(flag.height, report.height);
+      const rowDelta = Math.abs(flag.y - report.y);
+      return minHeight >= 44 && rowDelta < 2 ? 1 : 0;
+    }).toBe(1);
+  });
+
   test("answer a question, see feedback, finish session", async ({ page }) => {
     await freshApp(page);
     if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
@@ -79,6 +145,65 @@ test.describe("practice flow", () => {
     await page.locator('#bottomNav button[data-nav="stats"]').click();
     const answered = Number(await page.locator("#ssAnswered").textContent());
     expect(answered).toBeGreaterThanOrEqual(1);
+  });
+
+  test("the chosen wrong answer is marked even when the tap does not focus it", async ({ page }) => {
+    await freshApp(page);
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
+    await page.locator("#topicBrowser").evaluate((d) => { d.open = true; });
+    await page.locator("#topicGrid .topic-card").first().click();
+    await expect(page.locator(".choice")).toHaveCount(4);
+
+    // dispatchEvent fires the click handler without moving focus, which is how
+    // iOS Safari delivers a tap on a <button>. Relying on document.activeElement
+    // left the chosen answer unmarked on exactly the phone-sized device.
+    const wrong = await page.evaluate(() => {
+      const text = document.getElementById("qText").textContent.trim();
+      const q = QUESTIONS.find((x) => x.q.trim() === text);
+      const correct = q.choices[q.a];
+      const labels = [...document.querySelectorAll("#choices .choice-text")].map((e) => e.textContent);
+      return { disp: labels.findIndex((t) => t !== correct), correct };
+    });
+    expect(wrong.disp).toBeGreaterThanOrEqual(0);
+    await page.locator("#choices .choice").nth(wrong.disp).dispatchEvent("click");
+    await expect(page.locator("#feedback")).toBeVisible();
+    await expect(page.locator("#feedback")).toContainText("Not quite");
+    const marked = page.locator("#choices .choice.wrong");
+    await expect(marked).toHaveCount(1);
+    await expect(marked.locator(".choice-text")).not.toHaveText(wrong.correct);
+  });
+
+  test("ending early counts the promised set, not the repair questions appended to it", async ({ page }) => {
+    await freshApp(page);
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
+    await page.locator("#topicBrowser").evaluate((d) => { d.open = true; });
+    await page.locator("#topicGrid .topic-card").first().click();
+    await expect(page.locator("#view-quiz")).toHaveClass(/active/);
+    const total = Number((await page.locator("#qCounter").textContent()).match(/\/\s*(\d+)/)[1]);
+    expect(total).toBeGreaterThan(3);
+
+    // Two misses each append a repair question, so the queue grows past the set.
+    for (let n = 0; n < 2; n++) {
+      const disp = await page.evaluate(() => {
+        const text = document.getElementById("qText").textContent.trim();
+        const q = QUESTIONS.find((x) => x.q.trim() === text);
+        const correct = q.choices[q.a];
+        return [...document.querySelectorAll("#choices .choice-text")]
+          .findIndex((e) => e.textContent !== correct);
+      });
+      expect(disp).toBeGreaterThanOrEqual(0);
+      await page.locator("#choices .choice").nth(disp).click();
+      await expect(page.locator("#feedback")).toBeVisible();
+      await page.locator("#btnNext").click();
+    }
+    const queued = Number((await page.locator("#qCounter").textContent()).split("/")[1]);
+    expect(queued).toBeGreaterThan(total); // the repair questions really were appended
+
+    await page.locator("#btnQuit").click();
+    await expect(page.locator("#view-results")).toHaveClass(/active/);
+    const left = total - 2;
+    await expect(page.locator("#sessionSummary"))
+      .toContainText(`${left} question${left === 1 ? " was" : "s were"} not attempted`);
   });
 
   test("report a question issue, review it, withdraw it", async ({ page }) => {
@@ -160,7 +285,20 @@ test.describe("flashcards & settings", () => {
     await page.locator('#bottomNav button[data-nav="flashcards"]').click();
     const counter = await page.locator("#fcCounter").textContent();
     expect(counter).toMatch(/1 \/ \d+/);
+    // Deck controls sit next to the card and are tapped mid-drill: they must be
+    // thumb-sized, not the 28px a bare .pill produces.
+    for (const id of ["#btnFcShuffle", "#btnFcReset"]) {
+      const box = await page.locator(id).boundingBox();
+      expect(box.height).toBeGreaterThanOrEqual(40);
+    }
+    // Both faces are laid out for the 3D flip; only the visible one may be
+    // exposed, or a screen reader hears the answer before the card is turned.
+    await expect(page.locator(".fc-back")).toHaveAttribute("aria-hidden", "true");
+    await expect(page.locator("#flashcard")).toHaveAttribute("aria-expanded", "false");
     await page.locator("#flashcard").click(); // flip
+    await expect(page.locator(".fc-back")).toHaveAttribute("aria-hidden", "false");
+    await expect(page.locator(".fc-front")).toHaveAttribute("aria-hidden", "true");
+    await expect(page.locator("#flashcard")).toHaveAttribute("aria-expanded", "true");
     await page.locator("#btnFcYes").click();  // mark known → advances
     const counter2 = await page.locator("#fcCounter").textContent();
     expect(counter2).toMatch(/^2 \//);
@@ -562,6 +700,24 @@ test.describe("accessibility basics", () => {
     expect(ariaLive).toBe("assertive");
     await page.keyboard.press("1");
     await expect(page.locator("#feedback")).toBeVisible();
+  });
+
+  test("earned and locked achievements say so in text, not only colour", async ({ page }) => {
+    await freshApp(page);
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
+    await page.evaluate(() => {
+      const key = "roadready.v1";
+      const raw = JSON.parse(localStorage.getItem(key) || "{}");
+      raw.achievements = { "first-steps": Date.now() };
+      localStorage.setItem(key, JSON.stringify(raw));
+    });
+    await page.reload();
+    if (await page.locator("#onboarding").isVisible()) await page.click("#obSkip");
+    await page.locator('#bottomNav button[data-nav="stats"]').click();
+    const earned = page.locator("#achGrid .ach.got");
+    await expect(earned).toHaveCount(1);
+    await expect(earned).toContainText("Earned");
+    await expect(page.locator("#achGrid .ach:not(.got)").first()).toContainText("Not yet earned");
   });
 
   test("no console errors during a full pass through views", async ({ page }) => {

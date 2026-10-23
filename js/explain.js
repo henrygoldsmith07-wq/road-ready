@@ -237,15 +237,28 @@ function explainRecommendation(rec, ctx) {
          had answered zero questions - true of nothing, and exactly the kind of
          unsupported claim the rest of this module refuses to make. */
       const started = n(c.coverage, 0) > 0;
+      /* It is also a measurement, not a mood: a learner at 43% accuracy was
+         told they were performing well on the same screen that reported the
+         two-thirds they had missed. The phrase now needs the usual practice
+         pass mark (80%); below it the line reports the measured number. */
+      const seenAccuracy = n(c.seenAccuracy, null);
       const untestedCount = untested != null
         ? `${untested} concept${untested === 1 ? " is" : "s are"} waiting in this pack`
         : `${pct}% of the material is still unseen`;
+      let noticed;
+      if (!started) {
+        noticed = `You have not answered anything yet, so this starts from a clean slate — ${untestedCount}.`;
+      } else if (untested == null) {
+        noticed = `You have covered only ${pct}% of the ${c.scopeLabel || "current"} material.`;
+      } else if (seenAccuracy == null) {
+        noticed = `${untested} concept${untested === 1 ? " is" : "s are"} still untested.`;
+      } else if (seenAccuracy < 0.8) {
+        noticed = `Your accuracy so far is ${Math.round(seenAccuracy * 100)}%, and ${untested} concept${untested === 1 ? " is" : "s are"} still untested.`;
+      } else {
+        noticed = `You are performing well on the questions you have seen, but ${untested} concept${untested === 1 ? " is" : "s are"} still untested.`;
+      }
       return {
-        noticed: started
-          ? (untested != null
-            ? `You are performing well on the questions you have seen, but ${untested} concept${untested === 1 ? " is" : "s are"} still untested.`
-            : `You have covered only ${pct}% of the ${c.scopeLabel || "current"} material.`)
-          : `You have not answered anything yet, so this starts from a clean slate — ${untestedCount}.`,
+        noticed,
         matters: "Questions you have never met are the cheapest marks available on the real test.",
         doNow: `Answer ${rec.questionCount} questions you have not seen before${c.focusName ? `, starting with ${c.focusName}` : ""}.`,
         amount: `${rec.questionCount} questions — ~${rec.minutes} min`,

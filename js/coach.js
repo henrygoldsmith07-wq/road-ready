@@ -45,11 +45,23 @@ const ISSUE_KINDS = ["misconception", "knowledge", "retention", "fluency", "cove
 
 /* ---------------- small pure helpers ---------------- */
 
+/* A plain titleizer turns "bac-legal-limit" into "Bac legal limit". These
+ * initialisms are proper nouns in every jurisdiction, so restore them — the
+ * labels are read on the Weakness Centre, the concept map, plan cards and
+ * session summaries. Hyphenated compounds that are not key separators
+ * (anti-lock, cross-hatching) need the same help. */
+const CONCEPT_ACRONYMS = { abs: "ABS", bac: "BAC", cdl: "CDL", dmv: "DMV", dui: "DUI", dwi: "DWI", gdl: "GDL", gps: "GPS", hov: "HOV", suv: "SUV" };
+const CONCEPT_LABEL_FIXES = {
+  "anti-lock-braking-purpose": "Anti-lock braking purpose",
+  "cross-hatching-markings": "Cross-hatching markings",
+};
 /** "roundabout-priority" → "Roundabout priority"; "topic:signs" → "Signs". */
 function conceptLabel(key) {
   const k = String(key || "");
   if (k.startsWith("topic:")) return titleize(k.slice(6));
-  return titleize(k.replace(/-/g, " "));
+  if (CONCEPT_LABEL_FIXES[k]) return CONCEPT_LABEL_FIXES[k];
+  return titleize(k.replace(/-/g, " "))
+    .replace(/\b[a-z]{2,3}\b/gi, (w) => CONCEPT_ACRONYMS[w.toLowerCase()] || w);
 }
 function titleize(s) {
   const t = String(s || "").trim();
@@ -385,7 +397,7 @@ function candidates(input) {
           ? `Repeated errors in ${repeated.length} concept${repeated.length === 1 ? "" : "s"} — a comparison of the confused rules plus a short drill comes first.`
           : "A concept variant follows the explanation so the rule is tested again in different wording.",
       ],
-      detail: `Practise these ${concepts.length} concept${concepts.length === 1 ? "" : "s"} next.`,
+      detail: `Practice these ${concepts.length} concept${concepts.length === 1 ? "" : "s"} next.`,
       evidence: concepts.map((x) => ({ key: x.d.key, errors: x.m.errors, stage: x.m.stage, fastWrong: x.d.fastWrong })),
     });
   }
@@ -486,6 +498,14 @@ function candidates(input) {
   const unseenNeeded = unseenConcepts.reduce((t, d) => t + Math.min(d.unseen, 2), 0);
   if (coverage < coverageThreshold && unseenConcepts.length) {
     const questionCount = clamp(unseenNeeded, 5, 12);
+    /* "Never attempted" has to mean exactly that. A concept with one answered
+       question and one unseen one counts toward the coverage line above but is
+       not untried, so counting it here printed a larger number for the same
+       idea ("199 concepts are still untested" beside "206 concepts have never
+       been attempted"). The second line now reports the strictly untried
+       subset, and only falls back to the unseen-question count when every
+       concept has been touched at least once. */
+    const neverAttempted = diags.filter((d) => d.unseen === d.questions.length).length;
     out.push({
       type: REC_TYPES.BUILD_COVERAGE,
       rank: coverage < 0.35 ? 30 : phase === "far" ? 32 : 55,
@@ -494,10 +514,12 @@ function candidates(input) {
       conceptKeys: unseenConcepts.slice(0, 6).map((d) => d.key),
       questionCount,
       minutes: Math.max(4, Math.round(questionCount * 0.8)),
-      title: `Practise ${questionCount} questions you have not seen yet`,
+      title: `Practice ${questionCount} questions you have not seen yet`,
       why: [
         `You have covered ${Math.round(coverage * 100)}% of the current bank — unseen concepts are the cheapest marks available.`,
-        `${unseenConcepts.length} concept${unseenConcepts.length === 1 ? " has" : "s have"} never been attempted.`,
+        neverAttempted > 0
+          ? `${neverAttempted} concept${neverAttempted === 1 ? " has" : "s have"} never been attempted.`
+          : `${unseenConcepts.length} concept${unseenConcepts.length === 1 ? " has" : "s have"} questions you have not seen yet.`,
       ],
       detail: `Start with ${unseenConcepts.slice(0, 2).map((d) => d.label).join(" and ")}.`,
       evidence: unseenConcepts.slice(0, 6).map((d) => ({ key: d.key, unseen: d.unseen })),
@@ -534,14 +556,14 @@ function candidates(input) {
       hazardCategories: hazard.weak.map((r) => r.category),
       title: hazard.weak.length
         ? `Train your weakest hazard type: ${hazard.weak[0].label || hazard.weak[0].category}`
-        : "Practise hazard perception",
+        : "Practice hazard perception",
       why: [
         hazard.neverPlayed
           ? `Hazard perception is a scored section of your ${(o.terminology && o.terminology.examName) || "theory test"} and you have not tried it yet.`
           : `You are at ${Math.round(hazard.rate * 100)}% across ${hazard.attempts} hazard scenarios.`,
         hazard.weak.length
           ? `${hazard.weak[0].label || hazard.weak[0].category} is your weakest hazard type — ${hazard.describeWeak(hazard.weak[0])}.`
-          : "Keeping a scored section practised matters as much as the questions.",
+          : "Keeping a scored section practiced matters as much as the questions.",
       ],
       detail: hazard.weak.length
         ? `A short hazard run weighted to ${(hazard.weak[0].label || hazard.weak[0].category).toLowerCase()}.`

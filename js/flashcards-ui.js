@@ -62,7 +62,7 @@
     const scope = $("fcScope");
     if (scope) {
       const t = ctx.termsForPack();
-      scope.textContent = `${ids.length} signs used in your ${t.regionLabel} pack \u2014 cards for signs that appear in that jurisdiction's questions, not the whole shared library.`;
+      scope.textContent = `${ids.length} sign${ids.length === 1 ? "" : "s"} used in your ${t.regionLabel} pack \u2014 cards for signs that appear in that jurisdiction's questions, not the whole shared library.`;
     }
     // Spaced review states: new / learning / familiar / mastered / due — a card
     // schedule, not a binary known bit. fcKnown stays in sync for the legacy
@@ -72,6 +72,7 @@
     $("fcKnownPill").innerHTML = `${icon("check", 13)} ${counts.mastered}/${ids.length} mastered · ${counts.due} due`;
     const card = $("flashcard");
     card.classList.remove("flipped");
+    syncCardState();
     card.classList.toggle("known", stage === "mastered");
     const stagePill = $("fcStage");
     if (stagePill) {
@@ -85,7 +86,27 @@
     $("btnFcYes").innerHTML = `${icon("check", 16)} ${stage === "new" ? "I Know It" : stage === "due" ? "Still Got It" : "I Know It"}`;
   }
 
-  function flipCard() { $("flashcard").classList.toggle("flipped"); }
+  /* The card is a 3D flip: both faces sit in the DOM and CSS hides the back
+     only visually, so a screen reader read the answer before the learner
+     flipped. Expose exactly one face at a time and announce the state. */
+  function syncCardState() {
+    const card = $("flashcard");
+    if (!card) return;
+    const flipped = card.classList.contains("flipped");
+    const front = card.querySelector(".fc-front");
+    const back = card.querySelector(".fc-back");
+    if (front) front.setAttribute("aria-hidden", flipped ? "true" : "false");
+    if (back) back.setAttribute("aria-hidden", flipped ? "false" : "true");
+    card.setAttribute("aria-expanded", flipped ? "true" : "false");
+    card.setAttribute("aria-label", flipped
+      ? "Flashcard answer shown — flip to hide it"
+      : "Flashcard — flip to reveal the answer");
+  }
+
+  function flipCard() {
+    $("flashcard").classList.toggle("flipped");
+    syncCardState();
+  }
 
   function fcMove(d) {
     const ids = fcIds();

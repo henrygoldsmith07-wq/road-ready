@@ -31,12 +31,15 @@
     const bank = getBank();
     const rows = Mastery ? Mastery.conceptMap(bank, state.qstats, state.misconceptions, Date.now()) : [];
     const summary = Mastery ? Mastery.masterySummary(rows) : null;
+    const activeMis = Coach.activeMisconceptions(state.misconceptions).length;
     const lines = [];
     if (summary) {
       const covered = Math.round(summary.covered * 100);
       lines.push(covered >= 95 ? "Most concepts are covered." : `${summary.counts.unseen} concept${summary.counts.unseen === 1 ? " is" : "s are"} still untested.`);
       const weak = summary.counts.learning + summary.counts.seen;
-      lines.push(weak ? `${weak} important concept${weak === 1 ? " is" : "s are"} still weak.` : "No weak concepts outstanding.");
+      // "No weak concepts" directly above "1 misconception remains" reads as a
+      // contradiction; the misconception is the weak concept. Say "other".
+      lines.push(weak ? `${weak} important concept${weak === 1 ? " is" : "s are"} still weak.` : activeMis ? "No other weak concepts outstanding." : "No weak concepts outstanding.");
     }
     const recentMocks = state.exams.slice(-3);
     if (recentMocks.length) {
@@ -44,7 +47,6 @@
       const size = recentMocks[0].total;
       lines.push(`Your last ${recentMocks.length} mock${recentMocks.length === 1 ? "" : "s"} averaged ${Math.round(avg)}/${size}.`);
     }
-    const activeMis = Coach.activeMisconceptions(state.misconceptions).length;
     lines.push(activeMis
       ? `${activeMis} recurring misconception${activeMis === 1 ? "" : "s"} remain${activeMis === 1 ? "s" : ""}.`
       : "No recurring misconceptions.");
@@ -194,7 +196,9 @@
       const has = !!state.achievements[a.id];
       const d = document.createElement("div");
       d.className = "ach" + (has ? " got" : "");
-      d.innerHTML = `${icon("award", 20)}<div><b>${a.name}</b><small>${a.desc}</small></div>`;
+      // Locked and earned differ only by dimming and colour. Say which one in
+      // text, so the state survives a screen reader and a monochrome view.
+      d.innerHTML = `${icon("award", 20)}<div><span class="sr-only">${has ? "Earned" : "Not yet earned"}: </span><b>${a.name}</b><small>${a.desc}</small></div>`;
       ag.appendChild(d);
     });
 

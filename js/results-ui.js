@@ -138,7 +138,7 @@
    * concepts strengthened, misconceptions resolved, what is still weak, and
    * the best next action. Creates a feeling of progression, honestly measured.
    */
-  function renderSessionSummary(summary) {
+  function renderSessionSummary(summary, unattempted) {
     const host = $("sessionSummary");
     if (!host) return;
     host.replaceChildren();
@@ -146,19 +146,32 @@
     const frag = document.createDocumentFragment();
     const intro = document.createElement("p");
     intro.className = "debrief-intro";
-    intro.textContent = "Session complete";
+    // The heading and score line above already say "Session complete" and
+    // "9 of 26 correct"; leading with both again read as a stutter.
+    intro.textContent = "What this session changed";
     frag.appendChild(intro);
 
     const lines = [];
-    if (summary.questionCount) lines.push(`${summary.questionCount} question${summary.questionCount === 1 ? "" : "s"} · ${summary.correct} correct`);
+    // Name a few items, then account for the rest. "7 misconceptions
+    // resolved: A, B" without a remainder reads as an arithmetic error, and
+    // the slice() alone was silently dropping five of them.
+    const listNames = (names, max) => {
+      const shown = names.slice(0, max);
+      const rest = names.length - shown.length;
+      return shown.join(", ") + (rest > 0 ? ` and ${rest} more` : "");
+    };
+    // The score is the first thing on this screen; it is not a change.
+    // Ending a set early used to hide behind a confirm dialog. It does not need
+    // hiding — it just needs saying, once, where the learner is looking.
+    if (unattempted > 0) lines.push(`${unattempted} question${unattempted === 1 ? " was" : "s were"} not attempted`);
     if (summary.strengthened.length) {
-      lines.push(`${summary.strengthened.length} concept${summary.strengthened.length === 1 ? "" : "s"} strengthened: ${summary.strengthened.slice(0, 3).join(", ")}`);
+      lines.push(`${summary.strengthened.length} concept${summary.strengthened.length === 1 ? "" : "s"} strengthened: ${listNames(summary.strengthened, 3)}`);
     }
     if (summary.resolvedMisconceptions.length) {
-      lines.push(`${summary.resolvedMisconceptions.length} misconception${summary.resolvedMisconceptions.length === 1 ? "" : "s"} resolved: ${summary.resolvedMisconceptions.slice(0, 2).join(", ")}`);
+      lines.push(`${summary.resolvedMisconceptions.length} misconception${summary.resolvedMisconceptions.length === 1 ? "" : "s"} resolved: ${listNames(summary.resolvedMisconceptions, 2)}`);
     }
     if (summary.stillWeak.length) {
-      lines.push(`${summary.stillWeak.length} concept${summary.stillWeak.length === 1 ? "" : "s"} still weak: ${summary.stillWeak.slice(0, 3).join(", ")}`);
+      lines.push(`${summary.stillWeak.length} concept${summary.stillWeak.length === 1 ? "" : "s"} still weak: ${listNames(summary.stillWeak, 3)}`);
     }
     if (summary.coverageDelta != null && summary.coverageDelta !== 0) {
       lines.push(`Coverage ${summary.coverageDelta > 0 ? "+" : ""}${summary.coverageDelta}%`);
@@ -248,7 +261,18 @@
           questionsAnswered: state.answered, nowMs: Date.now(),
         }),
       });
-      renderSessionSummary(summary);
+      // Marathon Mode sets no end, so "580 not attempted" would be scolding a
+      // runner for stopping. Only a bounded set can be left partly undone —
+      // and "left undone" means the questions the set promised, not the repair
+      // questions practice appended along the way (a learner who answered 3 of
+      // a 10-question set was being told 10 were not attempted).
+      const queue = session.questions || [];
+      const baseQuestions = queue.slice(0, session.baseCount || queue.length);
+      const answeredIds = new Set(r.answers.map((a) => a.qid));
+      const unattempted = session.marathon
+        ? 0
+        : baseQuestions.filter((q) => !answeredIds.has(q.id)).length;
+      renderSessionSummary(summary, unattempted);
     }
 
     const missed = r.answers.filter((a) => !a.right);
@@ -298,6 +322,6 @@
      *          escapeHTML, sourceCitationHTML, signArt, showView}} deps
      */
     init(deps) { ctx = deps; },
-    show, renderDebrief, confetti,
+    show, renderDebrief, renderSessionSummary, confetti,
   };
 })();

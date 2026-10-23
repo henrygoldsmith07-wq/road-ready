@@ -75,6 +75,36 @@ test.describe("axe WCAG audits", () => {
         const violations = await scan(page);
         expect(violations).toEqual([]);
       });
+
+      test("results view stays clean after a practice set", async ({ page }) => {
+        await page.locator('#bottomNav button[data-nav="practice"]').click();
+        await page.locator("#setupList .setup-row:not(.is-disabled)").first().click();
+        await expect(page.locator("#view-quiz")).toHaveClass(/active/);
+        await expect(page.locator(".choice")).toHaveCount(4);
+        await page.keyboard.press("1");
+        await expect(page.locator("#feedback")).toBeVisible();
+        await page.locator("#btnQuit").click();
+        await expect(page.locator("#view-results")).toHaveClass(/active/);
+        const violations = await scan(page);
+        expect(violations).toEqual([]);
+      });
+
     });
   }
+
+  test("the first-run card is clean before the app is un-locked", async ({ page }) => {
+    // The onboarding card is a modal layer over an inert app; scan it as a
+    // first-run learner actually meets it, not after skipping it.
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/");
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await expect(page.locator("#onboarding")).toBeVisible();
+    await page.evaluate(() => {
+      void document.body.offsetWidth;
+      return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    });
+    const violations = await scan(page);
+    expect(violations, JSON.stringify(violations.map((v) => ({ id: v.id, nodes: v.nodes.slice(0, 3).map((n) => n.target) })))).toEqual([]);
+  });
 });

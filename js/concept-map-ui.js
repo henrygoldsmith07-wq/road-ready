@@ -208,7 +208,7 @@
       const action = document.createElement("button");
       action.type = "button";
       action.className = "btn ghost cm-action";
-      action.innerHTML = `${icon("target", 14)} Practise this concept`;
+      action.innerHTML = `${icon("target", 14)} Practice this concept`;
       on(action, "click", (e) => {
         e.stopPropagation();
         const qs = Core.groupByConcept(topicQs).get(row.key) || [];
@@ -228,7 +228,7 @@
     $("btnCmBack").replaceWith(backBtn);
     const weakRows = rows.filter((r) => r.state !== "strong" && r.state !== "secure").slice(0, 3);
     drillBtn.textContent = weakRows.length
-      ? `Practise the weakest (${weakRows.length} concept${weakRows.length === 1 ? "" : "s"})`
+      ? `Practice the weakest (${weakRows.length} concept${weakRows.length === 1 ? "" : "s"})`
       : "Mixed refresher";
     on(drillBtn, "click", () => {
       const keys = (weakRows.length ? weakRows : rows.slice(0, 3)).map((r) => r.key);

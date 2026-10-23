@@ -203,6 +203,26 @@ describe("recommendations", () => {
     expect(plan.phase).toBe("far");
   });
 
+  it("counts only wholly untried concepts as never attempted", () => {
+    // junction-priority has j1/j2 answered and j4 untouched: partly covered,
+    // not "never attempted". The coverage line still counts it (it has unseen
+    // questions), so the why-line must not reuse that larger number.
+    const b = bank();
+    const plan = Coach.recommend({
+      bank: b,
+      qstats: {
+        j1: { seen: 2, correct: 2, wrong: 0 },
+        j2: { seen: 2, correct: 2, wrong: 0 },
+      },
+      misconceptions: {}, exams: [], daily: {},
+      today: TODAY, testDate: "2026-12-20", nowMs: NOW,
+    });
+    expect(plan.primary.type).toBe(Coach.REC_TYPES.BUILD_COVERAGE);
+    const why = plan.primary.why.join(" ");
+    expect(why).toMatch(/4 concepts have never been attempted/);
+    expect(why).not.toMatch(/5 concepts have never been attempted/);
+  });
+
   it("test-day eve always produces a light review, never a cram", () => {
     const b = bank();
     let m = Coach.recordMisconception({}, "junction-priority", "j1", NOW);
@@ -355,6 +375,26 @@ describe("mock debrief and post-mock drill", () => {
     const clean = answers.map((a) => ({ ...a, right: true, regressed: false }));
     const drill = Coach.postMockDrill({ bank: b, answers: clean, qstats: {} });
     expect(drill.reason).toMatch(/Nothing missed/i);
+  });
+});
+
+describe("concept labels", () => {
+  it("keeps initialisms and hyphenated compounds readable", () => {
+    // These labels are read on the Weakness Centre, the concept map, plan cards
+    // and session summaries. A plain titleizer produced "Bac legal limit".
+    expect(Coach.conceptLabel("bac-legal-limit")).toBe("BAC legal limit");
+    expect(Coach.conceptLabel("dui-penalties")).toBe("DUI penalties");
+    expect(Coach.conceptLabel("abs-emergency-braking")).toBe("ABS emergency braking");
+    expect(Coach.conceptLabel("hov-lane-use")).toBe("HOV lane use");
+    expect(Coach.conceptLabel("gps-while-driving")).toBe("GPS while driving");
+    expect(Coach.conceptLabel("anti-lock-braking-purpose")).toBe("Anti-lock braking purpose");
+    expect(Coach.conceptLabel("cross-hatching-markings")).toBe("Cross-hatching markings");
+  });
+
+  it("leaves ordinary keys and topic labels alone", () => {
+    expect(Coach.conceptLabel("roundabout-priority")).toBe("Roundabout priority");
+    expect(Coach.conceptLabel("topic:signs")).toBe("Signs");
+    expect(Coach.conceptLabel("")).toBe("");
   });
 });
 

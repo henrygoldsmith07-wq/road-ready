@@ -24,6 +24,20 @@
     return `${h12}:${m[2]} ${Number(m[1]) >= 12 ? "PM" : "AM"}`;
   }
 
+  /** Has this learner produced any answer at all? Drives the honest floor of
+   *  the score labels: a score that rounds to zero is "Getting Started", not
+   *  "Not Started", once something has actually been recorded. */
+  function hasEvidence(state) {
+    if (!state) return false;
+    if (state.answered > 0) return true;
+    const qstats = state.qstats || {};
+    for (const id in qstats) {
+      const st = qstats[id];
+      if (st && st.seen > 0) return true;
+    }
+    return false;
+  }
+
   /* Status only, by design. The single next action for today lives in the
    * Today Plan card, which states the question count, the reason behind it
    * and carries the one primary action. */
@@ -47,6 +61,7 @@
       };
     });
     const { strong, risk } = Core.strongAndRiskTopics(topics);
+    const evidence = hasEvidence(state);
     const spreadPts = (() => { const sp = Core.mockStability(state.exams, 3); return sp == null ? null : Math.round(sp * 100); })();
     const predictionSamples = predictionCalibrationSamples();
     const narrative = Core.readinessNarrative(Object.assign({
@@ -54,6 +69,7 @@
       curve: buildCalibrationCurve(predictionSamples),
       riskTopics: risk.map((t) => t.name),
       stabilitySpread: spreadPts,
+      hasEvidence: evidence,
     }, CALIBRATION_CONTEXT()));
 
     const calEl = $("rpCalLine");
@@ -80,7 +96,7 @@
         scopeEl.textContent = "";
       }
     }
-    const band = pct <= 0 && !topics.some((t) => t.seen) ? "Not Started" : Core.readinessBand(pct).label;
+    const band = Core.readinessBand(pct, evidence).label;
     const decidedPredictions = predictionSamples.filter((s) => s.result === "pass" || s.result === "fail");
     $("rpBand").textContent = decidedPredictions.length ? band : `${band} · uncalibrated`;
 
@@ -233,6 +249,7 @@
       fastWrong: rec.evidence && rec.evidence.length ? rec.evidence[0].fastWrong : null,
       overdue: rec.evidence ? rec.evidence.reduce((t, e) => t + (e.overdue || 0), 0) : null,
       coverage: bank.length ? bank.filter((q) => state.qstats[q.id] && state.qstats[q.id].seen).length / bank.length : 0,
+      seenAccuracy: state.answered ? state.correctCount / state.answered : null,
       untestedConcepts: rec.issueKind === "coverage" ? Core.groupByConcept(bank).size - new Set(bank.filter((q) => state.qstats[q.id] && state.qstats[q.id].seen).map((q) => Core.conceptKeyOf(q))).size : null,
       bankSize: bank.length,
       slowCount: rec.evidence ? rec.evidence.reduce((t, e) => t + (e.slowRight || 0), 0) : null,
@@ -421,16 +438,28 @@
   }
 
   function render() {
-    const { Core, CATEGORIES, getState, catQ, catAccuracy, readiness, missedQuestions, icon, startPractice, shuffle } = ctx;
+    const { Core, CATEGORIES, getState, catQ, catAccuracy, readiness, icon, startPractice, shuffle } = ctx;
     const state = getState();
     if (!$("view-home")) return;
     renderReadinessPanel();
     const pct = Math.round(readiness() * 100);
-    $("ringPct").textContent = pct + "%";
+    const evidence = hasEvidence(state);
+    // Below one percent the rounded number is 0, which a learner who has just
+    // answered four questions will read as "this app is broken". Show "<1%" and
+    // keep a visible sliver of arc so the ring matches the words.
+    $("ringPct").textContent = pct === 0 && evidence ? "<1%" : pct + "%";
+    const ring = $("readinessRing");
+    if (ring) {
+      // role="img" hides the inner text from assistive tech: the label has to
+      // carry the number itself or the score is announced as nothing at all.
+      ring.setAttribute("aria-label", pct === 0 && evidence
+        ? "Study progress: under one percent"
+        : `Study progress: ${pct} percent`);
+    }
     const C = 2 * Math.PI * 52;
     const fg = $("ringFg");
     fg.style.strokeDasharray = String(C);
-    fg.style.strokeDashoffset = String(C * (1 - pct / 100));
+    fg.style.strokeDashoffset = String(C * (1 - Math.max(pct, pct === 0 && evidence ? 1 : 0) / 100));
     const acc = state.answered ? Math.round(100 * state.correctCount / state.answered) : null;
     $("stAnswered").textContent = String(state.answered);
     $("stAccuracy").textContent = acc === null ? "–" : `${acc}%`;
@@ -494,7 +523,12 @@
       .filter((x) => x.acc !== null && x.acc < 0.8)
       .sort((a, b) => a.acc - b.acc)
       .slice(0, 4);
-    $("weakBadge").textContent = String(missedQuestions().length);
+    /* The badge counts what the list under it shows — weak topics — and stays
+       out of the way when there are none. It used to count missed questions,
+       so "Weak spots 4" sat above a single row. */
+    const weakBadge = $("weakBadge");
+    weakBadge.textContent = String(weak.length);
+    weakBadge.hidden = weak.length === 0;
     $("weakList").innerHTML = weak.length
       ? weak.map((x) => `<li><span>${icon(x.c.icon, 15)} ${x.c.name}</span><b>${Math.round(x.acc * 100)}%</b></li>`).join("")
       : `<li class="muted">Answer a few questions and your weak topics will appear here.</li>`;
@@ -503,7 +537,7 @@
   window.RoadReadyHomeUI = {
     /**
      * @param {{Core, Coach, CATEGORIES, getState, getBank, catQ, catAccuracy,
-     *          readiness, missedQuestions, icon, startPractice, shuffle,
+     *          readiness, icon, startPractice, shuffle,
      *          todayStr, validTestDate, termsForPack, hazardInfoForPack,
      *          hazardScenarioCount, checkProgressAchievements, levelFor,
      *          predictionCalibrationSamples, buildCalibrationCurve,

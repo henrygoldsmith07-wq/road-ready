@@ -11,6 +11,14 @@ describe("readinessBand", () => {
     expect(Core.readinessBand(95).label).toBe("Strong");
   });
 
+  it("an answer is evidence even when the score rounds to zero", () => {
+    /* Four answers out of a 625-question bank round the breadth-weighted score
+       to 0. The number is honest; calling the learner "Not Started" directly
+       under an "answered · accuracy" strip is what reads as broken. */
+    expect(Core.readinessBand(0, true).label).toBe("Getting Started");
+    expect(Core.readinessBand(0, false).label).toBe("Not Started");
+  });
+
   it("never labels the top band in terms of passing the test", () => {
     /* The engine is heuristic. Band names must describe study progress only, so
        a learner cannot read the top band as a prediction that they will pass. */
@@ -18,6 +26,21 @@ describe("readinessBand", () => {
       const label = Core.readinessBand(pct).label;
       expect(label).not.toMatch(/\bready\b|\bpass/i);
     }
+  });
+});
+
+describe("readinessNarrative score line", () => {
+  it("says under 1% rather than a bare 0% once there is evidence", () => {
+    const n = Core.readinessNarrative({ readinessPct: 0.4, hasEvidence: true });
+    expect(n.text).toMatch(/under 1%/);
+    expect(n.text).not.toMatch(/score is 0%/);
+    expect(n.text).not.toMatch(/Not Started/);
+  });
+
+  it("still says Not Started for a learner with nothing recorded", () => {
+    const n = Core.readinessNarrative({ readinessPct: 0 });
+    expect(n.text).toMatch(/score is 0%/);
+    expect(n.text).toMatch(/Not Started/);
   });
 });
 

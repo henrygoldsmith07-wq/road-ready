@@ -246,12 +246,12 @@
         <button class="pill" id="btnFcReset"><span data-icon="rotate" data-size="13"></span>Reset</button>
       </div>
       <div class="fc-stage">
-        <div class="flashcard" id="flashcard" tabindex="0" role="button" aria-label="Flip flashcard">
+        <div class="flashcard" id="flashcard" tabindex="0" role="button" aria-expanded="false" aria-label="Flashcard — flip to reveal the answer">
           <div class="fc-face fc-front">
             <div class="sign-frame big" id="fcSign"></div>
             <p class="fc-hint">tap to flip</p>
           </div>
-          <div class="fc-face fc-back">
+          <div class="fc-face fc-back" aria-hidden="true">
             <h2 id="fcName">Stop</h2>
             <p id="fcMeaning" class="fc-meaning"></p>
           </div>
@@ -320,7 +320,7 @@
         <label class="finder-label" for="ruleSearch">Find a rule</label>
         <input id="ruleSearch" type="search" autocomplete="off" maxlength="80" placeholder="Try “right on red”, “BAC”, “roundabout”…">
         <p class="finder-hint">Searches this jurisdiction's questions, explanations and road signs — everything stays on your device.</p>
-        <div id="ruleSearchMeta" class="finder-meta" hidden></div>
+        <div id="ruleSearchMeta" class="finder-meta" role="status" aria-live="polite" hidden></div>
         <div id="ruleSearchResults"></div>
       </div>
 
@@ -517,7 +517,7 @@
             <li>Independent driving lasts roughly 20 to 35 minutes and follows a sat nav, traffic signs, or a combination chosen by the examiner.</li>
             <li>You will be asked to complete one reversing exercise; Road Ready does not reuse the U.S. manoeuvre walkthrough because the test formats are different.</li>
           </ul>
-          <a class="source-link state-source" id="gbPracticalSource" href="#" target="_blank" rel="noopener noreferrer">Open official practical-test guidance ↗</a>
+          <a class="source-link state-source" id="gbPracticalSource" href="https://www.gov.uk/driving-test/what-happens-during-test" target="_blank" rel="noopener noreferrer">Open official practical-test guidance ↗</a>
         </div>
       </div>
     </section>
@@ -774,7 +774,7 @@
 <div id="toasts"></div>
 
 <!-- ============ ONBOARDING ============ -->
-<div id="onboarding" hidden>
+<div id="onboarding" role="dialog" aria-modal="true" aria-label="Set up Road Ready" hidden>
   <div class="ob-card">
     <button class="ob-skip" id="obSkip">Skip</button>
     <div class="ob-steps">

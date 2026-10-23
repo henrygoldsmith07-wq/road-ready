@@ -130,7 +130,6 @@ if (HomeUI) {
     catQ: (id) => catQ(id),
     catAccuracy: (id) => catAccuracy(id),
     readiness: () => readiness(),
-    missedQuestions: () => missedQuestions(),
     todayStr: () => todayStr(),
     validTestDate: () => validTestDate(),
     hazardInfoForPack: (packId) => hazardInfoForPack(packId),
@@ -503,7 +502,11 @@ function applyTTS() {
   const b = $("btnTTS");
   b.hidden = !ttsSupported();
   b.classList.toggle("on", !!state.settings.tts);
-  b.innerHTML = `${icon(state.settings.tts ? "volume" : "volume-off", 13)} Read ${state.settings.tts ? "on" : "off"}`;
+  // The button declared aria-pressed="false" in the markup and never updated
+  // it, so a screen reader announced "not pressed" while narration was on.
+  b.setAttribute("aria-pressed", state.settings.tts ? "true" : "false");
+  // "Read off" read as a command. Name the feature and its state.
+  b.innerHTML = `${icon(state.settings.tts ? "volume" : "volume-off", 13)} Read aloud: ${state.settings.tts ? "on" : "off"}`;
 }
 function speak(text) {
   if (!state.settings.tts || !ttsSupported() || !text) return;
@@ -605,6 +608,19 @@ const pickWeighted = (pool, n) => Core.pickWeighted(pool, n);
 /* ---------------- router ---------------- */
 let quizBackTarget = "home";
 
+/* Every screen the top-bar Back control can return to. The control says where
+ * it actually goes: "Go back" implies a history this app does not keep (a
+ * session returns to wherever it was launched from, the sources ledger to the
+ * guide). Unknown targets fall back to Home, matching the click handler. */
+const BACK_LABELS = {
+  home: "Back to Home",
+  guide: "Back to the Study Guide",
+  review: "Back to Weaknesses",
+  conceptmap: "Back to the Concept Map",
+  setup: "Back to practice setup",
+  stats: "Back to Your Progress",
+};
+
 function showView(name) {
   const prev = document.querySelector(".view.active");
   const prevName = prev ? prev.id.replace(/^view-/, "") : "";
@@ -620,18 +636,55 @@ function showView(name) {
   }
   try { stopSpeaking(); } catch { /* never break routing for audio */ }
   // Back is hidden only on Home: every other view (quiz, commute, hazard,
-  // concept map, review, stats, the sources ledger…) returns Home from the top
-  // bar. Bottom-nav tabs stay the primary switcher; Back is the escape hatch.
-  $("btnBack").hidden = (name === "home");
+  // concept map, review, stats, the sources ledger…) leaves through the top
+  // bar — to Home, or to where it was opened from. Bottom-nav tabs stay the
+  // primary switcher; Back is the escape hatch, and its label names its target.
+  const back = $("btnBack");
+  back.hidden = (name === "home");
+  const backTarget = name === "quiz" ? (quizBackTarget || "home") : (name === "sources" ? "guide" : "home");
+  const backLabel = BACK_LABELS[backTarget] || BACK_LABELS.home;
+  back.setAttribute("aria-label", backLabel);
+  back.title = backLabel;
+  /* Which bottom-nav section owns this screen. Child screens belong to the
+     section the learner entered from: a setup list is Practice or Exam
+     depending on its mode, a sitting belongs to its own mode, and screens with
+     a single parent name it. Without this, entering Practice, Exam or a sitting
+     un-selected every tab — the primary switcher claimed the learner was in no
+     section at all. */
+  const navOwner = (() => {
+    if (name === "setup") return _setupMode === "exam" ? "exam" : "practice";
+    if (name === "quiz" || name === "results") {
+      try { return session && session.mode === "exam" ? "exam" : "practice"; } catch { return "practice"; }
+    }
+    if (name === "sources") return "guide";
+    if (name === "conceptmap") return "stats";
+    // The hazard section of a test-day sitting is still Exam; a standalone run
+    // is the Home card's training. Same view, two owners.
+    if (name === "hazard") {
+      try { return session && session.sim ? "exam" : "home"; } catch { return "home"; }
+    }
+    if (name === "practical" || name === "commute") return "home";
+    return name;
+  })();
   /** @type {NodeListOf<HTMLElement>} */(/** @type {NodeListOf<HTMLElement>} */(document.querySelectorAll("#bottomNav button"))).forEach(b => {
-    const isActive = b.dataset.nav === name || (b.dataset.nav === "practice" && name === "quiz" && quizBackTarget !== "home");
+    const isActive = b.dataset.nav === navOwner;
     b.classList.toggle("active", isActive);
     if (isActive) b.setAttribute("aria-current", "page");
     else b.removeAttribute("aria-current");
   });
   try {
-    const titles = { home: "Road Ready — Pass Your Driving Test", quiz: "Road Ready — Quiz", commute: "Road Ready — Commute Mode", stats: "Road Ready — Your Progress", flashcards: "Road Ready — Signs", guide: "Road Ready — Study Guide", review: "Road Ready — Weaknesses", hazard: "Road Ready — Hazard Perception", setup: "Road Ready — Practice", results: "Road Ready — Results", sources: "Road Ready — Sources" };
-    if (titles[name]) document.title = titles[name];
+    const titles = { home: "Road Ready — Pass Your Driving Test", quiz: "Road Ready — Quiz", commute: "Road Ready — Commute Mode", stats: "Road Ready — Your Progress", flashcards: "Road Ready — Signs", guide: "Road Ready — Study Guide", review: "Road Ready — Weaknesses", hazard: "Road Ready — Hazard Perception", setup: "Road Ready — Practice", results: "Road Ready — Results", sources: "Road Ready — Sources", practical: "Road Ready — Drive Log", settings: "Road Ready — Settings & Data", conceptmap: "Road Ready — Concept Map" };
+    let pageTitle = titles[name];
+    // The setup view serves both sections and the concept map takes its topic
+    // name from the heading — a static "Practice"/"Concept Map" title would
+    // misname the page the learner is on.
+    if (name === "setup") pageTitle = _setupMode === "exam" ? "Road Ready — Mock Exam" : "Road Ready — Practice";
+    if (name === "conceptmap" && v) {
+      const head = v.querySelector("h1");
+      const topic = head ? head.textContent.trim() : "";
+      if (topic) pageTitle = `Road Ready — ${topic}`;
+    }
+    if (pageTitle) document.title = pageTitle;
   } catch { /* title is a courtesy */ }
   window.scrollTo(0, 0);
   // Screen-reader + keyboard courtesy: move focus to the new view's heading
@@ -675,9 +728,12 @@ function startSetup(mode, focusCat) {
       bank.length
     ));
     const items = [
-      { id: "today", icon: "sparkles", name: "Today's Set", desc: `${todaySize} questions sized to your test date${daysLeftPractice ? ` — test in ${daysLeftPractice} day${daysLeftPractice === 1 ? "" : "s"}` : " — set a test date for a dated plan"} · weak spots first`, action: () => startPractice(pickWeighted(adaptivePool(), todaySize), "Today's Set", "home") },
-      { id: "missed", icon: "target", name: "Missed Questions", desc: missedQuestions().length ? `Re-drill the ${Math.min(todaySize, missedQuestions().length)} you've gotten wrong` : "Nothing missed yet — nice!", action: () => { const m = missedQuestions(); if (m.length) startPractice(pickWeighted(m.map(q => ({ q, w: 1 })), Math.min(todaySize, m.length)), "Missed Questions", "home"); } },
-      { id: "flagged", icon: "flag", name: "Flagged Questions", desc: Object.keys(state.flagged).length ? `${Object.keys(state.flagged).length} flagged for review` : "Flag questions during practice to build this set", action: () => { const f = Object.keys(state.flagged).map(id => byId[id]).filter(Boolean); if (f.length) startPractice(shuffle(f).slice(0, 15), "Flagged Questions", "home"); } },
+      // "Sized to your test date" only applies once there is a date; without one
+      // the same sentence both described and asked for a test date.
+      { id: "today", icon: "sparkles", name: "Today's Set", desc: `${todaySize} questions${daysLeftPractice ? ` sized to your test date — ${daysLeftPractice} day${daysLeftPractice === 1 ? "" : "s"} to go` : " — set a test date for a dated plan"} · weak spots first`, action: () => startPractice(pickWeighted(adaptivePool(), todaySize), "Today's Set", "home") },
+      // Rows with nothing to drill are disabled rather than silently inert.
+      { id: "missed", icon: "target", name: "Missed Questions", desc: missedQuestions().length ? `Re-drill the ${Math.min(todaySize, missedQuestions().length)} you've gotten wrong` : "Nothing missed yet — nice!", disabled: !missedQuestions().length, action: () => { const m = missedQuestions(); if (m.length) startPractice(pickWeighted(m.map(q => ({ q, w: 1 })), Math.min(todaySize, m.length)), "Missed Questions", "home"); } },
+      { id: "flagged", icon: "flag", name: "Flagged Questions", desc: Object.keys(state.flagged).length ? `${Object.keys(state.flagged).length} flagged for review` : "Flag questions during practice to build this set", disabled: !Object.keys(state.flagged).length, action: () => { const f = Object.keys(state.flagged).map(id => byId[id]).filter(Boolean); if (f.length) startPractice(shuffle(f).slice(0, 15), "Flagged Questions", "home"); } },
       { id: "marathon", icon: "infinity", name: "Marathon Mode", desc: `${bank.length} questions — the full bank in one run · anything you miss comes back until you've seen it through`, action: () => startMarathon() },
     ];
     const stateQuestions = bank.filter(q => Array.isArray(q.jurisdiction) && q.jurisdiction.includes(state.settings.statePack));
@@ -796,8 +852,11 @@ function startSetup(mode, focusCat) {
 }
 function setupRow(it) {
   const b = document.createElement("button");
-  b.className = "setup-row card";
-  b.innerHTML = `<span class="setup-ico">${icon(it.icon, 19)}</span><div><div class="setup-name">${it.name}</div><div class="setup-desc">${it.desc}</div></div><span class="chev">${icon("chevron-right", 16)}</span>`;
+  b.className = "setup-row card" + (it.disabled ? " is-disabled" : "");
+  /* No chevron on an empty set: an arrow promises a screen that the row cannot
+     open. The native disabled attribute also removes it from the tab order. */
+  b.innerHTML = `<span class="setup-ico">${icon(it.icon, 19)}</span><div><div class="setup-name">${it.name}</div><div class="setup-desc">${it.desc}</div></div>${it.disabled ? "" : `<span class="chev">${icon("chevron-right", 16)}</span>`}`;
+  if (it.disabled) { b.disabled = true; b.setAttribute("aria-disabled", "true"); return b; }
   on(b, "click", it.action);
   return b;
 }
@@ -824,6 +883,7 @@ function snapshotSession() {
     pack: state.settings.statePack, tag: session.tag, marathon: session.marathon,
     official: session.official, blueprintId: session.official && session.blueprint ? state.settings.statePack : undefined,
     qids: session.questions.map((q) => q.id), i: session.i,
+    baseCount: session.baseCount || session.questions.length,
     skipped: session.skipped || 0,
     answers: (session.answers || []).map((a) => ({ qid: a.qid, picked: a.picked, right: a.right })),
     timeLeft: session.mode === "exam" ? session.timeLeft : null, savedAt: Date.now(),
@@ -874,6 +934,7 @@ function resumeSnapshot() {
     timeLeft: snap.mode === "exam" ? (snap.timeLeft != null ? snap.timeLeft : Core.timeLimitSecs(qs.length)) : undefined,
     endTs: 0, timerId: null, marathon: !!snap.marathon,
     skipped: snap.skipped || 0,
+    baseCount: snap.baseCount || qs.length,
     requeued: {}, official: !!blueprint, blueprint,
   };
   pendingResume = null;
@@ -1192,6 +1253,9 @@ function onSimHazardComplete(h) {
   });
 }
 function beginQuiz() {
+  // Freeze the promised set size before any repair question can be appended.
+  // The results summary counts against this, not against the grown queue.
+  if (session && !session.baseCount) session.baseCount = session.questions.length;
   persistSession();
   $("qTimer").hidden = session.mode !== "exam";
   $("btnFlag").hidden = false;
@@ -1508,6 +1572,30 @@ function initObStatePack() {
     obRender();
   });
 }
+/* The first-run card is a modal layer over the app. Without this, the home
+   screen behind it stayed in the tab order and the accessibility tree: a
+   screen reader user met two visible H1s and could tab into buttons they
+   could not see, and skip left focus on a button that had just been hidden. */
+function lockAppBehindOnboarding(lock) {
+  const app = $("app");
+  if (!app) return;
+  if (lock) {
+    app.setAttribute("inert", "");
+    app.setAttribute("aria-hidden", "true");
+  } else {
+    app.removeAttribute("inert");
+    app.removeAttribute("aria-hidden");
+  }
+}
+function focusObStep() {
+  try {
+    const step = document.querySelector(`.ob-step[data-step="${obStep}"]`);
+    const head = step && step.querySelector("h1");
+    if (!head) return;
+    if (!head.hasAttribute("tabindex")) head.setAttribute("tabindex", "-1");
+    head.focus({ preventScroll: true });
+  } catch { /* focus is a courtesy — never break first run for it */ }
+}
 function showOnboarding() {
   const ob = $("onboarding");
   ob.hidden = false;
@@ -1528,10 +1616,14 @@ function showOnboarding() {
     });
   }
   obRender();
+  // Focus the visible step first, then lock the app: locking a subtree that
+  // still holds focus is what makes browsers drop the aria-hidden attribute.
+  focusObStep();
+  lockAppBehindOnboarding(true);
   on($("obSkip"), "click", finishOnboarding);
   on($("obNext"), "click", () => {
     if (obStep >= 3) finishOnboarding();
-    else { obStep++; obRender(); }
+    else { obStep++; obRender(); focusObStep(); }
   });
   on($("obThemeDark"), "click", () => { state.settings.theme = "dark"; save(); applyTheme(); obRender(); });
   on($("obThemeLight"), "click", () => { state.settings.theme = "light"; save(); applyTheme(); obRender(); });
@@ -1577,15 +1669,34 @@ async function finishOnboarding() {
   }
   save();
   bank = Packs.filterBankForPack(ALL_QUESTIONS, state.settings.statePack);
+  lockAppBehindOnboarding(false);
   $("onboarding").hidden = true;
   renderStateFacts();
   renderHome();
+  // The closing card took the Skip button with it; put focus back on the
+  // screen the learner has just landed on instead of leaving it on <body>.
+  try {
+    const greeting = $("greeting");
+    if (greeting) {
+      if (!greeting.hasAttribute("tabindex")) greeting.setAttribute("tabindex", "-1");
+      greeting.focus({ preventScroll: true });
+    }
+  } catch { /* focus is a courtesy — never break first run for it */ }
   const pack = Packs.STATE_PACKS[state.settings.statePack] || Packs.STATE_PACKS.generic;
   const terms = termsForPack();
   const country = countryForPack();
-  const scopeNote = pack.includeUniversal === false
-    ? `Studying ${country ? country.name : pack.name} ${terms.rulesLabel.toLowerCase()} for the ${terms.agencyShort} ${terms.examName}. Start with Today's Set.`
-    : `Studying ${pack.name} rules + universal rules. Start with Today's Set.`;
+  // First run has no answers yet, so the plan on Home is the starting-level
+  // check — the toast must name what is actually on screen ("Today's Set" lives
+  // one level down in Practice). Pack names already carry their rules wording,
+  // so appending "rules" produced "General U.S. rules rules…".
+  const regionName = (country && country.name) || pack.name;
+  const rulesName = terms.rulesLabel.replace(/\s+rules$/i, "");
+  const nextStep = "Start with your starting-level check.";
+  const scopeNote = state.settings.statePack === "generic"
+    ? `Studying U.S. rules common to every state. ${nextStep}`
+    : pack.includeUniversal === false
+      ? `Studying the ${regionName} ${rulesName} for the ${terms.agencyShort} ${terms.examName}. ${nextStep}`
+      : `Studying ${pack.name.replace(/\s*\([^)]*\)\s*$/, "")} rules plus common U.S. rules. ${nextStep}`;
   toast("Welcome aboard", scopeNote, "car");
 }
 
@@ -1699,12 +1810,16 @@ function initRest() {
   on($("btnSkip"), "click", skipQuestion);
   on($("btnQuit"), "click", () => {
     if (!session) return showView("home");
+    // Exam submissions are sealed and score-bearing, so they still ask first.
+    // Practice does not: "End" is the ordinary way out of a set, ending it
+    // discards nothing (every answer is already logged, and the results screen
+    // says how many questions went unattempted), and a native confirm here
+    // turned the main exit into a dialog a learner could get stuck behind.
     if (session.mode === "exam") {
       if (!confirm(session.sim
         ? "Submit Part 1? Scores stay sealed until the hazard section is done."
         : "Submit the exam and see your score now?")) return;
-    } else if (!session.finished && session.answers.length && session.i + 1 < session.questions.length &&
-      !confirm("End and score now? Unanswered questions won't be kept for resume.")) return;
+    }
     finishSession();
   });
   window.addEventListener("beforeunload", (e) => {
@@ -2070,6 +2185,12 @@ function initStatePackSelect() {
 let guideQuery = "";
 let guideFinderBound = false;
 let guideFinderLast = { questions: [], signs: [] };
+/* The finder previews a handful of matches; the rest stay one click away. A
+ * cap that is not named reads as "only 12 questions match" when 161 do — the
+ * count is always the real total, and every match is reachable. */
+const FINDER_PREVIEW_Q = 12;
+const FINDER_PREVIEW_SIGNS = 8;
+let guideShowAll = false;
 function signCopyFor(id) {
   const s = (typeof SIGNS !== "undefined" && SIGNS[id]) || null;
   if (!s) return { name: "", meaning: "" };
@@ -2083,8 +2204,8 @@ function renderGuideFinder() {
   const q = guideQuery.trim();
   if (q.length < 2) { meta.hidden = true; host.replaceChildren(); guideFinderLast = { questions: [], signs: [] }; return; }
   const labelFor = (k) => (Coach && Coach.conceptLabel ? Coach.conceptLabel(k) : k);
-  const questions = Core.searchBank(bank, q, { labelFor });
-  const signs = Core.searchSigns(typeof SIGNS !== "undefined" ? SIGNS : {}, q);
+  const questions = Core.searchBank(bank, q, { labelFor, limit: 200 });
+  const signs = Core.searchSigns(typeof SIGNS !== "undefined" ? SIGNS : {}, q, { limit: 100 });
   guideFinderLast = { questions, signs };
   meta.hidden = false;
   if (!questions.length && !signs.length) {
@@ -2092,26 +2213,59 @@ function renderGuideFinder() {
     host.replaceChildren();
     return;
   }
+  const shownQuestions = guideShowAll ? questions : questions.slice(0, FINDER_PREVIEW_Q);
+  const shownSigns = guideShowAll ? signs : signs.slice(0, FINDER_PREVIEW_SIGNS);
+  const canExpand = questions.length > FINDER_PREVIEW_Q || signs.length > FINDER_PREVIEW_SIGNS;
   const bits = [];
   if (questions.length) bits.push(`${questions.length} question${questions.length === 1 ? "" : "s"}`);
   if (signs.length) bits.push(`${signs.length} sign${signs.length === 1 ? "" : "s"}`);
-  meta.textContent = `${bits.join(" · ")} match “${q}”.`;
+  if (canExpand && !guideShowAll) {
+    // "12 of 161" — the preview length is a display choice, never the truth.
+    // Only a type that is actually cut says "of": "8 of 8 signs" is noise.
+    const shownBits = [];
+    if (questions.length > shownQuestions.length) shownBits.push(`${shownQuestions.length} of ${questions.length} question${questions.length === 1 ? "" : "s"}`);
+    else if (questions.length) shownBits.push(`${questions.length} question${questions.length === 1 ? "" : "s"}`);
+    if (signs.length > shownSigns.length) shownBits.push(`${shownSigns.length} of ${signs.length} sign${signs.length === 1 ? "" : "s"}`);
+    else if (signs.length) shownBits.push(`${signs.length} sign${signs.length === 1 ? "" : "s"}`);
+    meta.textContent = `${shownBits.join(" · ")} match “${q}”.`;
+  } else {
+    meta.textContent = `${bits.join(" · ")} match “${q}”.`;
+  }
   host.replaceChildren();
-  if (questions.length) {
+  if (shownQuestions.length) {
     const bar = document.createElement("div");
     bar.className = "finder-bar";
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "btn primary finder-practice";
-    btn.textContent = `Practice these ${Math.min(15, questions.length)}`;
+    // Practice exactly the ranked matches on screen. The button used to say
+    // "Practice these 12" while drawing from every match (up to 15), so the
+    // set it opened was neither the promised size nor the shown questions.
+    const promise = Math.min(15, shownQuestions.length);
+    btn.textContent = promise === 1 ? "Practice this question" : `Practice the top ${promise}`;
     on(btn, "click", () => {
-      const qs = guideFinderLast.questions.map(r => r.q);
-      if (qs.length) startPractice(shuffle(qs).slice(0, 15), "Rule search", "guide");
+      const qs = shownQuestions.slice(0, 15).map(r => r.q);
+      if (qs.length) startPractice(shuffle(qs), "Rule search", "guide");
     });
     bar.appendChild(btn);
     host.appendChild(bar);
   }
-  signs.forEach(({ id }) => {
+  if (canExpand) {
+    const bar = document.createElement("div");
+    bar.className = "finder-bar";
+    const more = document.createElement("button");
+    more.type = "button";
+    more.className = "btn ghost finder-more";
+    const total = questions.length + signs.length;
+    more.textContent = guideShowAll
+      ? `Show fewer results`
+      : `Show all ${total} match${total === 1 ? "" : "es"}`;
+    more.setAttribute("aria-expanded", String(guideShowAll));
+    on(more, "click", () => { guideShowAll = !guideShowAll; renderGuideFinder(); });
+    bar.appendChild(more);
+    host.appendChild(bar);
+  }
+  shownSigns.forEach(({ id }) => {
     const copy = signCopyFor(id);
     const card = document.createElement("div");
     card.className = "card finder-sign";
@@ -2129,7 +2283,7 @@ function renderGuideFinder() {
     card.append(art, body);
     host.appendChild(card);
   });
-  questions.forEach(({ q: item }) => {
+  shownQuestions.forEach(({ q: item }) => {
     const card = document.createElement("div");
     card.className = "card finder-item";
     const title = document.createElement("div");
@@ -2155,7 +2309,7 @@ function initGuideFinder() {
   const input = $("ruleSearch");
   if (!input) return;
   guideFinderBound = true;
-  on(input, "input", () => { guideQuery = input.value; renderGuideFinder(); });
+  on(input, "input", () => { guideQuery = input.value; guideShowAll = false; renderGuideFinder(); });
 }
 
 /* ---------------- PWA install prompt ---------------- */

@@ -30,6 +30,19 @@ test.describe("rule finder", () => {
     await expect(page.locator("#view-guide")).toHaveClass(/active/);
   });
 
+  test("practice opens exactly the ranked matches the button promises", async ({ page }) => {
+    await openGuide(page);
+    await page.fill("#ruleSearch", "road");
+    await expect(page.locator("#ruleSearchMeta")).toContainText("match");
+    const shown = await page.locator(".finder-item").count();
+    expect(shown).toBeGreaterThan(1);
+    const label = await page.locator(".finder-practice").innerText();
+    const promised = Number((label.match(/top (\d+)/) || [])[1]);
+    expect(promised).toBe(Math.min(15, shown));
+    await page.locator(".finder-practice").click();
+    await expect(page.locator("#qCounter")).toHaveText(`Q 1/${promised}`);
+  });
+
   test("a nonsense query is honestly empty, and clearing restores the guide", async ({ page }) => {
     await openGuide(page);
     await page.fill("#ruleSearch", "xyzzy qworty");

@@ -85,6 +85,24 @@ describe("driving readiness & focus", () => {
   });
 });
 
+describe("next practice skill copy", () => {
+  it("does not repeat the skill name or percentage the UI already prints", () => {
+    // The view renders "lane keeping (0%) — <reason>"; a reason that said
+    // "lowest-rated skill at 0%" stuttered.
+    const focus = Core.nextPracticeSkill([session()]);
+    expect(focus.skillName).toBe("lane keeping");
+    expect(focus.reason).not.toContain("%");
+    expect(focus.reason.toLowerCase()).not.toContain(focus.skillName.toLowerCase());
+  });
+
+  it("points at the first skill without naming it twice on an empty log", () => {
+    const focus = Core.nextPracticeSkill([]);
+    expect(focus.skillName).toBe("mirrors");
+    expect(focus.reason).toContain("no sessions logged yet");
+    expect(focus.reason.toLowerCase()).not.toContain("mirrors");
+  });
+});
+
 describe("persistence", () => {
   it("sessions survive migration sanitization", () => {
     let s = Core.defaultState();

@@ -1760,8 +1760,9 @@ function reviewSched(sched, right, nowMs, quality) {
     if (scored.length) {
       scored.sort((a, b) => (a.score - b.score) || (b.practices - a.practices));
       const worst = scored[0];
-      const label = worst.score === null ? "not yet rated" : `${Math.round(worst.score * 100)}%`;
-      return { ...worst, reason: `lowest-rated skill at ${label} — drill this one next` };
+      // The UI already prints the skill and its percentage; repeating either in
+      // the reason ("lane keeping (33%) — lowest-rated skill at 33%") stutters.
+      return { ...worst, reason: "your lowest-rated skill — drill this one next" };
     }
     return {
       skillId: "mirrors",
@@ -1770,7 +1771,7 @@ function reviewSched(sched, right, nowMs, quality) {
       competencyName: "Observation",
       score: null,
       practices: 0,
-      reason: "no sessions logged yet — start with mirrors",
+      reason: "no sessions logged yet, so start here",
     };
   }
 
@@ -2042,8 +2043,16 @@ function reviewSched(sched, right, nowMs, quality) {
     return counts;
   }
 
-  /** Band labels for the combined readiness heuristic. */
-  function readinessBand(pct) {
+  /** Band labels for the combined readiness heuristic.
+   *
+   *  `hasEvidence` answers one specific question: has this learner answered
+   *  anything at all? The score is rounded to a whole percent before it is
+   *  banded, so four questions answered out of a 625-question bank rounds to 0
+   *  and would otherwise be labelled "Not Started" — directly contradicting
+   *  the "4 answered · 75% accuracy" strip right above it. When there is
+   *  evidence the honest floor is "Getting Started"; "Not Started" is reserved
+   *  for a learner who genuinely has nothing recorded yet. */
+  function readinessBand(pct, hasEvidence) {
     const p = num(pct, 0, 0, 100);
     /* Bands describe STUDY PROGRESS, never a probability of passing. The engine is
        heuristic and only becomes a measured pass-rate estimate once enough verified
@@ -2053,6 +2062,7 @@ function reviewSched(sched, right, nowMs, quality) {
     if (p >= 75) return { label: "On Track", tone: "nearly" };
     if (p >= 55) return { label: "Building", tone: "getting" };
     if (p > 0) return { label: "Getting Started", tone: "early" };
+    if (hasEvidence) return { label: "Getting Started", tone: "early" };
     return { label: "Not Started", tone: "early" };
   }
 
@@ -2296,12 +2306,19 @@ function reviewSched(sched, right, nowMs, quality) {
    */
   function readinessNarrative(opts) {
     const { readinessPct, curve, riskTopics } = opts || {};
+    const hasEvidence = !!(opts && opts.hasEvidence);
     const spread = Number.isFinite(opts && opts.stabilitySpread) ? opts.stabilitySpread : null;
     const stabilityLine = spread != null && spread > 15
       ? ` Recent representative mock scores are unstable (varying by ${Math.round(spread)} points), so treat this as provisional.`
       : "";
     const DISCLAIMER = "Theory-test readiness is not a claim that you are safe or ready for independent practical driving.";
-    const band = readinessBand(readinessPct);
+    const band = readinessBand(readinessPct, hasEvidence);
+    // "0%" next to a stat strip full of answers reads as a broken score. The
+    // value is genuinely below one percent (the score is breadth-weighted), so
+    // say that instead of printing a zero the learner will not believe.
+    const scoreLine = Math.round(readinessPct) === 0 && hasEvidence
+      ? "Your study-progress score is under 1% (Getting Started) — it is weighted toward how much of the question bank you have covered, so it climbs slowly at first."
+      : `Your study-progress score is ${Math.round(readinessPct)}% (${band.label}).`;
 
     const builtResult = curve && curve.buckets
       ? { scope: curve.scope || "all", buckets: curve.buckets }
@@ -2309,7 +2326,7 @@ function reviewSched(sched, right, nowMs, quality) {
     const row = builtResult.buckets.find((b) => b.bucket === progressBucket(readinessPct)) || null;
 
     const riskLine = (riskTopics || []).length
-      ? ` Focus areas right now: ${riskTopics.map((r) => r.toLowerCase()).join(",")}.`
+      ? ` Focus areas right now: ${riskTopics.map((r) => r.toLowerCase()).join(", ")}.`
       : "";
 
     const insufficientBecause =
@@ -2322,7 +2339,7 @@ function reviewSched(sched, right, nowMs, quality) {
     if (!row || !row.sufficient) {
       return {
         mode: "insufficient",
-        text: `Your study-progress score is ${Math.round(readinessPct)}% (${band.label}). ${insufficientBecause}${stabilityLine}${riskLine}`,
+        text: `${scoreLine} ${insufficientBecause}${stabilityLine}${riskLine}`,
         disclaimer: DISCLAIMER,
         evidence: { n: row ? row.n : 0, pending: row ? row.pending : 0 },
         scope: builtResult.scope,
@@ -2690,7 +2707,10 @@ function reviewSched(sched, right, nowMs, quality) {
     const tokens = finderTokens(query);
     if (!tokens.length) return [];
     const labelFor = typeof o.labelFor === "function" ? o.labelFor : prettyConceptKey;
-    const limit = Math.max(1, Math.min(50, Math.floor(o.limit) || 12));
+    // Callers may ask for the whole match set (the study guide reports honest
+    // "12 of 161" totals and offers a show-all): 50 silently truncated the
+    // count as well as the list. The default is still a 12-card preview.
+    const limit = Math.max(1, Math.min(200, Math.floor(o.limit) || 12));
     const out = [];
     for (const q of bankArr) {
       if (!q || typeof q !== "object") continue;
@@ -2724,7 +2744,7 @@ function reviewSched(sched, right, nowMs, quality) {
     const lib = (signs && typeof signs === "object" && !Array.isArray(signs)) ? signs : {};
     const tokens = finderTokens(query);
     if (!tokens.length) return [];
-    const limit = Math.max(1, Math.min(50, Math.floor(o.limit) || 8));
+    const limit = Math.max(1, Math.min(100, Math.floor(o.limit) || 8));
     const out = [];
     for (const id of Object.keys(lib)) {
       const s = lib[id];
@@ -2779,6 +2799,12 @@ function reviewSched(sched, right, nowMs, quality) {
     // Practice skips are reported on the results screen. Emitted only when
     // non-zero so snapshots of a skip-free session keep their exact old shape.
     const skipped = isFinite(q.skipped) && q.skipped > 0 ? Math.min(Math.floor(q.skipped), q.qids.length) : 0;
+    // The size of the set the learner was promised. Practice appends repair
+    // questions to the queue; without this, an ended-early summary counted
+    // those as "not attempted" and contradicted the set's stated size.
+    const baseCount = isFinite(q.baseCount) && q.baseCount > 0
+      ? Math.min(Math.floor(q.baseCount), q.qids.length)
+      : q.qids.length;
     const base = {
       v: 1, mode: q.mode, label: q.label.slice(0, 120), pack: q.pack,
       backTo: typeof q.backTo === "string" ? q.backTo : "home",
@@ -2790,6 +2816,7 @@ function reviewSched(sched, right, nowMs, quality) {
       timeLeft, savedAt: Math.floor(q.savedAt) || Date.now(),
     };
     if (skipped) base.skipped = skipped;
+    if (baseCount < q.qids.length) base.baseCount = baseCount;
     return base;
   }
   function parseResumeSnapshot(raw, opts) {

@@ -23,7 +23,7 @@ describe("concept mastery states (robustness, not repeat answers)", () => {
   });
 
   it("one right answer is learning, never secure", () => {
-    const r = Mastery.conceptState(conceptQs(), { c1: { seen: 2, correct: 2, wrong: 0 } });
+    const r = Mastery.conceptState(conceptQs(), { c1: { seen: 2, correct: 2, wrong: 0 } }, null, NOW);
     expect(r.state).toBe("learning");
   });
 
@@ -31,7 +31,7 @@ describe("concept mastery states (robustness, not repeat answers)", () => {
     // Same question repeated: 1 variant, 1 form — transfer credit is missing.
     const r = Mastery.conceptState(conceptQs(), {
       c1: { seen: 6, correct: 6, wrong: 0, lastSeen: NOW - DAY },
-    });
+    }, null, NOW);
     expect(["learning", "secure"]).toContain(r.state);
     expect(r.state).not.toBe("strong");
   });
@@ -41,7 +41,7 @@ describe("concept mastery states (robustness, not repeat answers)", () => {
       c1: { seen: 3, correct: 3, wrong: 0, lastSeen: NOW - DAY },
       c2: { seen: 3, correct: 3, wrong: 0, lastSeen: NOW - 2 * DAY },
       c3: { seen: 3, correct: 3, wrong: 0, lastSeen: NOW - 3 * DAY },
-    });
+    }, null, NOW);
     // This evidence is deliberately good (3 forms, 3 variants, 3 retrieval
     // days) — the point is transfer credit is required at all, so the state
     // must clear "secure"; it may legitimately reach "strong".
@@ -51,7 +51,7 @@ describe("concept mastery states (robustness, not repeat answers)", () => {
   it("same evidence with only ONE question form stays below secure", () => {
     const r = Mastery.conceptState(conceptQs(), {
       c1: { seen: 6, correct: 6, wrong: 0, lastSeen: NOW - DAY },
-    });
+    }, null, NOW);
     expect(["seen", "learning"]).toContain(r.state);
   });
 
@@ -62,7 +62,7 @@ describe("concept mastery states (robustness, not repeat answers)", () => {
       c2: { seen: 4, correct: 4, wrong: 0, lastSeen: day(2) },
       c3: { seen: 4, correct: 4, wrong: 0, lastSeen: day(3) },
       c4: { seen: 4, correct: 4, wrong: 0, lastSeen: day(1) },
-    });
+    }, null, NOW);
     expect(r.state).toBe("strong");
   });
 
@@ -73,7 +73,7 @@ describe("concept mastery states (robustness, not repeat answers)", () => {
       c2: { seen: 4, correct: 4, wrong: 0, lastSeen: day(2) },
       c3: { seen: 4, correct: 4, wrong: 0, lastSeen: day(3) },
       c4: { seen: 4, correct: 4, wrong: 0, lastSeen: day(1) },
-    }, { errors: 3, repairedAt: null });
+    }, { errors: 3, repairedAt: null }, NOW);
     expect(r.overlay).toBe("misconception");
     expect(r.display).toBe("Recurring misconception");
   });
@@ -81,7 +81,7 @@ describe("concept mastery states (robustness, not repeat answers)", () => {
   it("an overdue spaced review overlays 'needs review'", () => {
     const r = Mastery.conceptState(conceptQs(), {
       c1: { seen: 4, correct: 3, wrong: 1, lastSeen: NOW - 3 * DAY, sched: { due: NOW - 2 * DAY, ef: 2.5, interval: 6, reps: 2 } },
-    });
+    }, null, NOW);
     expect(r.overlay).toBe("needs-review");
     expect(r.display).toBe("Needs review");
   });
@@ -93,7 +93,7 @@ describe("concept mastery states (robustness, not repeat answers)", () => {
       c2: { seen: 4, correct: 4, wrong: 0, slowRight: 3, lastSeen: day(2) },
       c3: { seen: 4, correct: 4, wrong: 0, lastSeen: day(3) },
       c4: { seen: 4, correct: 4, wrong: 0, lastSeen: day(1) },
-    });
+    }, null, NOW);
     expect(r.state).not.toBe("strong");
   });
 
@@ -196,6 +196,18 @@ describe("plain-English coaching copy", () => {
       expect(e.success.length).toBeGreaterThan(5);
     });
   }
+
+  it("only calls a learner \"performing well\" when their accuracy supports it", () => {
+    const rec = { type: "build-coverage", questionCount: 8, minutes: 6 };
+    const weak = Explain.explainRecommendation(rec, { coverage: 0.2, untestedConcepts: 199, seenAccuracy: 0.43, bankSize: 625 });
+    expect(weak.noticed).not.toMatch(/performing well/i);
+    expect(weak.noticed).toMatch(/43%/);
+    const strong = Explain.explainRecommendation(rec, { coverage: 0.2, untestedConcepts: 40, seenAccuracy: 0.9, bankSize: 625 });
+    expect(strong.noticed).toMatch(/performing well/i);
+    // No accuracy measured yet: neither claim is made.
+    const unknown = Explain.explainRecommendation(rec, { coverage: 0.2, untestedConcepts: 40, bankSize: 625 });
+    expect(unknown.noticed).not.toMatch(/performing well/i);
+  });
 
   it("no coaching copy uses analytics jargon", () => {
     for (const [type] of cases) {

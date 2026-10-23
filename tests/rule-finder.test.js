@@ -52,6 +52,14 @@ describe("searchBank", () => {
     expect(again.map((r) => r.q.id)).toEqual(capped.map((r) => r.q.id));
   });
 
+  it("can return the full match set so callers report honest totals", () => {
+    // The guide previews 12 cards but names the real total ("12 of 61"); a cap
+    // that also truncated the count told learners only 12 questions matched.
+    const big = Array.from({ length: 61 }, (_, i) => q(`s${i}`, { q: "A generic stop rule question?" }));
+    expect(Core.searchBank(big, "stop")).toHaveLength(12);
+    expect(Core.searchBank(big, "stop", { limit: 200 })).toHaveLength(61);
+  });
+
   it("uses the caller's concept labels when provided", () => {
     const withLabel = Core.searchBank(bank, "priority junction", { labelFor: (k) => (k === "right-of-way" ? "Junction priority" : k) });
     expect(withLabel.map((r) => r.q.id)).toContain("r1");

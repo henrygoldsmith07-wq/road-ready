@@ -128,7 +128,7 @@
     recordAnswer(q, right); // ledger first: the repair panel reads this answer's effect
 
     if (s.mode === "practice") {
-      markChoiceButtons(q);
+      markChoiceButtons(q, btnEl);
       const state = ctx.getState();
       const fb = $("feedback");
       fb.hidden = !state.settings.feedback;
@@ -333,13 +333,18 @@
     host.hidden = false;
   }
 
-  function markChoiceButtons(q) {
+  /* `pickedEl` is the button the learner actually answered with. Relying on
+     document.activeElement alone marked no wrong answer at all on browsers
+     that do not focus a button on tap (Safari on iOS), which is exactly the
+     device this app is used on: the explanation said "your answer", but no
+     choice was marked as the one chosen. */
+  function markChoiceButtons(q, pickedEl) {
     const { icon } = ctx;
     const s = session();
     const btns = /** @type {NodeListOf<HTMLElement>} */(document.querySelectorAll("#choices .choice"));
     btns.forEach((b, disp) => {
       const orig = s.order[disp];
-      const picked = b === document.activeElement || b.classList.contains("picked");
+      const picked = (!!pickedEl && b === pickedEl) || b.classList.contains("picked");
       /** @type {HTMLButtonElement} */(b).disabled = true;
       if (orig === q.a) {
         b.classList.add("correct");
