@@ -533,7 +533,9 @@ setInterval(() => {
 }, 1000);
 function fmtTime(s) {
   if (!s) return "0m";
-  const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60);
+  // Floor the minutes: 59m59s must never display as "60m" (an hour that has
+  // not been studied), and a partial minute must never overstate the total.
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
   return h ? h + "h " + m + "m" : m + "m";
 }
 
