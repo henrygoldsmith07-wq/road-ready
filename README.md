@@ -32,7 +32,7 @@ Two honest scoping calls that follow from this:
 | Question forms in use | 9 |
 | Active jurisdiction modules | 2 |
 | Region packs incl. Great Britain | 7 |
-| Unit test files | 75 |
+| Unit test files | 76 |
 
 <!-- product-stats:end -->
 
