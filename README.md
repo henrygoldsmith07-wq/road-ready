@@ -32,7 +32,7 @@ Two honest scoping calls that follow from this:
 | Question forms in use | 9 |
 | Active jurisdiction modules | 2 |
 | Region packs incl. Great Britain | 7 |
-| Unit test files | 75 |
+| Unit test files | 76 |
 
 <!-- product-stats:end -->
 
@@ -95,7 +95,7 @@ Questions follow general U.S. rules of the road common across state DMV handbook
 
 - `index.html` — app shell, views, and the study guide content
 - `css/styles.css` — monochrome dark/light theming, minimal component styles
-- `js/icons.js` — stroke icon set (~34 icons, currentColor)
+- `js/icons.js` — stroke icon set (42 icons, currentColor)
 - `js/questions.js` — the universal U.S. question bank (with explanations; counts in Product statistics above)
 - `js/packs/uk.js` — the Great Britain (DVSA car theory) pack: region fact table + its question bank
 - `js/signs.js` — SVG road-sign library (shared artwork, per-jurisdiction wording)

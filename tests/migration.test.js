@@ -118,6 +118,27 @@ describe("state migration", () => {
     expect(m.state.flagged.sg09).toBe(true);
   });
 
+  it("keys the daily-answer history by ISO day only", () => {
+    // The daily map feeds the goal ring, the dated plan and the streak-risk
+    // nudge, and every consumer looks a day up EXACTLY. A mis-keyed entry from
+    // a hand-edited or legacy payload used to survive sanitization, so its
+    // answers were counted nowhere — a learner who had answered that day saw
+    // "0 answered today" and a streak-at-risk nag over a day already fed.
+    const m = Core.migrateState({
+      v: 2,
+      daily: {
+        "2026-10-27": 2,      // valid day, kept
+        " 2026-10-27": 8,     // whitespace duplicate → merged into the real day
+        "junk": 5,            // not a date → dropped
+        "": 3,                // empty key → dropped
+        "2026-02-30": 4,      // impossible date → dropped
+      },
+    });
+    expect(m.state.daily).toEqual({ "2026-10-27": 10 });
+    // the recovered count is what the goal ring actually reads
+    expect(Core.dailyCount(m.state.daily, "2026-10-27")).toBe(10);
+  });
+
   it("exam history is capped to MAX_EXAM_HISTORY", () => {
     const s = Core.defaultState();
     s.exams = Array.from({ length: 50 }, (_, i) => ({ date: i, label: "E", pct: 0.5, correct: 10, total: 20, pass: false }));

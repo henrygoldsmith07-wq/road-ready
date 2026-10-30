@@ -65,7 +65,7 @@
   function reminderDue(settings, todayIso, nowHM) {
     const r = sanitizeReminder(settings && settings.reminder);
     if (!r.enabled) return false;
-    if (!validIsoDate(todayIso) || typeof nowHM !== "string") return false;
+    if (!validIsoDate(todayIso) || !validReminderTime(nowHM)) return false;
     if (r.lastFired === todayIso) return false;
     return nowHM >= r.time;
   }
@@ -243,7 +243,25 @@
     s.streak.count = num(s.streak.count, 0, 0, 36500);
     s.streak.last = typeof s.streak.last === "string" ? s.streak.last : "";
     s.daily = plainObject(s.daily);
-    Object.keys(s.daily).forEach((k) => { s.daily[k] = num(s.daily[k], 0, 0, 1e6); });
+    {
+      /* The daily-answer history is keyed by ISO day strings, and every
+       * consumer looks a day up EXACTLY (dailyCount). A mis-keyed entry — a
+       * leading-space duplicate (" 2026-10-27") from a hand-edited or legacy
+       * payload, or plain junk — survived sanitization forever, so its answers
+       * were counted nowhere: the goal ring under-counted, streak-risk fired
+       * on a day that had in fact been fed, and the junk keys accumulated in
+       * the save file. Valid days are kept; a near-miss key whose TRIMMED form
+       * is a valid date is merged into that day so the answers reappear; all
+       * other keys are dropped. */
+      const clean = {};
+      for (const k of Object.keys(s.daily)) {
+        const count = num(s.daily[k], 0, 0, 1e6);
+        if (!count || typeof k !== "string") continue;
+        if (validIsoDate(k)) clean[k] = (clean[k] || 0) + count;
+        else if (validIsoDate(k.trim())) clean[k.trim()] = (clean[k.trim()] || 0) + count;
+      }
+      s.daily = clean;
+    }
     s.fcKnown = plainObject(s.fcKnown);
     s.fcOrder = Array.isArray(s.fcOrder) ? s.fcOrder.filter((x) => typeof x === "string") : null;
     s.signStudy = plainObject(s.signStudy);

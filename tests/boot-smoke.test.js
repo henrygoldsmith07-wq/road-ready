@@ -52,7 +52,10 @@ function boot() {
     if (e && e.message && /scrollTo|scrollIntoView/.test(e.message)) return;
     throw e;
   });
-  virtualConsole.sendTo(console, { omitJSDOMErrors: true });
+  // jsdom >= 24 renamed sendTo({ omitJSDOMErrors }) to forwardTo({ jsdomErrors });
+  // "none" preserves the old omitJSDOMErrors behavior (jsdomErrors are handled by
+  // the listener above, not echoed to the real console).
+  virtualConsole.forwardTo(console, { jsdomErrors: "none" });
   const dom = new JSDOM(html, {
     url: "http://localhost/",
     runScripts: "outside-only",

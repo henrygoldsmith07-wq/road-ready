@@ -157,6 +157,7 @@ if (QuizUI) {
     finishSession: (timedOut) => finishSession(timedOut),
     save: () => save(),
     speak: (text) => speak(text),
+    nextQuestion: () => nextQuestion(),
   }));
 }
 
@@ -533,7 +534,9 @@ setInterval(() => {
 }, 1000);
 function fmtTime(s) {
   if (!s) return "0m";
-  const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60);
+  // Floor the minutes: 59m59s must never display as "60m" (an hour that has
+  // not been studied), and a partial minute must never overstate the total.
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
   return h ? h + "h " + m + "m" : m + "m";
 }
 
@@ -2098,7 +2101,11 @@ function initRest() {
         const btns = /** @type {NodeListOf<HTMLElement>} */(document.querySelectorAll("#choices .choice"));
         const b = btns[parseInt(e.key, 10) - 1];
         if (b && !session.answeredCurrent) { b.classList.add("picked"); b.click(); }
-      } else if (e.key === "Enter") { if (!$("btnNext").disabled) nextQuestion(); }
+      } else if (e.key === "Enter") {
+        // The focused Next button would also receive Enter's native click after
+        // this listener. Handle it once and cancel that default activation.
+        if (QuizUI && QuizUI.handleEnter && QuizUI.handleEnter()) e.preventDefault();
+      }
       else if (e.key.toLowerCase() === "f") toggleFlag();
       else if (e.key.toLowerCase() === "r") openReport();
       else if (e.key.toLowerCase() === "s" && session && session.mode === "practice") skipQuestion();

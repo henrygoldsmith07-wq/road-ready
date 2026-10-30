@@ -76,4 +76,17 @@ describe("account UI controller", () => {
     expect(h.actions().textContent).toContain("Sign in with Google");
     expect(h.note()).toContain("local progress is still on this device");
   });
+
+  it("turns a rejected save into an actionable sync error", async () => {
+    const account = baseAccount({
+      fetchAccount: vi.fn(async () => ({ available: true, user: { email: "person@example.com" } })),
+      remoteMeta: vi.fn(async () => ({ updatedAt: null, revision: null })),
+      push: vi.fn(async () => { throw new Error("offline"); }),
+    });
+    const h = harness(account);
+    await h.ui.init({ account, getBundle: () => "bundle", parseBundle: vi.fn(), applyState: vi.fn() });
+    [...h.actions().querySelectorAll("button")].find((b) => b.textContent === "Save").click();
+    await tick();
+    expect(h.note()).toBe("Sync failed — check your connection and try again.");
+  });
 });

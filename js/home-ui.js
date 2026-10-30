@@ -320,12 +320,27 @@
         : rec.questionCount ? `Start ${rec.questionCount}-question session` : "Start today's session";
       planBtn.dataset.action = "coach";
     } else if (plan.status === "past") {
+      /* A past test date used to leave every explain field on the card showing
+       * the previous coach recommendation while the title/button switched to
+       * "Update your test date" — a plan that contradicted its own action. The
+       * whole card now describes the one thing it is asking for. */
       $("planTitle").textContent = "Update your test date";
       $("planDetail").textContent = "Your saved test date has passed. Choose a new date to rebuild the plan.";
       $("planMeta").textContent = "Your progress is still here";
       rationaleEl.hidden = true;
       if (kindEl) kindEl.hidden = true;
       if (changedEl) changedEl.hidden = true;
+      const amountEl = $("planAmount");
+      if (amountEl) { amountEl.hidden = true; amountEl.textContent = ""; }
+      const noticedEl = $("planNoticed");
+      if (noticedEl) { noticedEl.hidden = true; noticedEl.textContent = ""; }
+      const whyEl = $("planWhy");
+      if (whyEl) { whyEl.hidden = true; whyEl.textContent = ""; }
+      const goalEl = $("planGoal");
+      if (goalEl) { goalEl.hidden = true; goalEl.textContent = ""; }
+      if (kindEl) { kindEl.hidden = true; kindEl.textContent = ""; }
+      const evDetails = $("planEvidence");
+      if (evDetails) { evDetails.hidden = true; evDetails.open = false; }
       planBtn.textContent = "Choose a date";
       planBtn.dataset.action = "set-date";
     } else {

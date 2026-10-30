@@ -36,6 +36,9 @@
     // When this question became answerable. The gap to the answer is the only
     // evidence we have of whether it was recalled or worked out.
     s.shownAt = Date.now();
+    // Keyboard path (1–4) shares the answer() guard, so a mid-advance burst
+    // cannot double-answer; focus can land here in exam mode once the buttons
+    // are disabled, so the keydown path must tolerate it the same way.
     $("qprogBar").style.setProperty("--w", (100 * s.i / total) + "%");
     // Test-day Part 1: the counter says which section this is, so the 50
     // questions feel like the first half of one sitting rather than a mock.
@@ -91,6 +94,13 @@
     order.forEach((origIdx, disp) => {
       const b = document.createElement("button");
       b.className = "choice";
+      b.type = "button";
+      // The visual answer key (1–4) is a styled span, not button text, so an
+      // unnamed button exposed only a click target. Voice-control / switch
+      // users heard nothing to speak; keyboard users got "button" in the
+      // roving focus list. The accessible name is the full choice text, with
+      // the visible key number leading so the two match what is on screen.
+      b.setAttribute("aria-label", `${disp + 1}. ${q.choices[origIdx]}`);
       b.innerHTML = `<span class="choice-key">${disp + 1}</span><span class="choice-text">${escapeHTML(q.choices[origIdx])}</span><span class="choice-mark"></span>`;
       b.addEventListener("click", () => answer(origIdx, b));
       box.appendChild(b);
@@ -443,9 +453,24 @@
     if (!s || s.answeredCurrent) return;
     const btns = /** @type {NodeListOf<HTMLElement>} */(document.querySelectorAll("#choices .choice"));
     const b = btns[disp];
-    if (!b) return;
+    if (!b || b.disabled) return;
     b.classList.add("picked");
     b.click();
+  }
+
+  /** Handle Enter without allowing the focused button's default click too. */
+  function handleEnter() {
+    const s = session();
+    if (!s) return false;
+    if (!s.answeredCurrent) {
+      answerDisplayPosition(0);
+      return true;
+    }
+    const next = $("btnNext");
+    if (!next || next.disabled) return false;
+    if (typeof ctx.nextQuestion !== "function") return false;
+    ctx.nextQuestion();
+    return true;
   }
 
   window.RoadReadyQuizUI = {
@@ -456,7 +481,7 @@
      */
     init(deps) { ctx = deps; },
     renderQuiz, renderTimer, answer, renderRepair, markChoiceButtons,
-    updateFlagBtn, toggleFlag, answerDisplayPosition,
+    updateFlagBtn, toggleFlag, answerDisplayPosition, handleEnter,
     updateReportBtn, openReport, closeReport, saveReport,
   };
 })();

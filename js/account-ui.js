@@ -27,48 +27,56 @@
 
     async function upload() {
       setNote("Saving…");
-      const result = await account.push(getBundle(), remoteRevision);
-      if (result.status === "ok") {
-        remoteAt = result.updatedAt;
-        remoteRevision = result.revision || remoteRevision;
-        render();
-        setNote("Saved to your account.");
-        return;
-      }
-      if (result.status === "conflict") {
-        const when = result.remoteUpdatedAt ? new Date(result.remoteUpdatedAt).toLocaleString() : "unknown";
-        if (confirm("Another device saved at " + when + ". Overwrite it with this device's progress?")) {
-          // Consent applies to the exact revision shown to the user. Retry as a
-          // normal CAS against it; if a third device saves meanwhile, the user
-          // sees another conflict rather than silently overwriting unseen data.
-          remoteRevision = result.remoteRevision || null;
-          remoteAt = result.remoteUpdatedAt || remoteAt;
-          await upload();
+      try {
+        const result = await account.push(getBundle(), remoteRevision);
+        if (result.status === "ok") {
+          remoteAt = result.updatedAt;
+          remoteRevision = result.revision || remoteRevision;
+          render();
+          setNote("Saved to your account.");
           return;
         }
-        setNote("Left the other device's copy alone.");
-        return;
+        if (result.status === "conflict") {
+          const when = result.remoteUpdatedAt ? new Date(result.remoteUpdatedAt).toLocaleString() : "unknown";
+          if (confirm("Another device saved at " + when + ". Overwrite it with this device's progress?")) {
+            // Consent applies to the exact revision shown to the user. Retry as a
+            // normal CAS against it; if a third device saves meanwhile, the user
+            // sees another conflict rather than silently overwriting unseen data.
+            remoteRevision = result.remoteRevision || null;
+            remoteAt = result.remoteUpdatedAt || remoteAt;
+            await upload();
+            return;
+          }
+          setNote("Left the other device's copy alone.");
+          return;
+        }
+        setNote(result.message || "Sync failed.");
+      } catch {
+        setNote("Sync failed — check your connection and try again.");
       }
-      setNote(result.message || "Sync failed.");
     }
 
     async function restore() {
       setNote("Fetching…");
-      const result = await account.pull();
-      if (result.status === "empty") { setNote("Nothing has been saved to this account yet."); return; }
-      if (result.status !== "ok") { setNote(result.message || "Sync failed."); return; }
+      try {
+        const result = await account.pull();
+        if (result.status === "empty") { setNote("Nothing has been saved to this account yet."); return; }
+        if (result.status !== "ok") { setNote(result.message || "Sync failed."); return; }
 
-      const parsed = parseBundle(result.bundle);
-      if (!parsed.ok) { setNote("That saved copy could not be read (" + parsed.error + ")."); return; }
-      if (!confirm(parsed.warnings.length
-        ? "The saved copy is from another app version (" + parsed.warnings.join(", ") + "). Restore anyway?"
-        : "Replace current progress with the copy from your account?")) return;
+        const parsed = parseBundle(result.bundle);
+        if (!parsed.ok) { setNote("That saved copy could not be read (" + parsed.error + ")."); return; }
+        if (!confirm(parsed.warnings.length
+          ? "The saved copy is from another app version (" + parsed.warnings.join(", ") + "). Restore anyway?"
+          : "Replace current progress with the copy from your account?")) return;
 
-      applyState(parsed.state);
-      remoteAt = result.updatedAt;
-      remoteRevision = result.revision || null;
-      render();
-      setNote("Restored from your account.");
+        applyState(parsed.state);
+        remoteAt = result.updatedAt;
+        remoteRevision = result.revision || null;
+        render();
+        setNote("Restored from your account.");
+      } catch {
+        setNote("Sync failed — check your connection and try again.");
+      }
     }
 
     function render() {
