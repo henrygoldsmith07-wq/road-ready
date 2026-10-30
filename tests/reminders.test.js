@@ -57,6 +57,8 @@ describe("reminderDue", () => {
     expect(Core.reminderDue(on(), "2026-08-23", "19:00")).toBe(true);
     expect(Core.reminderDue(on(), "2026-08-23", "21:15")).toBe(true);
     expect(Core.reminderDue(on(), "2026-08-23", "18:59")).toBe(false);
+    expect(Core.reminderDue(on(), "2026-08-23", "not-a-time")).toBe(false);
+    expect(Core.reminderDue(on(), "2026-08-23", "25:00")).toBe(false);
     expect(Core.reminderDue(on({ lastFired: "2026-08-23" }), "2026-08-23", "21:15")).toBe(false);
     expect(Core.reminderDue(on({ lastFired: "2026-08-22" }), "2026-08-23", "21:15")).toBe(true);
     expect(Core.reminderDue(on({ enabled: false }), "2026-08-23", "21:15")).toBe(false);

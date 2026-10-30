@@ -65,7 +65,7 @@
   function reminderDue(settings, todayIso, nowHM) {
     const r = sanitizeReminder(settings && settings.reminder);
     if (!r.enabled) return false;
-    if (!validIsoDate(todayIso) || typeof nowHM !== "string") return false;
+    if (!validIsoDate(todayIso) || !validReminderTime(nowHM)) return false;
     if (r.lastFired === todayIso) return false;
     return nowHM >= r.time;
   }
